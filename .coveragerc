@@ -1,0 +1,9 @@
+[run]
+branch = false
+parallel = true
+data_file = ${PWD}/.coverage
+omit=
+    $SPARK_HOME/*
+    setup.py
+    dist/*
+    $PWD/fink_science/tester.py
