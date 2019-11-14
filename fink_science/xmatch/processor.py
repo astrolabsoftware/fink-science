@@ -89,15 +89,9 @@ def xmatch(objectid: Any, ra: Any, dec: Any) -> pd.Series:
     +---+----------+-----------+-------+
     <BLANKLINE>
     """
-    # discriminate which service to use using the number of alerts
-    # Issue fink-broker/265: cross_match_alerts_raw_slow is buggy
-    # and need to be fixed.
-    if len(ra) <= 1:
-        matches = cross_match_alerts_raw_slow(
-            objectid.values, ra.values, dec.values)
-    else:
-        matches = cross_match_alerts_raw(
-            objectid.values, ra.values, dec.values)
+    # your logic goes here
+    matches = cross_match_alerts_raw(
+        objectid.values, ra.values, dec.values)
 
     # For regular alerts, the number of matches is always non-zero as
     # alerts with no counterpart will be labeled as Unknown.
