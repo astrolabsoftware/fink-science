@@ -12,7 +12,7 @@ Fork and clone the repository, and create a new folder in `fink_science/`. The n
 
 A module contains necessary routines and classes to process the data, and add values. Typically, you will receive alerts in input, and output the same alerts with additional information. Input alert information contains position, flux, telescope properties, ... You can find what's in an alert here [link to be added]. 
 
-In this example, let's imagine you want to know if alerts have counterpart (cross-match) in the Simbad catalog based on their localisation on the sky. We wrote a small library containing all the routines (see the fink_science/xmatch folder), and we now write the `processor` in `processor.py` (name of the file needs to be `processor.py`): 
+In this example, let's imagine you want to know if alerts have counterpart (cross-match) in the Simbad database based on their localisation on the sky. We wrote a small library containing all the routines (see the fink_science/xmatch folder), and we now write the `processor` in `processor.py` (name of the file needs to be `processor.py`): 
 
 ```python
 @pandas_udf(StringType(), PandasUDFType.SCALAR) # <- mandatory
