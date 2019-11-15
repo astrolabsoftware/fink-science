@@ -35,9 +35,6 @@ install:
   - pip install -r requirements.txt
 
 script:
-  # For sonar to run correctly
-  - git fetch --unshallow --quiet
-
   # Execute tests and report coverage
   - ./run_tests.sh
   - bash <(curl -s https://codecov.io/bash)
