@@ -25,7 +25,7 @@ from fink_science.tester import spark_unit_tests
 from typing import Any
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
-def cdsxmatch(objectid: Any, ra: Any, dec: Any) -> pd.Series:
+def cdsxmatch(objectId: Any, ra: Any, dec: Any) -> pd.Series:
     """ Query the CDSXmatch service to find identified objects
     in alerts. The catalog queried is the SIMBAD bibliographical database.
 
@@ -42,7 +42,7 @@ def cdsxmatch(objectid: Any, ra: Any, dec: Any) -> pd.Series:
 
     Parameters
     ----------
-    objectid: list of str or Spark DataFrame Column of str
+    objectId: list of str or Spark DataFrame Column of str
         List containing object ids (custom)
     ra: list of float or Spark DataFrame Column of float
         List containing object ra coordinates
@@ -91,19 +91,19 @@ def cdsxmatch(objectid: Any, ra: Any, dec: Any) -> pd.Series:
     """
     # your logic goes here
     matches = cross_match_alerts_raw(
-        objectid.values, ra.values, dec.values)
+        objectId.values, ra.values, dec.values)
 
     # For regular alerts, the number of matches is always non-zero as
     # alerts with no counterpart will be labeled as Unknown.
     # If cross_match_alerts_raw returns a zero-length list of matches, it is
     # a sign of a problem (logged).
     if len(matches) > 0:
-        # (objectid, ra, dec, name, type)
+        # (objectId, ra, dec, name, type)
         # return only the type.
         names = np.transpose(matches)[-1]
     else:
         # Tag as Fail if the request failed.
-        names = ["Fail"] * len(objectid)
+        names = ["Fail"] * len(objectId)
     return pd.Series(names)
 
 
