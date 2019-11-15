@@ -2,6 +2,7 @@ numpy>=1.14
 coverage>=4.2
 coveralls
 pandas
+pyarrow==0.14.1
 codecov
 astropy
 astroquery
