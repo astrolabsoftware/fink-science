@@ -78,8 +78,7 @@ def xmatch(objectid: Any, ra: Any, dec: Any) -> pd.Series:
     <BLANKLINE>
 
     Test the processor by adding a new column with the result of the xmatch
-    >>> df = df.withColumn('xmatch', cross_match_alerts_per_batch(
-    ...     df['id'], df['ra'], df['dec']))
+    >>> df = df.withColumn('xmatch', xmatch(df['id'], df['ra'], df['dec']))
     >>> df.show() # doctest: +NORMALIZE_WHITESPACE
     +---+----------+-----------+-------+
     | id|        ra|        dec| xmatch|
