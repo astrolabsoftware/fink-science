@@ -1,0 +1,7 @@
+numpy>=1.14
+coverage>=4.2
+coveralls
+pandas
+codecov
+astropy
+astroquery
