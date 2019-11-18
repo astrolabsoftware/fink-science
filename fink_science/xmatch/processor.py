@@ -19,7 +19,6 @@ import pandas as pd
 import numpy as np
 
 from fink_science.xmatch.classification import cross_match_alerts_raw
-from fink_science.xmatch.classification import cross_match_alerts_raw_slow
 from fink_science.tester import spark_unit_tests
 
 from typing import Any
