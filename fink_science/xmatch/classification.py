@@ -206,6 +206,16 @@ def cross_match_alerts_raw(oid: list, ra: list, dec: list) -> list:
         logging.warning("XMATCH failed " + repr(ce))
         return []
 
+    # Sometimes the service is down, but without TimeoutError or ConnectionError
+    # In that case, we grab the error message from the data.
+    if len(data) > 0 and "504 Gateway Time-out" in data[0]:
+        msg_head = "CDS xmatch service probably down"
+        msg_foot = "Check at http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync"
+        logging.warning(msg_head)
+        logging.warning(data[0])
+        logging.warning(msg_foot)
+        return []
+
     # Fields of interest (their indices in the output)
     if "main_id" not in header:
         return []
