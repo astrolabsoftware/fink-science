@@ -18,57 +18,14 @@ import pickle
 
 from fink_science.active_learning_simple.bazin import fit_scipy
 
-def extract_history(history_list: list, field: str) -> list:
-    """Extract the historical measurements contained in the alerts
-    for the parameter `field`.
-
-    Parameters
-    ----------
-    history_list: list of dict
-        List of dictionary from alert['prv_candidates'].
-    field: str
-        The field name for which you want to extract the data. It must be
-        a key of elements of history_list (alert['prv_candidates'])
-
-    Returns
-    ----------
-    measurement: list
-        List of all the `field` measurements contained in the alerts.
+def extract_field(current: list, history: list) -> np.array:
+    """ Concatenate current and historical data
     """
-    try:
-        measurement = [obs[field] for obs in history_list]
-    except KeyError as e:
-        print('{} not in history data')
-        measurement = [None] * len(history_list)
+    conc = [np.concatenate((j, [i])) for i, j in zip(current, history)]
+    return np.array(conc)
 
-    return measurement
-
-def extract_field(alert: dict, field: str) -> np.array:
-    """ Concatenate current and historical observation data for a given field.
-
-    Parameters
-    ----------
-    alert: dict
-        Dictionnary containing alert data
-    field: str
-        Name of the field to extract.
-
-    Returns
-    ----------
-    data: np.array
-        List containing previous measurements and current measurement at the
-        end. If `field` is not in `prv_candidates fields, data will be
-        [None, None, ..., alert['candidate'][field]].
-    """
-    data = np.concatenate(
-        [
-            [alert["candidate"][field]],
-            extract_history(alert['prv_candidates'], field)
-        ]
-    )
-    return data
-
-def fit_all_bands(times, fluxes, bands: list) -> np.array:
+def fit_all_bands(
+        times: np.array, fluxes: np.array, bands: np.array) -> np.array:
     """ Perform a Bazin fit for all alerts and all bands.
 
     For a given set of parameters (a, b, ...), and a given
@@ -116,7 +73,8 @@ def fit_all_bands(times, fluxes, bands: list) -> np.array:
     return np.array(features)
 
 def apply_classifier(
-        times: np.array, mags: np.array, bands: np.array) -> (np.array, np.array):
+        times: np.array, mags: np.array,
+        bands: np.array) -> (np.array, np.array):
     """ Apply classifier on a batch of alert data.
 
     Parameters
@@ -141,8 +99,11 @@ def apply_classifier(
     # Load pre-trained model `clf`
     fn = '/Users/julien/Documents/workspace/myrepos/fink-science/fink_science/active_learning_simple/RandomForestResult.obj'
     clf = load_external_model(fn)
+
+    # Make predictions
     predictions = clf.predict(test_features)
     probabilities = clf.predict_proba(test_features)
+
     return predictions, probabilities
 
 

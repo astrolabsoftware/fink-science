@@ -19,6 +19,8 @@ import pandas as pd
 import numpy as np
 
 from fink_science.active_learning_simple.classifier import apply_classifier
+from fink_science.active_learning_simple.classifier import extract_field
+
 from fink_science.tester import spark_unit_tests
 
 from typing import Any
@@ -43,13 +45,9 @@ def iaclassification(time, mag, band, htimes, hmags, hbands) -> pd.Series:
     hbands: Spark DataFrame Column
         Column of historical filter ID vectors: prv_candidates.fid
     """
-    alltimes = [[i] + j for i, j in zip(time, htimes)]
-    allmags = [[i] + j for i, j in zip(mag, hmags)]
-    allbands = [[i] + j for i, j in zip(band, hbands)]
-
-    # alltimes = [i[::-1] for i in alltimes]
-    # allmags = [i[::-1] for i in allmags]
-    # allbands = [i[::-1] for i in allbands]
+    alltimes = extract_field(time, htimes)
+    allmags = extract_field(mag, hmags)
+    allbands = extract_field(band.values, hbands.values)
 
     predictions, probabilities = apply_classifier(
         alltimes, allmags, allbands
