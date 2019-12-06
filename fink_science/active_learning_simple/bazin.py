@@ -65,23 +65,32 @@ def errfunc(params, time, flux):
 
 
 def fit_scipy(time, flux):
-    """
-    Find best-fit parameters using scipy.least_squares.
+    """ Find best-fit parameters using scipy.least_squares.
+
     Parameters
     ----------
     time : array_like
         exploratory variable (time of observation)
     flux : array_like
         response variable (measured flux)
+
     Returns
     -------
     output : list of float
         best fit parameter values
     """
+    time = time - time[0]
     flux = np.asarray(flux)
     t0 = time[flux.argmax()] - time[0]
-    guess = [0, 0, t0, 40, -5]
+    # guess = [0, 0, t0, 40, -5]
+    # guess = [1, np.mean(flux), t0, 40, -5]
+    guess = [np.mean(flux), 0, t0, 40, -5]
 
     result = least_squares(errfunc, guess, args=(time, flux), method='lm')
+
+    # Check for failures (NaNs)
+    if sum([item != item for item in result.x]) > 0:
+        print('fit fails')
+        result.x = np.zeros(5, dtype=np.float)
 
     return result.x
