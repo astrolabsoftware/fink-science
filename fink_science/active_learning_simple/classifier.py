@@ -19,7 +19,26 @@ import pickle
 from fink_science.active_learning_simple.bazin import fit_scipy
 
 def extract_field(current: list, history: list) -> np.array:
-    """ Concatenate current and historical data
+    """ Concatenate current and historical data.
+
+    If t1 is the first time the object has been seen, and the object has N
+    historical measurements, the routine returns values ordered as:
+    [t1, t2, ...., tN, current] (past to current).
+
+    Parameters
+    ----------
+    current: list [nalert, 1]
+        List of field values. each entry corresponds to the measurement for
+        one alert.
+    history: list of list [nalerts, Ndays]
+        List of historical field values. Each entry is a list of historical
+        measurements for one alert.
+
+    Returns
+    ----------
+    conc: 2D np.array [nalert, Ndays + 1]
+        Array of array. Each entry is an array of historical+current
+        measurements for one alert.
     """
     conc = [np.concatenate((j, [i])) for i, j in zip(current, history)]
     return np.array(conc)
@@ -97,7 +116,7 @@ def apply_classifier(
     test_features = fit_all_bands(times, mags, bands)
 
     # Load pre-trained model `clf`
-    fn = '/Users/julien/Documents/workspace/myrepos/fink-science/fink_science/active_learning_simple/RandomForestResult.obj'
+    fn = '/Users/julien/Documents/workspace/myrepos/fink-science/fink_science/active_learning_simple/RandomForestResult_full_lightcurve.obj'
     clf = load_external_model(fn)
 
     # Make predictions

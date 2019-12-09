@@ -82,9 +82,9 @@ def fit_scipy(time, flux):
     time = time - time[0]
     flux = np.asarray(flux)
     t0 = time[flux.argmax()] - time[0]
-    # guess = [0, 0, t0, 40, -5]
+    guess = [0, 0, t0, 40, -5]
     # guess = [1, np.mean(flux), t0, 40, -5]
-    guess = [np.mean(flux), 0, t0, 40, -5]
+    # guess = [np.mean(flux), 0, t0, 40, -5]
 
     result = least_squares(errfunc, guess, args=(time, flux), method='lm')
 

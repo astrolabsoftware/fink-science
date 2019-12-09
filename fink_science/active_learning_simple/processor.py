@@ -45,18 +45,19 @@ def iaclassification(time, mag, band, htimes, hmags, hbands) -> pd.Series:
     hbands: Spark DataFrame Column
         Column of historical filter ID vectors: prv_candidates.fid
     """
-    alltimes = extract_field(time, htimes)
-    allmags = extract_field(mag, hmags)
+    alltimes = extract_field(time.values, htimes.values)
+    allmags = extract_field(mag.values, hmags.values)
     allbands = extract_field(band.values, hbands.values)
 
     predictions, probabilities = apply_classifier(
         alltimes, allmags, allbands
     )
 
-    # print(predictions, probabilities)
+    # print(predictions[0:10], probabilities[0:10])
 
-    # Check the type of prob
-    return pd.Series(probabilities.T[0])
+    # Check the type of prob - inverted wrt to original documentation
+    # [pnon-Ia, pIa]
+    return pd.Series(probabilities.T[1])
 
 
 if __name__ == "__main__":
