@@ -17,6 +17,7 @@ import numpy as np
 import pickle
 
 from fink_science.active_learning_simple.bazin import fit_scipy
+from fink_science.active_learning_simple.conversion import mag2flux
 
 def extract_field(current: list, history: list) -> np.array:
     """ Concatenate current and historical data.
@@ -44,7 +45,8 @@ def extract_field(current: list, history: list) -> np.array:
     return np.array(conc)
 
 def fit_all_bands(
-        times: np.array, fluxes: np.array, bands: np.array) -> np.array:
+        jd, fid, magpsf, sigmapsf, magnr,
+        sigmagnr, magzpsci, isdiffpos) -> np.array:
     """ Perform a Bazin fit for all alerts and all bands.
 
     For a given set of parameters (a, b, ...), and a given
@@ -72,59 +74,31 @@ def fit_all_bands(
     --------
     """
     features = []
-    unique_bands = [1, 2, 3, 4]
+    unique_bands = [1, 2, 3]
     # Loop over all alerts
-    for talert, falert, balert in zip(times, fluxes, bands):
-        isNan = falert != falert
-        if np.sum(isNan) > 0:
-            falert[isNan] = 0.0
+    zz = zip(jd, fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos)
+    for alert_data in zz:
+        (ajd, afid, amagpsf, asigmapsf,
+            amagnr, asigmagnr, amagzpsci, aisdiffpos) = alert_data
+
         feature_alert = []
         # For each alert, estimate the parameters for each band
         for band in unique_bands:
-            mask = np.where(balert == band)[0]
-            tband = talert[mask]
-            fband = falert[mask]
-            if len(tband) < 5:
+            maskband = afid == band
+            masknan = amagpsf == amagpsf
+            masknone = amagpsf != None
+            mask = maskband * masknan * masknone
+            if len(ajd[mask]) < 5:
                 feature_alert.extend(np.zeros(5, dtype=np.float))
             else:
-                feature_alert.extend(fit_scipy(tband, fband))
+                # Compute flux
+                flux, sigmaflux = mag2flux(
+                    band, amagpsf[mask], asigmapsf[mask],
+                    amagnr[mask], asigmagnr[mask],
+                    amagzpsci[mask], aisdiffpos[mask])
+                feature_alert.extend(fit_scipy(ajd[mask], flux))
         features.append(np.array(feature_alert))
     return np.array(features)
-
-def apply_classifier(
-        times: np.array, mags: np.array,
-        bands: np.array) -> (np.array, np.array):
-    """ Apply classifier on a batch of alert data.
-
-    Parameters
-    ----------
-    times: 2D np.array (alert, times)
-        Array of time vectors (float)
-    fluxes: 2D np.array (alert, fluxes)
-        Array of flux vectors (float)
-    bands: 2D np.array (alerts, bands)
-        Array of filter ID vectors (int)
-
-    Returns
-    ----------
-    predictions: 1D np.array of labels (str)
-    probabilities: 1D np.array of floats (btw 0 and 1)
-    """
-    # Convert mags in fluxes
-
-    # Compute the test_features: fit_all_bands
-    test_features = fit_all_bands(times, mags, bands)
-
-    # Load pre-trained model `clf`
-    fn = '/Users/julien/Documents/workspace/myrepos/fink-science/fink_science/active_learning_simple/RandomForestResult_full_lightcurve.obj'
-    clf = load_external_model(fn)
-
-    # Make predictions
-    predictions = clf.predict(test_features)
-    probabilities = clf.predict_proba(test_features)
-
-    return predictions, probabilities
-
 
 def load_external_model(fn: str = ''):
     """ Load a RandomForestClassifier model from disk (pickled).
