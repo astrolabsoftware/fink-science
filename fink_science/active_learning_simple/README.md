@@ -80,3 +80,9 @@ df.select(['objectId', 'pIa']).show(3)
 ```
 
 Too bad, in this example the object with a probability of 0.6 is in reality a variable star (but look at the [spectra](https://lasair.roe.ac.uk/object/ZTF18abdlhrp/), very SN-like!). We need more work!
+
+## Todo
+
+- Use ZTF data to train the model. Difficulty: we need labels, but those labels can be found in Lasair for example.
+- Use external information (i.e. other than light-curve) to increase the confidence.
+- Use other kind of classifiers, and/or non-binary classification (all SN types for example). We could also use different fitting function (Bazin seems OK for well sampled light-curve with full shape).
