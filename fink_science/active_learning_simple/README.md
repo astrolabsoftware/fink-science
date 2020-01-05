@@ -68,15 +68,15 @@ df = df.withColumn('pIa', iaclassification(*args))
 # Drop temp columns
 df = df.drop(*what_prefix)
 
-df.select('pIa').show(5)
-# +-----+
-# |  pIa|
-# +-----+
-# |  0.0|
-# |  0.0|
-# |  0.0|
-# |  0.0|
-# |0.606|
-# +-----+
+df.select(['objectId', 'pIa']).show(3)
+# +------------+-----+
+# |    objectId|  pIa|
+# +------------+-----+
+# |ZTF19abagehm|  0.0|
+# |ZTF19abjmimq|  0.0|
+# |ZTF18abdlhrp|0.606|
+# +------------+-----+
 # only showing top 5 rows
 ```
+
+Too bad, in this example the object with a probability of 0.6 is in reality a variable star (but look at the [spectra](https://lasair.roe.ac.uk/object/ZTF18abdlhrp/), very SN-like!). We need more work!
