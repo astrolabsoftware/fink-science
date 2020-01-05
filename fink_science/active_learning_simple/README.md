@@ -15,7 +15,9 @@ The condition to run the fit is to have at least 5 valid measurements in a given
 
 ## Input data for training (v0)
 
-The input data set is SNPCC (DES) that has been _alertified_. It contains 21,319 light-curves with Ia, Ib, Ic, and II. The light-curves typically span several months, with 4 observation filters (g, r, i, z). To make it more realistic in our runs, we degraded the light-curve to look like ZTF alert data: 30 days, and 3 observation filters (g, r, i).
+The input data set is SNPCC (DES) that has been _alertified_. It contains 21,319 light-curves with Ia, Ib, Ic, and II. The light-curves typically span several months, with 4 observation filters (g, r, i, z). To make it more realistic in our runs, we degraded the light-curve to look like ZTF alert data: 30 days, and 3 observation filters (g, r, i). Here is the kernel density for the output probability:
+
+![preview](pic/kde-active-learning-snpcc_inverted_fulllc.png)
 
 ## Model distribution
 
@@ -80,6 +82,12 @@ df.select(['objectId', 'pIa']).show(3)
 ```
 
 Too bad, in this example the object with a probability of 0.6 is in reality a variable star (but look at the [spectra](https://lasair.roe.ac.uk/object/ZTF18abdlhrp/), very SN-like!). We need more work!
+
+Here is the distribution of probabilities for a given run (a priori no SN Ia):
+
+![preview](pic/kde-active-learning-ztf.png)
+
+Not bad after all, but we need more work to clean the high probability outliers.
 
 ## Todo
 
