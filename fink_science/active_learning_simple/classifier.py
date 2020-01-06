@@ -12,12 +12,42 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from pyspark.sql import functions as F
 from scipy import optimize
 import numpy as np
 import pickle
 
 from fink_science.active_learning_simple.bazin import fit_scipy
 from fink_science.active_learning_simple.conversion import mag2flux
+
+from fink_science.tester import regular_unit_tests
+
+def concat_col(df, colname: str, prefix: str = 'c'):
+    """ Add new column to the DataFrame named `prefix`+`colname`, containing
+    the concatenation of historical and current measurements.
+
+    Parameters
+    ----------
+    df: DataFrame
+        Pyspark DataFrame containing alert data
+    colname: str
+        Name of the column to add (without the prefix)
+    prefix: str
+        Additional prefix to add to the column name. Default is 'c'.
+
+    Returns
+    ----------
+    df: DataFrame
+        Dataframe with new column containing the concatenation of
+        historical and current measurements.
+    """
+    return df.withColumn(
+        prefix + colname,
+        F.concat(
+            df['prv_candidates.{}'.format(colname)],
+            F.array(df['candidate.{}'.format(colname)])
+        )
+    )
 
 def extract_field(current: list, history: list) -> np.array:
     """ Concatenate current and historical data.
@@ -40,6 +70,14 @@ def extract_field(current: list, history: list) -> np.array:
     conc: 2D np.array [nalert, Ndays + 1]
         Array of array. Each entry is an array of historical+current
         measurements for one alert.
+
+    Examples
+    ----------
+    >>> current = [1, 1]
+    >>> historical = [[4, 3, 2], [4, 3, 2]]
+    >>> c = extract_field(current, historical)
+    >>> print(c) # doctest: +NORMALIZE_WHITESPACE
+    [[4 3 2 1] [4 3 2 1]]
     """
     conc = [np.concatenate((j, [i])) for i, j in zip(current, history)]
     return np.array(conc)
@@ -69,9 +107,6 @@ def fit_all_bands(
     ----------
     features: 2D np.array (alerts, features x bands)
         Array of feature vectors (all bands for each alert)
-
-    Examples
-    --------
     """
     features = []
     unique_bands = [1, 2, 3]
@@ -111,5 +146,18 @@ def load_external_model(fn: str = ''):
     Return
     ----------
     clf: sklearn.ensemble.forest.RandomForestClassifier
+
+    Examples
+    >>> fn = 'data/models/RandomForest_full_lightcurve-ZFT30days.obj'
+    >>> model = load_external_model(fn)
+    >>> print(type(model))
+    <class 'sklearn.ensemble.forest.RandomForestClassifier'>
     """
     return pickle.load(open(fn, 'rb'))
+
+
+if __name__ == "__main__":
+    """ Execute the test suite """
+
+    # Run the test suite
+    regular_unit_tests(globals())

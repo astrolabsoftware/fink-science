@@ -18,8 +18,8 @@ import numpy as np
 from scipy.optimize import least_squares
 
 def bazin(time, a, b, t0, tfall, trise):
-    """
-    Parametric light curve function proposed by Bazin et al., 2009.
+    """ Parametric light curve function proposed by Bazin et al., 2009.
+
     Parameters
     ----------
     time : np.array
@@ -34,6 +34,7 @@ def bazin(time, a, b, t0, tfall, trise):
         Characteristic decline time
     trise: float
         Characteristic raise time
+
     Returns
     -------
     array_like
@@ -45,8 +46,8 @@ def bazin(time, a, b, t0, tfall, trise):
 
 
 def errfunc(params, time, flux):
-    """
-    Absolute difference between theoretical and measured flux.
+    """ Absolute difference between theoretical and measured flux.
+
     Parameters
     ----------
     params : list of float
@@ -55,6 +56,7 @@ def errfunc(params, time, flux):
         exploratory variable (time of observation)
     flux : array_like
         response variable (measured flux)
+
     Returns
     -------
     diff : float

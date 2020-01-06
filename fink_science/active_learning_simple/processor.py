@@ -51,6 +51,41 @@ def iaclassification(
     ----------
     probabilities: 1D np.array of float
         Probability between 0 (non-Ia) and 1 (Ia).
+
+    Examples
+    ----------
+    Examples
+    ----------
+    >>> from fink_science.active_learning_simple.classifier import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns
+    >>> what = [
+    ...    'jd', 'fid', 'magpsf', 'sigmapsf',
+    ...    'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification
+    >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path)]
+    >>> df = df.withColumn('pIa', iaclassification(*args))
+
+    # Drop temp columns
+    >>> df = df.drop(*what_prefix)
+
+    >>> df.agg({"pIa": "min"}).collect()[0][0]
+    0.0
+
+    >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
+    True
     """
     # Compute the test_features: fit_all_bands
     test_features = fit_all_bands(
@@ -78,5 +113,12 @@ def iaclassification(
 if __name__ == "__main__":
     """ Execute the test suite """
 
+    globs = globals()
+    ztf_alert_sample = 'data/alerts/alerts.parquet'
+    globs["ztf_alert_sample"] = ztf_alert_sample
+
+    model_path = 'data/models/RandomForest_full_lightcurve-ZFT30days.obj'
+    globs["model_path"] = model_path
+
     # Run the test suite
-    spark_unit_tests(globals())
+    spark_unit_tests(globs)
