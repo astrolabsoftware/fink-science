@@ -1,0 +1,2 @@
+include data/alerts/*.parquet
+include data/models/*.obj
