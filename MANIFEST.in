@@ -1,2 +1,2 @@
-include data/alerts/*.parquet
-include data/models/*.obj
+include fink_science/data/alerts/*.parquet
+include fink_science/data/models/*.obj
