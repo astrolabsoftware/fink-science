@@ -150,8 +150,12 @@ def load_external_model(fn: str = ''):
     Examples
     >>> fn = 'data/models/RandomForest_full_lightcurve-ZFT30days.obj'
     >>> model = load_external_model(fn)
-    >>> print(type(model))
-    <class 'sklearn.ensemble.forest.RandomForestClassifier'>
+    >>> 'RandomForestClassifier' in str(type(model))
+    True
+
+    # binary classification
+    >>> model.n_classes_
+    2
     """
     return pickle.load(open(fn, 'rb'))
 
