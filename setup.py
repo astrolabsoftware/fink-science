@@ -28,6 +28,10 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://fink-broker.readthedocs.io/en/latest/",
     packages=setuptools.find_packages(),
+    package_data={
+        'data': ['alerts/*.parquet', 'models/*.obj'],
+    },
+
     classifiers=[
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
