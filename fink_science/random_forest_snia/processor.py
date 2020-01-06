@@ -106,7 +106,7 @@ def rfscore(
         clf = load_external_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '../data/models/default-model.obj'
+        model = curdir + '/../data/models/default-model.obj'
         clf = load_external_model(model)
 
     # Make predictions
