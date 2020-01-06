@@ -18,8 +18,8 @@ from pyspark.sql.types import DoubleType
 import pandas as pd
 import numpy as np
 
-from fink_science.active_learning_simple.classifier import fit_all_bands
-from fink_science.active_learning_simple.classifier import load_external_model
+from fink_science.random_forest_snia.classifier import fit_all_bands
+from fink_science.random_forest_snia.classifier import load_external_model
 
 from fink_science.tester import spark_unit_tests
 

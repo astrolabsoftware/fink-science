@@ -17,8 +17,8 @@ from scipy import optimize
 import numpy as np
 import pickle
 
-from fink_science.active_learning_simple.bazin import fit_scipy
-from fink_science.active_learning_simple.conversion import mag2flux
+from fink_science.random_forest_snia.bazin import fit_scipy
+from fink_science.random_forest_snia.conversion import mag2flux
 
 from fink_science.tester import regular_unit_tests
 
