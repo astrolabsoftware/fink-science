@@ -29,7 +29,7 @@ setuptools.setup(
     url="https://fink-broker.readthedocs.io/en/latest/",
     packages=setuptools.find_packages(),
     package_data={
-        'data': ['alerts/*.parquet', 'models/*.obj'],
+        'fink_science': ['data/alerts/*.parquet', 'data/models/*.obj'],
     },
 
     classifiers=[
