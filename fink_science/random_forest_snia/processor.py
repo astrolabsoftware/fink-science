@@ -18,6 +18,8 @@ from pyspark.sql.types import DoubleType
 import pandas as pd
 import numpy as np
 
+import os
+
 from fink_science.random_forest_snia.classifier import fit_all_bands
 from fink_science.random_forest_snia.classifier import load_external_model
 
@@ -100,7 +102,6 @@ def rfscore(
     if model is not None:
         clf = load_external_model(model.values[0])
     else:
-        import os
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/../../data/models/default-model.obj'
         clf = load_external_model(model)
