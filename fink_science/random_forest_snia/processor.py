@@ -56,7 +56,7 @@ def rfscore(
     ----------
     Examples
     ----------
-    >>> from fink_science.active_learning_simple.classifier import concat_col
+    >>> from fink_science.random_forest_snia.classifier import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
