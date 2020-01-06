@@ -24,7 +24,7 @@ from fink_science.active_learning_simple.classifier import load_external_model
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def iaclassification(
+def rfscore(
         jd, fid, magpsf, sigmapsf, magnr,
         sigmagnr, magzpsci, isdiffpos, model) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
@@ -76,7 +76,7 @@ def iaclassification(
 
     # Perform the fit + classification
     >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path)]
-    >>> df = df.withColumn('pIa', iaclassification(*args))
+    >>> df = df.withColumn('pIa', rfscore(*args))
 
     # Drop temp columns
     >>> df = df.drop(*what_prefix)

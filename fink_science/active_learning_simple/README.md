@@ -29,7 +29,7 @@ You would use the classifier the following way:
 
 ```python
 from pyspark.sql import functions as F
-from fink_science.active_learning_simple.processor import iaclassification
+from fink_science.active_learning_simple.processor import rfscore
 
 def concat_col(df, colname, prefix='c'):
     """ Add new column to the DataFrame named `prefix`+`colname`, containing
@@ -65,7 +65,7 @@ for colname in what:
 
 # Perform the fit + classification
 args = [F.col(i) for i in what_prefix] + [F.lit(model_path)]
-df = df.withColumn('pIa', iaclassification(*args))
+df = df.withColumn('pIa', rfscore(*args))
 
 # Drop temp columns
 df = df.drop(*what_prefix)
