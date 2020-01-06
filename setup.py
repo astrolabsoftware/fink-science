@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import setuptools
+from fink_science import __version__
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="fink-science",
-    version="0.1.3",
+    version=__version__,
     author="JulienPeloton",
     author_email="peloton@lal.in2p3.fr",
     description="User-defined science module for the Fink broker.",
