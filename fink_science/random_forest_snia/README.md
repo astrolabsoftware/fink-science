@@ -19,9 +19,9 @@ The input data set is SNPCC (DES) that has been _alertified_. It contains 21,319
 
 ![preview](pic/kde-active-learning-snpcc_inverted_fulllc.png)
 
-## Model distribution
+## Default model
 
-The distribution of the model is currently done via CVMFS (i.e. it is pre-loaded on CVMFS, and each executor can see it).
+We include a default model with the module in `data/models/default-model.obj`. This model is based on the v0 description above, and it is loaded if the user does not specify a custom one.
 
 ## Typical call
 
@@ -47,7 +47,7 @@ def concat_col(df, colname, prefix='c'):
 # Load alert data in a DataFrame
 df = ...
 
-# Where the model is stored
+# Where the model is stored [optional]
 model_path = ...
 
 # Required alert columns
@@ -63,7 +63,9 @@ what_prefix = [prefix + i for i in what]
 for colname in what:
     df = concat_col(df, colname, prefix=prefix)
 
-# Perform the fit + classification
+# Perform the fit + classification.
+# Note we can omit the model_path argument, and in that case the default model
+# `data/models/default-model.obj` will be used.
 args = [F.col(i) for i in what_prefix] + [F.lit(model_path)]
 df = df.withColumn('pIa', rfscore(*args))
 

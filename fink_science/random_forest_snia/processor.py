@@ -26,7 +26,7 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore(
         jd, fid, magpsf, sigmapsf, magnr,
-        sigmagnr, magzpsci, isdiffpos, model) -> pd.Series:
+        sigmagnr, magzpsci, isdiffpos, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier.
 
@@ -74,7 +74,11 @@ def rfscore(
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
-    # Perform the fit + classification
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> df = df.withColumn('pIa', rfscore(*args))
+
+    # Note that we can also specify a model
     >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path)]
     >>> df = df.withColumn('pIa', rfscore(*args))
 
@@ -93,7 +97,13 @@ def rfscore(
         magnr.values, sigmagnr.values, magzpsci.values, isdiffpos.values)
 
     # Load pre-trained model `clf`
-    clf = load_external_model(model.values[0])
+    if model is not None:
+        clf = load_external_model(model.values[0])
+    else:
+        import os
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        model = curdir + '/../../data/models/default-model.obj'
+        clf = load_external_model(model)
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
@@ -117,7 +127,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'data/alerts/alerts.parquet'
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = 'data/models/RandomForest_full_lightcurve-ZFT30days.obj'
+    model_path = 'data/models/default-model.obj'
     globs["model_path"] = model_path
 
     # Run the test suite
