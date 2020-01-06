@@ -19,7 +19,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="fink-science",
-    version="0.1.2",
+    version="0.1.3",
     author="JulienPeloton",
     author_email="peloton@lal.in2p3.fr",
     description="User-defined science module for the Fink broker.",
