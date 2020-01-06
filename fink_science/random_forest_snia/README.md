@@ -29,7 +29,7 @@ You would use the classifier the following way:
 
 ```python
 from pyspark.sql import functions as F
-from fink_science.active_learning_simple.processor import rfscore
+from fink_science.random_forest_snia.processor import rfscore
 
 def concat_col(df, colname, prefix='c'):
     """ Add new column to the DataFrame named `prefix`+`colname`, containing
