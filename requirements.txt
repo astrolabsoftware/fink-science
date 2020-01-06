@@ -7,3 +7,4 @@ codecov
 astropy
 astroquery
 scipy
+sklearn
