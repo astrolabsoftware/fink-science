@@ -106,7 +106,7 @@ def rfscore(
         clf = load_external_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/../../data/models/default-model.obj'
+        model = curdir + '../data/models/default-model.obj'
         clf = load_external_model(model)
 
     # Make predictions
@@ -128,10 +128,10 @@ if __name__ == "__main__":
     """ Execute the test suite """
 
     globs = globals()
-    ztf_alert_sample = 'data/alerts/alerts.parquet'
+    ztf_alert_sample = 'fink_science/data/alerts/alerts.parquet'
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = 'data/models/default-model.obj'
+    model_path = 'fink_science/data/models/default-model.obj'
     globs["model_path"] = model_path
 
     # Run the test suite
