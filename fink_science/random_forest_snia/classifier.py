@@ -148,7 +148,7 @@ def load_external_model(fn: str = ''):
     clf: sklearn.ensemble.forest.RandomForestClassifier
 
     Examples
-    >>> fn = 'data/models/default-model.obj'
+    >>> fn = 'fink_science/data/models/default-model.obj'
     >>> model = load_external_model(fn)
     >>> 'RandomForestClassifier' in str(type(model))
     True
