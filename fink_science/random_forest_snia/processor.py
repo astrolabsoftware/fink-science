@@ -48,6 +48,9 @@ def rfscore(
     isdiffpos: Spark DataFrame Column
         t => candidate is from positive (sci minus ref) subtraction
         f => candidate is from negative (ref minus sci) subtraction
+    model: Spark DataFrame Column, optional
+        Path to the trained model. Default is None, in which case the default
+        model `data/models/default-model.obj` is loaded.
 
     Returns
     ----------
