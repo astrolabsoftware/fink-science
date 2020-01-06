@@ -4,8 +4,8 @@
 
 This repository contains science modules used to generate added values to alert collected by the [Fink broker](https://github.com/astrolabsoftware/fink-broker). It currently contains:
 
-- xmatch: returns the SIMBAD closest counterpart of an alert, based on position.
-- random_forest_snia: returns the probability of an alert to be a SNe Ia using a Random Forest Classifier (binary classification)
+- `xmatch`: returns the SIMBAD closest counterpart of an alert, based on position.
+- `random_forest_snia`: returns the probability of an alert to be a SNe Ia using a Random Forest Classifier (binary classification)
 
 ## How to contribute
 
