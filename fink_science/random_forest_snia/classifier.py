@@ -123,7 +123,10 @@ def fit_all_bands(
             masknan = amagpsf == amagpsf
             masknone = amagpsf != None
             mask = maskband * masknan * masknone
-            if len(ajd[mask]) < 5:
+            if ajd is None:
+                # Not sure what is going on in this case
+                feature_alert.extend(np.zeros(5, dtype=np.float))
+            elif len(ajd[mask]) < 5:
                 feature_alert.extend(np.zeros(5, dtype=np.float))
             else:
                 # Compute flux
