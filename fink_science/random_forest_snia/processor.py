@@ -59,8 +59,6 @@ def rfscore(
 
     Examples
     ----------
-    Examples
-    ----------
     >>> from fink_science.random_forest_snia.classifier import concat_col
     >>> from pyspark.sql import functions as F
 
