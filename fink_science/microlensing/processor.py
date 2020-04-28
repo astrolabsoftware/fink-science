@@ -30,8 +30,9 @@ from fink_science.tester import spark_unit_tests
 def mulens(
         fid, magpsf, sigmapsf, magnr, sigmagnr,
         magzpsci, isdiffpos, model_path=None):
-    """ Return the probability of an alert to be a microlensing event using
-    a Random Forest Classifier.
+    """ Returns the predicted class (among microlensing, variable star,
+    cataclysmic event, and constant event) & probability of an alert to be
+    a microlensing event in each band using a Random Forest Classifier.
 
     Parameters
     ----------

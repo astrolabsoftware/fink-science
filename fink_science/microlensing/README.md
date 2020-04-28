@@ -45,6 +45,16 @@ You would need to install it via the repo directly:
 -e git://github.com/dgodinez77/LIA.git#egg=LIA
 ```
 
+### Added values
+
+This module adds four new columns for ZTF data:
+
+| class_1 | ml_score_1 | class_2 | ml_score_2 |
+|---------|------------|---------|------------|
+| str     | double     | str     | double     |
+
+They are the predicted classes (among microlensing `ML`, variable star `VAR`, cataclysmic event `CV`, and constant event `CONST`) & probability of an alert (0 to 1) to be a microlensing event in each band using a Random Forest Classifier.
+
 ## Limitations and future upgrades
 
 * LIA is currently adapted for single lens detection only.
