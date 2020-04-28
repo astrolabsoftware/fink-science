@@ -4,6 +4,8 @@ The idea of this module is to use the [LIA](https://github.com/dgodinez77/LIA) c
 
 ## Offline studies
 
+### Initial study using simulated data
+
 With Tristan B., Etienne B. and Marc M., we investigated:
 Step 0: Create a simulated dataset from ZTF DR2
 Step 1: Integrate classification algorithm (LIA)
@@ -12,6 +14,10 @@ Step 3: Perform Early Detection of microlensing events (alerts).
 Step 4: Use on real microlensing data from ZTF
 
 Results can be found in this [presentation](https://docs.google.com/presentation/d/1Te6aFJvHTysyEqJ8I7yQ5o1SEek864ddaFrrGYVDkww/edit?usp=sharing).
+
+### Pre-launch study using ZTF real data:
+
+Results can be found in this [presentation](https://docs.google.com/presentation/d/1KT1GGoSOOGzCjzuB-3f8shREJZh-Ew7I5_VZzd8RCWA/edit?usp=sharing).
 
 ## Fink microlensing science module
 
@@ -28,11 +34,16 @@ from LIA import training_set
 training_set.create(times[::1], min_mag=15, max_mag=20, noise=None, n_class=500)
 ```
 
-We achieved ~72% accuracy using full light-curve information. If now we chunk full ligh-curves into alerts of 30 days (moving window), the accuracy goes down to 20%, and only half of it happens before the peak of the event (i.e. only less than 10% of total events are flagged before the peak by their alert data). The current training procedure, and input data set can be found at: https://github.com/Azhom/ZTF_mulens_simulator ([PR1](https://github.com/Azhom/ZTF_mulens_simulator/pull/1) for the exact version of this initial run).
+We achieved ~72% accuracy using full light-curve information. If now we chunk full light-curves into alerts of 30 days (moving window), the accuracy goes down to 20%, and only half of it happens before the peak of the event (i.e. only less than 10% of total events are flagged before the peak by their alert data). The current training procedure, and input data set can be found at: https://github.com/Azhom/ZTF_mulens_simulator ([PR1](https://github.com/Azhom/ZTF_mulens_simulator/pull/1) for the exact version of this initial run).
 
 ### Installing LIA on the cluster
 
-Unfortunately LIA is not distributed using pip or conda, hence
+You would need to install it via the repo directly:
+
+```bash
+# in requirements.txt
+-e git://github.com/dgodinez77/LIA.git#egg=LIA
+```
 
 ## Limitations and future upgrades
 
@@ -40,4 +51,4 @@ Unfortunately LIA is not distributed using pip or conda, hence
 * We use the default noise generator in LIA, that might not represent the noise in our data. We can do better!
 * ZTF has 30 days of history attached with each alert. This is rather short for detecting microlensing events. LSST will have 1 year of historical data attached to each alert, which will enable better triggering capabilities.
 * The classification is very sensitive to the time samplings. We should try training and testing on interpolated data to minimise the impact.
-* We currently use the classifier as-is. But we could add additional information prior the classification, such as filtering events whose last 3 measurements are 3 sigma above the baseline, or cross-match information.
+* We currently use the classifier as-is. But we could add additional information prior the classification, such as filtering events whose last 3 measurements are 3 sigma above the baseline, or cross-match information, or other classifier information (SNe, VS, asteroids, ...).
