@@ -2,3 +2,6 @@
 dist/
 *.pyc
 htmlcov
+.ipynb_checkpoints
+.DS_Store
+fink_science.egg-info/
