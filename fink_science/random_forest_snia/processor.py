@@ -1,4 +1,4 @@
-# Copyright 2019 AstroLab Software
+# Copyright 2019-2020 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,17 +20,19 @@ import numpy as np
 
 import os
 
-from fink_science.random_forest_snia.classifier import fit_all_bands
-from fink_science.random_forest_snia.classifier import load_external_model
+from fink_science.conversion import dc_flux
+from fink_science.utilities import load_scikit_model
+from fink_science.random_forest_snia.classifier_bazin import fit_all_bands
+from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_features_dev
 
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore(
+def rfscore_bazin(
         jd, fid, magpsf, sigmapsf, magnr,
         sigmagnr, magzpsci, isdiffpos, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
-    Forest Classifier.
+    Forest Classifier (bazin fit).
 
     Parameters
     ----------
@@ -79,11 +81,11 @@ def rfscore(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> df = df.withColumn('pIa', rfscore(*args))
+    >>> df = df.withColumn('pIa', rfscore_bazin(*args))
 
     # Note that we can also specify a model
-    >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path)]
-    >>> df = df.withColumn('pIa', rfscore(*args))
+    >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path_bazin)]
+    >>> df = df.withColumn('pIa', rfscore_bazin(*args))
 
     # Drop temp columns
     >>> df = df.drop(*what_prefix)
@@ -101,11 +103,11 @@ def rfscore(
 
     # Load pre-trained model `clf`
     if model is not None:
-        clf = load_external_model(model.values[0])
+        clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/../data/models/default-model.obj'
-        clf = load_external_model(model)
+        model = curdir + '/../data/models/default-model_bazin.obj'
+        clf = load_scikit_model(model)
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
@@ -117,10 +119,252 @@ def rfscore(
     # Return probability of 0 for objects with no fit available (only zeros).
     mask = [np.sum(i) == 0.0 for i in test_features]
     to_return[mask] = 0.0
-    # print(probabilities)
 
     return pd.Series(to_return)
 
+@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+def rfscore_sigmoid_full(
+        jd, fid, magpsf, sigmapsf, magnr,
+        sigmagnr, magzpsci, isdiffpos, model=None) -> pd.Series:
+    """ Return the probability of an alert to be a SNe Ia using a Random
+    Forest Classifier (sigmoid fit).
+
+    Parameters
+    ----------
+    jd: Spark DataFrame Column
+        JD times (float)
+    fid: Spark DataFrame Column
+        Filter IDs (int)
+    magpsf, sigmapsf: Spark DataFrame Columns
+        Magnitude from PSF-fit photometry, and 1-sigma error
+    magnr, sigmagnr: Spark DataFrame Columns
+        Magnitude of nearest source in reference image PSF-catalog
+        within 30 arcsec and 1-sigma error
+    magzpsci: Spark DataFrame Column
+        Magnitude zero point for photometry estimates
+    isdiffpos: Spark DataFrame Column
+        t => candidate is from positive (sci minus ref) subtraction
+        f => candidate is from negative (ref minus sci) subtraction
+    model: Spark DataFrame Column, optional
+        Path to the trained model. Default is None, in which case the default
+        model `data/models/default-model.obj` is loaded.
+
+    Returns
+    ----------
+    probabilities: 1D np.array of float
+        Probability between 0 (non-Ia) and 1 (Ia).
+
+    Examples
+    ----------
+    >>> from fink_science.random_forest_snia.classifier import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns
+    >>> what = [
+    ...    'jd', 'fid', 'magpsf', 'sigmapsf',
+    ...    'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
+
+    # Note that we can also specify a model
+    >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path_sigmoid)]
+    >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
+
+    # Drop temp columns
+    >>> df = df.drop(*what_prefix)
+
+    >>> df.agg({"pIa": "min"}).collect()[0][0]
+    0.0
+
+    >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
+    True
+    """
+    # Flag empty alerts
+    mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
+    if len(jd[mask]) == 0:
+        return pd.Series(np.zeros(len(jd), dtype=float))
+
+    # add an exploded column with SNID
+    df_tmp = pd.DataFrame.from_dict(
+        {
+            'jd': jd[mask],
+            'SNID': range(len(jd[mask]))
+        }
+    )
+    df_tmp = df_tmp.explode('jd')
+
+    # compute flux and flux error
+    data = [dc_flux(*args) for args in zip(
+        fid[mask].explode(),
+        magpsf[mask].explode(),
+        sigmapsf[mask].explode(),
+        magnr[mask].explode(),
+        sigmagnr[mask].explode(),
+        magzpsci[mask].explode(),
+        isdiffpos[mask].explode())]
+    flux, error = np.transpose(data)
+
+    # make a Pandas DataFrame with exploded series
+    pdf = pd.DataFrame.from_dict({
+        'SNID': df_tmp['SNID'],
+        'MJD': jd[mask].explode(),
+        'FLUXCAL': flux,
+        'FLUXCALERR': error,
+        'FLT': fid[mask].explode().replace({1: 'g', 2: 'r'})
+    })
+
+    # Load pre-trained model `clf`
+    if model is not None:
+        clf = load_scikit_model(model.values[0])
+    else:
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        model = curdir + '/../data/models/default-model_sigmoid.obj'
+        clf = load_scikit_model(model)
+
+    test_features = []
+    for id in np.unique(pdf['SNID']):
+        pdf_sub = pdf[pdf['SNID'] == id]
+        features = get_sigmoid_features_dev(pdf_sub)
+        test_features.append(features)
+
+    # Make predictions
+    probabilities = clf.predict_proba(test_features)
+
+    # Take only probabilities to be Ia
+    to_return = np.zeros(len(jd), dtype=float)
+    to_return[mask] = probabilities.T[0]
+
+    return pd.Series(to_return)
+
+@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+def rfscore_sigmoid(
+        jd, fid, magpsf, sigmapsf, magnr,
+        sigmagnr, magzpsci, isdiffpos, model=None) -> pd.Series:
+    """ Return the probability of an alert to be a SNe Ia using a Random
+    Forest Classifier (sigmoid fit).
+
+    Parameters
+    ----------
+    jd: Spark DataFrame Column
+        JD times (float)
+    fid: Spark DataFrame Column
+        Filter IDs (int)
+    magpsf, sigmapsf: Spark DataFrame Columns
+        Magnitude from PSF-fit photometry, and 1-sigma error
+    magnr, sigmagnr: Spark DataFrame Columns
+        Magnitude of nearest source in reference image PSF-catalog
+        within 30 arcsec and 1-sigma error
+    magzpsci: Spark DataFrame Column
+        Magnitude zero point for photometry estimates
+    isdiffpos: Spark DataFrame Column
+        t => candidate is from positive (sci minus ref) subtraction
+        f => candidate is from negative (ref minus sci) subtraction
+    model: Spark DataFrame Column, optional
+        Path to the trained model. Default is None, in which case the default
+        model `data/models/default-model.obj` is loaded.
+
+    Returns
+    ----------
+    probabilities: 1D np.array of float
+        Probability between 0 (non-Ia) and 1 (Ia).
+
+    Examples
+    ----------
+    >>> from fink_science.random_forest_snia.classifier import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns
+    >>> what = [
+    ...    'jd', 'fid', 'magpsf', 'sigmapsf',
+    ...    'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> df = df.withColumn('pIa', rfscore_sigmoid(*args))
+
+    # Note that we can also specify a model
+    >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path_sigmoid)]
+    >>> df = df.withColumn('pIa', rfscore_sigmoid(*args))
+
+    # Drop temp columns
+    >>> df = df.drop(*what_prefix)
+
+    >>> df.agg({"pIa": "min"}).collect()[0][0]
+    0.0
+
+    >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
+    True
+    """
+    # Flag empty alerts
+    mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
+    if len(jd[mask]) == 0:
+        return pd.Series(np.zeros(len(jd), dtype=float))
+
+    # Load pre-trained model `clf`
+    if model is not None:
+        clf = load_scikit_model(model.values[0])
+    else:
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        model = curdir + '/../data/models/default-model_sigmoid.obj'
+        clf = load_scikit_model(model)
+
+    test_features = []
+    ids = pd.Series(range(len(jd)))
+    for id in ids[mask]:
+        # compute flux and flux error
+        data = [dc_flux(*args) for args in zip(
+            fid[id],
+            magpsf[id],
+            sigmapsf[id],
+            magnr[id],
+            sigmagnr[id],
+            magzpsci[id],
+            isdiffpos[id])
+        ]
+        flux, error = np.transpose(data)
+
+        # make a Pandas DataFrame with exploded series
+        pdf = pd.DataFrame.from_dict({
+            'SNID': [id] * len(flux),
+            'MJD': jd[id],
+            'FLUXCAL': flux,
+            'FLUXCALERR': error,
+            'FLT': pd.Series(fid[id]).replace({1: 'g', 2: 'r'})
+        })
+
+        features = get_sigmoid_features_dev(pdf)
+        test_features.append(features)
+
+    # Make predictions
+    probabilities = clf.predict_proba(test_features)
+
+    # Take only probabilities to be Ia
+    to_return = np.zeros(len(jd), dtype=float)
+    to_return[mask] = probabilities.T[0]
+
+    return pd.Series(to_return)
 
 if __name__ == "__main__":
     """ Execute the test suite """
@@ -129,8 +373,11 @@ if __name__ == "__main__":
     ztf_alert_sample = 'fink_science/data/alerts/alerts.parquet'
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = 'fink_science/data/models/default-model.obj'
-    globs["model_path"] = model_path
+    model_path_bazin = 'fink_science/data/models/default-model_bazin.obj'
+    globs["model_path_bazin"] = model_path_bazin
+
+    model_path_sigmoid = 'fink_science/data/models/default-model_sigmoid.obj'
+    globs["model_path_sigmoid"] = model_path_sigmoid
 
     # Run the test suite
     spark_unit_tests(globs)
