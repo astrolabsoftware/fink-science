@@ -25,3 +25,4 @@ torch
 h5py
 natsort
 colorama
+seaborn
