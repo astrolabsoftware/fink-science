@@ -14,6 +14,9 @@
 # limitations under the License.
 from pyspark.sql import functions as F
 
+import numpy as np
+import pickle
+
 from fink_science.tester import regular_unit_tests
 
 def concat_col(df, colname: str, prefix: str = 'c'):
