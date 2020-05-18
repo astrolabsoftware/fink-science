@@ -10,4 +10,4 @@ scipy
 sklearn
 -e git://github.com/dgodinez77/LIA.git#egg=LIA
 supernnova
-pytorch
+torch
