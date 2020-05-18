@@ -21,7 +21,7 @@ import warnings
 
 from fink_science.microlensing.classifier import load_external_model
 from fink_science.microlensing.classifier import load_mulens_schema_twobands
-from fink_science.microlensing.conversion import dc_mag
+from fink_science.conversion import dc_mag
 
 from LIA import microlensing_classifier
 
@@ -60,7 +60,7 @@ def mulens(
 
     Examples
     ---------
-    >>> from fink_science.random_forest_snia.classifier import concat_col
+    >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)

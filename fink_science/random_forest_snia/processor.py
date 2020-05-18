@@ -61,7 +61,7 @@ def rfscore_bazin(
 
     Examples
     ----------
-    >>> from fink_science.random_forest_snia.classifier import concat_col
+    >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
@@ -156,7 +156,7 @@ def rfscore_sigmoid_full(
 
     Examples
     ----------
-    >>> from fink_science.random_forest_snia.classifier import concat_col
+    >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
@@ -282,7 +282,7 @@ def rfscore_sigmoid(
 
     Examples
     ----------
-    >>> from fink_science.random_forest_snia.classifier import concat_col
+    >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
