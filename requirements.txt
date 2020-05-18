@@ -1,13 +1,25 @@
+# General
 numpy>=1.16
-coverage>=4.2
-coveralls
 pandas
-pyarrow==0.14.1
-codecov
-astropy
-astroquery
 scipy
 sklearn
+
+# Coverage
+coveralls
+coverage>=4.2
+codecov
+
+# Spark
+pyarrow==0.14.1
+
+# xmatch
+astropy
+astroquery
+
+# Microlensing
 -e git://github.com/dgodinez77/LIA.git#egg=LIA
+
+# Supernnova
 supernnova
 torch
+h5py
