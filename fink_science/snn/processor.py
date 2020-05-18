@@ -103,6 +103,9 @@ def snn_ia(
     if model is None:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/../data/models/vanilla_S_0_CLF_2_R_none_photometry_DF_1.0_N_global_lstm_32x2_0.05_128_True_mean_C.pt'
+    else:
+        # take the first element of the Series
+        model = model[0]
 
     # add an exploded column with SNID
     df_tmp = pd.DataFrame.from_dict(
