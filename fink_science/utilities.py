@@ -92,7 +92,7 @@ def load_scikit_model(fn: str = ''):
     clf: sklearn.ensemble.forest.RandomForestClassifier
 
     Examples
-    >>> fn = 'fink_science/data/models/default-model.obj'
+    >>> fn = 'fink_science/data/models/default-model_bazin.obj'
     >>> model = load_scikit_model(fn)
     >>> 'RandomForestClassifier' in str(type(model))
     True

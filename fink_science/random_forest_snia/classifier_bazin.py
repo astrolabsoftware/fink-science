@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
-import pickle
 
 from fink_science.random_forest_snia.bazin import fit_scipy
 from fink_science.conversion import mag2flux

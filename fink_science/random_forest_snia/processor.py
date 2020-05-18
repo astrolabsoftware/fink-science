@@ -366,6 +366,7 @@ def rfscore_sigmoid(
 
     return pd.Series(to_return)
 
+
 if __name__ == "__main__":
     """ Execute the test suite """
 
