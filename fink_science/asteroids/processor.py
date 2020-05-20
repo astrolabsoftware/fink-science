@@ -88,7 +88,7 @@ def roid_catcher(fid, magpsf, ssdistnr) -> pd.Series:
         for filt in np.unique(filts):
             mask_filt = np.where(filts == filt)[0]
             mag_filt = np.array(mags)[mask_filt]
-            nmeasurements.append(len([i for i in mag_filt if i is not None]))
+            nmeasurements.append(len([i for i in mag_filt if i == i]))
             last_mags.append(mag_filt[-1])
         if np.sum(nmeasurements) == 1:
             flags.append(1)
