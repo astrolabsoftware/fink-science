@@ -69,7 +69,7 @@ def roid_catcher(fid, magpsf, ssdistnr) -> pd.Series:
     ...    df = concat_col(df, colname, prefix=prefix)
 
     # Perform the fit + classification (default model)
-    >>> args = [F.col(i) for i in what_prefix]
+    >>> args = [F.col(i) for i in what_prefix] + [F.col('candidate.ssdistnr')]
     >>> df = df.withColumn('roid', roid_catcher(*args))
 
     # Drop temp columns
