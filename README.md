@@ -6,7 +6,11 @@ This repository contains science modules used to generate added values to alert 
 
 - `xmatch`: returns the SIMBAD closest counterpart of an alert, based on position.
 - `random_forest_snia`: returns the probability of an alert to be a SNe Ia using a Random Forest Classifier (binary classification)
-- `microlensing`: returns the predicted class (among microlensing, variable star, cataclysmic event, and constant event) & probability of an alert to be a microlensing event in each band using a Random Forest Classifier.
+- `snn`: returns the probability of an alert to be a SNe Ia using [SuperNNova](https://github.com/supernnova/SuperNNova)
+- `microlensing`: returns the predicted class (among microlensing, variable star, cataclysmic event, and constant event) & probability of an alert to be a microlensing event in each band using [LIA](https://github.com/dgodinez77/LIA).
+- `asteroids`: Determine if the alert is an asteroid (experimental).
+
+You will find README in each subfolder describing the module.
 
 ## How to contribute
 
