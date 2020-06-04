@@ -79,8 +79,8 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     # Drop temp columns
     >>> df = df.drop(*what_prefix)
 
-    >>> df.agg({"pIa": "min"}).collect()[0][0]
-    0.0
+    >>> df.agg({"pIa": "min"}).collect()[0][0] >= 0.0
+    True
 
     >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
     True
