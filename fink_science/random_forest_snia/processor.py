@@ -20,7 +20,8 @@ import numpy as np
 
 import os
 
-from fink_science.conversion import dc_flux
+from fink_science.conversion import mag2fluxcal_snana
+
 from fink_science.utilities import load_scikit_model
 from fink_science.random_forest_snia.classifier_bazin import fit_all_bands
 from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_features_dev
@@ -28,9 +29,7 @@ from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_featu
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore_bazin(
-        jd, fid, magpsf, sigmapsf, magnr,
-        sigmagnr, magzpsci, isdiffpos, model=None) -> pd.Series:
+def rfscore_bazin(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (bazin fit).
 
@@ -42,14 +41,6 @@ def rfscore_bazin(
         Filter IDs (int)
     magpsf, sigmapsf: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
-    magnr, sigmagnr: Spark DataFrame Columns
-        Magnitude of nearest source in reference image PSF-catalog
-        within 30 arcsec and 1-sigma error
-    magzpsci: Spark DataFrame Column
-        Magnitude zero point for photometry estimates
-    isdiffpos: Spark DataFrame Column
-        t => candidate is from positive (sci minus ref) subtraction
-        f => candidate is from negative (ref minus sci) subtraction
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/default-model.obj` is loaded.
@@ -67,9 +58,7 @@ def rfscore_bazin(
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns
-    >>> what = [
-    ...    'jd', 'fid', 'magpsf', 'sigmapsf',
-    ...    'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -98,8 +87,7 @@ def rfscore_bazin(
     """
     # Compute the test_features: fit_all_bands
     test_features = fit_all_bands(
-        jd.values, fid.values, magpsf.values, sigmapsf.values,
-        magnr.values, sigmagnr.values, magzpsci.values, isdiffpos.values)
+        jd.values, fid.values, magpsf.values, sigmapsf.values)
 
     # Load pre-trained model `clf`
     if model is not None:
@@ -123,9 +111,7 @@ def rfscore_bazin(
     return pd.Series(to_return)
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore_sigmoid_full(
-        jd, fid, magpsf, sigmapsf, magnr,
-        sigmagnr, magzpsci, isdiffpos, model=None) -> pd.Series:
+def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit).
 
@@ -137,14 +123,6 @@ def rfscore_sigmoid_full(
         Filter IDs (int)
     magpsf, sigmapsf: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
-    magnr, sigmagnr: Spark DataFrame Columns
-        Magnitude of nearest source in reference image PSF-catalog
-        within 30 arcsec and 1-sigma error
-    magzpsci: Spark DataFrame Column
-        Magnitude zero point for photometry estimates
-    isdiffpos: Spark DataFrame Column
-        t => candidate is from positive (sci minus ref) subtraction
-        f => candidate is from negative (ref minus sci) subtraction
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/default-model.obj` is loaded.
@@ -162,9 +140,7 @@ def rfscore_sigmoid_full(
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns
-    >>> what = [
-    ...    'jd', 'fid', 'magpsf', 'sigmapsf',
-    ...    'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -206,20 +182,15 @@ def rfscore_sigmoid_full(
     df_tmp = df_tmp.explode('jd')
 
     # compute flux and flux error
-    data = [dc_flux(*args) for args in zip(
-        fid[mask].explode(),
+    data = [mag2fluxcal_snana(*args) for args in zip(
         magpsf[mask].explode(),
-        sigmapsf[mask].explode(),
-        magnr[mask].explode(),
-        sigmagnr[mask].explode(),
-        magzpsci[mask].explode(),
-        isdiffpos[mask].explode())]
+        sigmapsf[mask].explode())]
     flux, error = np.transpose(data)
 
     # make a Pandas DataFrame with exploded series
     pdf = pd.DataFrame.from_dict({
         'SNID': df_tmp['SNID'],
-        'MJD': jd[mask].explode(),
+        'MJD': df_tmp['jd'],
         'FLUXCAL': flux,
         'FLUXCALERR': error,
         'FLT': fid[mask].explode().replace({1: 'g', 2: 'r'})
@@ -250,8 +221,7 @@ def rfscore_sigmoid_full(
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_sigmoid(
-        jd, fid, magpsf, sigmapsf, magnr,
-        sigmagnr, magzpsci, isdiffpos, model=None) -> pd.Series:
+        jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit).
 
@@ -263,14 +233,6 @@ def rfscore_sigmoid(
         Filter IDs (int)
     magpsf, sigmapsf: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
-    magnr, sigmagnr: Spark DataFrame Columns
-        Magnitude of nearest source in reference image PSF-catalog
-        within 30 arcsec and 1-sigma error
-    magzpsci: Spark DataFrame Column
-        Magnitude zero point for photometry estimates
-    isdiffpos: Spark DataFrame Column
-        t => candidate is from positive (sci minus ref) subtraction
-        f => candidate is from negative (ref minus sci) subtraction
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/default-model.obj` is loaded.
@@ -288,9 +250,7 @@ def rfscore_sigmoid(
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns
-    >>> what = [
-    ...    'jd', 'fid', 'magpsf', 'sigmapsf',
-    ...    'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -334,15 +294,9 @@ def rfscore_sigmoid(
     ids = pd.Series(range(len(jd)))
     for id in ids[mask]:
         # compute flux and flux error
-        data = [dc_flux(*args) for args in zip(
-            fid[id],
+        data = [mag2fluxcal_snana(*args) for args in zip(
             magpsf[id],
-            sigmapsf[id],
-            magnr[id],
-            sigmagnr[id],
-            magzpsci[id],
-            isdiffpos[id])
-        ]
+            sigmapsf[id])]
         flux, error = np.transpose(data)
 
         # make a Pandas DataFrame with exploded series

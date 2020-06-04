@@ -15,13 +15,11 @@
 import numpy as np
 
 from fink_science.random_forest_snia.bazin import fit_scipy
-from fink_science.conversion import mag2flux
+from fink_science.conversion import mag2fluxcal_snana
 
 from fink_science.tester import regular_unit_tests
 
-def fit_all_bands(
-        jd, fid, magpsf, sigmapsf, magnr,
-        sigmagnr, magzpsci, isdiffpos) -> np.array:
+def fit_all_bands(jd, fid, magpsf, sigmapsf) -> np.array:
     """ Perform a Bazin fit for all alerts and all bands.
 
     For a given set of parameters (a, b, ...), and a given
@@ -35,10 +33,8 @@ def fit_all_bands(
 
     Parameters
     ----------
-    times: 2D np.array (alerts, times)
-        Array of time vectors (float)
-    fluxes: 2D np.array (alerts, fluxes)
-        Array of flux vectors (float).
+    in: 2D np.array (alerts, time-series)
+        Array of property vectors (float)
 
     Returns
     ----------
@@ -48,10 +44,8 @@ def fit_all_bands(
     features = []
     unique_bands = [1, 2, 3]
     # Loop over all alerts
-    zz = zip(jd, fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos)
-    for alert_data in zz:
-        (ajd, afid, amagpsf, asigmapsf,
-            amagnr, asigmagnr, amagzpsci, aisdiffpos) = alert_data
+    for alert_data in zip(jd, fid, magpsf, sigmapsf):
+        (ajd, afid, amagpsf, asigmapsf) = alert_data
 
         feature_alert = []
         # For each alert, estimate the parameters for each band
@@ -65,10 +59,8 @@ def fit_all_bands(
                 feature_alert.extend(np.zeros(5, dtype=np.float))
             else:
                 # Compute flux
-                flux, sigmaflux = mag2flux(
-                    band, amagpsf[mask], asigmapsf[mask],
-                    amagnr[mask], asigmagnr[mask],
-                    amagzpsci[mask], aisdiffpos[mask])
+                flux, sigmaflux = mag2fluxcal_snana(
+                    amagpsf[mask], asigmapsf[mask])
                 feature_alert.extend(fit_scipy(ajd[mask], flux))
         features.append(np.array(feature_alert))
     return np.array(features)
