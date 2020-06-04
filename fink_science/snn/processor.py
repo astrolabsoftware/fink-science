@@ -22,32 +22,25 @@ import numpy as np
 
 import os
 
-from fink_science.conversion import dc_flux
+from fink_science.conversion import mag2fluxcal_snana
+from fink_science.snn.utilities import reformat_to_df
 
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def snn_ia(
-        jd, fid, magpsf, sigmapsf, magnr,
-        sigmagnr, magzpsci, isdiffpos, model=None) -> pd.Series:
+def snn_ia(candid, jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     """ Compute probabilities of alerts to be SN Ia using SuperNNova
 
     Parameters
     ----------
+    candid: Spark DataFrame Column
+        Candidate IDs (int64)
     jd: Spark DataFrame Column
         JD times (float)
     fid: Spark DataFrame Column
         Filter IDs (int)
     magpsf, sigmapsf: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
-    magnr, sigmagnr: Spark DataFrame Columns
-        Magnitude of nearest source in reference image PSF-catalog
-        within 30 arcsec and 1-sigma error
-    magzpsci: Spark DataFrame Column
-        Magnitude zero point for photometry estimates
-    isdiffpos: Spark DataFrame Column
-        t => candidate is from positive (sci minus ref) subtraction
-        f => candidate is from negative (ref minus sci) subtraction
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/<vanilla_S_0_...>.pt` is loaded.
@@ -94,12 +87,7 @@ def snn_ia(
     >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
     True
     """
-    # Process only alerts with ndet >= 3
-    mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) >= 3
-    if len(jd[mask]) == 0:
-        return pd.Series(np.zeros(len(jd), dtype=float))
-
-    # Load pre-trained model `clf`
+    # Load pre-trained model
     if model is None:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/../data/models/vanilla_S_0_CLF_2_R_none_photometry_DF_1.0_N_global_lstm_32x2_0.05_128_True_mean_C.pt'
@@ -111,41 +99,37 @@ def snn_ia(
     df_tmp = pd.DataFrame.from_dict(
         {
             'jd': jd[mask],
-            'SNID': range(len(jd[mask]))
+            'SNID': [str(i) for i in candid.values]
         }
     )
 
     df_tmp = df_tmp.explode('jd')
 
     # compute flux and flux error
-    data = [dc_flux(*args) for args in zip(
-        fid[mask].explode(),
-        magpsf[mask].explode(),
-        sigmapsf[mask].explode(),
-        magnr[mask].explode(),
-        sigmagnr[mask].explode(),
-        magzpsci[mask].explode(),
-        isdiffpos[mask].explode())]
+    data = [mag2fluxcal_snana(*args) for args in zip(
+        magpsf.explode(),
+        sigmapsf.explode())]
     flux, error = np.transpose(data)
 
     # make a Pandas DataFrame with exploded series
     pdf = pd.DataFrame.from_dict({
         'SNID': df_tmp['SNID'],
-        'MJD': jd[mask].explode(),
+        'MJD': df_tmp['jd'],
         'FLUXCAL': flux,
         'FLUXCALERR': error,
-        'FLT': fid[mask].explode().replace({1: 'g', 2: 'r'})
+        'FLT': fid.explode().replace({1: 'g', 2: 'r'})
     })
 
     # Compute predictions
-    preds = classify_lcs(pdf, model, 'cpu')
+    ids, pred_probs = classify_lcs(pdf, model, 'cpu')
 
-    # Take only probabilities to be Ia
-    ia = np.zeros(len(jd), dtype=float)
-    ia[mask] = preds.T[0][0]
+    # Reformat and re-index
+    preds_df = reformat_to_df(pred_probs, ids=ids)
+    preds_df.index = preds_df.SNID
+    ia = preds_df.reindex([str(i) for i in candid.values])
 
     # return probabilities to be Ia
-    return pd.Series(ia)
+    return ia.prob_class0
 
 
 if __name__ == "__main__":

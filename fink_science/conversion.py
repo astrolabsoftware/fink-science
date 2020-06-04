@@ -14,6 +14,30 @@
 # limitations under the License.
 import numpy as np
 
+def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
+    """ Conversion from magnitude to Fluxcal from SNANA manual
+
+    Parameters
+    ----------
+    magpsf: float
+        PSF-fit magnitude from ZTF
+    sigmapsf: float
+
+    Returns
+    ----------
+    fluxcal: float
+        Flux cal as used by SNANA
+    fluxcal_err: float
+        Absolute error on fluxcal (the derivative has a minus sign)
+
+    """
+    if magpsf is None:
+        return None, None
+    fluxcal = 10 ** (-0.4 * magpsf) * 10 ** (11)
+    fluxcal_err = 9.21034 * 10 ** 10 * np.exp(-0.921034 * magpsf) * sigmapsf
+
+    return fluxcal, fluxcal_err
+
 def mag2flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     """ Compute flux from difference magnitude supplied by ZTF.
 
