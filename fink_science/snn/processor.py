@@ -58,9 +58,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns
-    >>> what = [
-    ...    'jd', 'fid', 'magpsf', 'sigmapsf',
-    ...    'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -71,11 +69,11 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     ...    df = concat_col(df, colname, prefix=prefix)
 
     # Perform the fit + classification (default model)
-    >>> args = [F.col(i) for i in what_prefix]
+    >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']]
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
     # Note that we can also specify a model
-    >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path)]
+    >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']] + [F.lit(model_path)]
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
     # Drop temp columns
