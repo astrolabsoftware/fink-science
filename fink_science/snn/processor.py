@@ -96,7 +96,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     # add an exploded column with SNID
     df_tmp = pd.DataFrame.from_dict(
         {
-            'jd': jd[mask],
+            'jd': jd,
             'SNID': [str(i) for i in candid.values]
         }
     )
