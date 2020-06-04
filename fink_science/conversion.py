@@ -37,3 +37,43 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
     fluxcal_err = 9.21034 * 10 ** 10 * np.exp(-0.921034 * magpsf) * sigmapsf
 
     return fluxcal, fluxcal_err
+
+def dc_mag(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
+    """ Compute apparent magnitude from difference magnitude supplied by ZTF
+    Parameters
+    Stolen from Lasair.
+    ----------
+    fid
+        filter, 1 for green and 2 for red
+    magpsf,sigmapsf
+        magnitude from PSF-fit photometry, and 1-sigma error
+    magnr,sigmagnr
+        magnitude of nearest source in reference image PSF-catalog
+        within 30 arcsec and 1-sigma error
+    magzpsci
+        Magnitude zero point for photometry estimates
+    isdiffpos
+        t or 1 => candidate is from positive (sci minus ref) subtraction;
+        f or 0 => candidate is from negative (ref minus sci) subtraction
+    """
+    # zero points. Looks like they are fixed.
+    ref_zps = {1: 26.325, 2: 26.275, 3: 25.660}
+    magzpref = ref_zps[fid]
+
+    # difference flux and its error
+    if magzpsci is None:
+        magzpsci = magzpref
+
+    dc_flux, dc_sigflux = dc_flux(
+        fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos
+    )
+
+    # apparent mag and its error from fluxes
+    if (dc_flux == dc_flux) and dc_flux > 0.0:
+        dc_mag = magzpsci - 2.5 * np.log10(dc_flux)
+        dc_sigmag = dc_sigflux / dc_flux * 1.0857
+    else:
+        dc_mag = magzpsci
+        dc_sigmag = sigmapsf
+
+    return dc_mag, dc_sigmag
