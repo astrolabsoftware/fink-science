@@ -40,10 +40,13 @@ def concat_col(df, colname: str, prefix: str = 'c'):
     """
     return df.withColumn(
         prefix + colname,
-        F.concat(
-            df['prv_candidates.{}'.format(colname)],
-            F.array(df['candidate.{}'.format(colname)])
-        )
+        F.when(
+            df['prv_candidates.{}'.format(colname)].isNotNull(),
+            F.concat(
+                df['prv_candidates.{}'.format(colname)],
+                F.array(df['candidate.{}'.format(colname)])
+            )
+        ).otherwise(F.array(df['candidate.{}'.format(colname)]))
     )
 
 def extract_field(current: list, history: list) -> np.array:
