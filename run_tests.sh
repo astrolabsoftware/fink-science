@@ -60,6 +60,7 @@ do
   if [[ "$NO_SPARK" = true ]] && [[ ${filename##*/} = 'processor.py' ]] ; then
     echo '[NO SPARK] skipping' $filename
   else
+    echo $filename
     # Run test suite + coverage
     coverage run \
       --source=${ROOTPATH} \
