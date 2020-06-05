@@ -146,7 +146,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'fink_science/data/alerts/alerts.parquet'
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = 'fink_science/data/models/default-model.obj'
+    model_path = 'fink_science/data/models'
     globs["model_path"] = model_path
 
     # Run the test suite
