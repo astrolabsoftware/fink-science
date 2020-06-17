@@ -29,7 +29,7 @@ from fink_science.tester import spark_unit_tests
 
 def mulens(
         fid, magpsf, sigmapsf, magnr, sigmagnr,
-        magzpsci, isdiffpos, model_path=None):
+        magzpsci, isdiffpos, rf, pca):
     """ Returns the predicted class (among microlensing, variable star,
     cataclysmic event, and constant event) & probability of an alert to be
     a microlensing event in each band using a Random Forest Classifier.
@@ -48,9 +48,10 @@ def mulens(
     isdiffpos: Spark DataFrame Column
         t => candidate is from positive (sci minus ref) subtraction
         f => candidate is from negative (ref minus sci) subtraction
-    model_path: Spark DataFrame Column, optional
-        Path to the trained models. Default is None, in which case the default
-        models `data/models/rf.sav` and `data/models/pca.sav` are loaded.
+    rf: RandomForestClassifier
+        sklearn.ensemble._forest.RandomForestClassifier
+    pca: PCA
+        sklearn.decomposition._pca.PCA
 
     Returns
     ----------
@@ -63,11 +64,13 @@ def mulens(
     >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
+    # wrapper to pass broadcasted values
+    >>> def mulens_wrapper(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
+    ...     return mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos, rfbcast.value, pcabcast.value)
+
     >>> df = spark.read.load(ztf_alert_sample)
 
     >>> schema = load_mulens_schema_twobands()
-
-    >>> t = udf(mulens, schema)
 
     # Required alert columns
     >>> what = [
@@ -82,6 +85,13 @@ def mulens(
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
+    >>> curdir = os.path.dirname(os.path.abspath(__file__))
+    >>> model_path = curdir + '/../data/models/'
+    >>> rf, pca = load_external_model(model_path)
+    >>> rfbcast = spark.sparkContext.broadcast(rf)
+    >>> pcabcast = spark.sparkContext.broadcast(pca)
+
+    >>> t = udf(mulens_wrapper, schema)
     >>> args = [col(i) for i in what_prefix]
     >>> df_mulens = df.withColumn('mulens', t(*args))
 
@@ -96,13 +106,15 @@ def mulens(
     """
     warnings.filterwarnings('ignore')
 
-    # Load pre-trained model `rf` and `pca`
-    if model_path is not None:
-        rf, pca = load_external_model(model_path.values[0])
-    else:
-        curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/../data/models/'
-        rf, pca = load_external_model(model_path)
+    # # Load pre-trained model `rf` and `pca`
+    # if model_path is not None:
+    #     rf, pca = load_external_model(model_path.values[0])
+    # else:
+    #     # curdir = os.path.dirname(os.path.abspath(__file__))
+    #     # model_path = curdir + '/../data/models/'
+    #     # rf, pca = load_external_model(model_path)
+    #     rf = rfbcast.value
+    #     pca = pcabcast.value
 
     # Select only valid measurements (not upper limits)
     maskNotNone = np.array(magpsf) != None
