@@ -114,8 +114,8 @@ def mulens(
         maskFilter = np.array(fid) == filt
         m = maskNotNone * maskFilter
 
-        # Reject if less than 6 measurements
-        if np.sum(m) < 6:
+        # Reject if less than 10 measurements
+        if np.sum(m) < 10:
             out.extend(['', 0.0])
             continue
 
