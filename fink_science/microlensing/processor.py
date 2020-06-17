@@ -106,16 +106,6 @@ def mulens(
     """
     warnings.filterwarnings('ignore')
 
-    # # Load pre-trained model `rf` and `pca`
-    # if model_path is not None:
-    #     rf, pca = load_external_model(model_path.values[0])
-    # else:
-    #     # curdir = os.path.dirname(os.path.abspath(__file__))
-    #     # model_path = curdir + '/../data/models/'
-    #     # rf, pca = load_external_model(model_path)
-    #     rf = rfbcast.value
-    #     pca = pcabcast.value
-
     # Select only valid measurements (not upper limits)
     maskNotNone = np.array(magpsf) != None
 
