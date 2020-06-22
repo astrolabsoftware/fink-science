@@ -291,6 +291,29 @@ def get_train_test(percent_train):
 
     return sample
 
+def average_intraday_data(df_intra):
+    
+    """Average over intraday data points
+        
+     Parameters
+     ----------
+     df_intra: pd.DataFrame
+        containing the history of the flux
+        with intraday data
+
+     Returns
+     -------
+     df_average: pd.DataFrame
+        containing only daily data
+    
+    """
+    
+    df_average = df_intra.copy()
+    df_average['MJD'] = df_average['MJD'].round(0).copy()
+    df_average = df_average.groupby('MJD').mean()
+    df_average['MJD'] = df_average.index.values
+    
+    return df_average
 
 def get_sigmoid_features_dev(data_all: pd.DataFrame):
     """Compute the features needed for the Random Forest classification based
@@ -335,8 +358,10 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
     for i in list_filters:
         # select filter
         data_tmp = filter_data(data_all[columns_to_keep], i)
+        # average over intraday data points
+        data_tmp_avg = average_intraday_data(data_tmp)
         # mask negative flux below low bound
-        data_mjd = mask_negative_data(data_tmp, low_bound)
+        data_mjd = mask_negative_data(data_tmp_avg, low_bound)
 
         # check data have at least 5 points
         if len(data_mjd['FLUXCAL'].values > min_data_points):
@@ -344,10 +369,8 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
             deriv_ewma = get_ewma_derivative(data_mjd['FLUXCAL'], ewma_window)
             # mask data with negative part
             data_masked = data_mjd.mask(deriv_ewma < 0)
-            # find the index of the longest continuous raising sequence
-            index_longest_seq = get_idx_longest_rising_sequence(data_masked)
             # get longest raising sequence
-            rising_data = data_masked.iloc[index_longest_seq].dropna()
+            rising_data = data_masked.dropna()
 
             # at least three points (needed for the sigmoid fit)
             if(len(rising_data) > min_rising_points):
