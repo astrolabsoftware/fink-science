@@ -309,7 +309,7 @@ def average_intraday_data(df_intra):
     """
     
     df_average = df_intra.copy()
-    df_average['MJD'] = df_average['MJD'].round(0).copy()
+    df_average['MJD'].values = np.around(df_average['MJD'].values, decimals=0)
     df_average = df_average.groupby('MJD').mean()
     df_average['MJD'] = df_average.index.values
     
