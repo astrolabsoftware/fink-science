@@ -27,13 +27,15 @@ def delta_t(dataframe: pd.DataFrame) -> pd.DataFrame:
 
     Returns
     -------
-    dataframe_t0 : pandas DataFrame
-        reindexed using time relative to t0
+    relative_time : np.array 
+         time relative to the first
+	 data point in the dataframe
+
     """
 
-    dataframe_t0 = dataframe.index - dataframe.index[0]
+    relative_time = dataframe.index - dataframe.index[0]
 
-    return dataframe_t0
+    return relative_time.values
 
 
 def fsigmoid(x: np.array, a: float, b: float, c: float) -> np.array:
