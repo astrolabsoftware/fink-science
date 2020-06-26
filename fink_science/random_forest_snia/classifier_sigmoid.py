@@ -383,14 +383,14 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
                 # get N rising points
                 nrise[i] = len(rising_data)
 
-                # perform sigmoid fit
-                [a[i], b[i], c[i]] = fit_sigmoid(
-                    delta_t(rising_flux),
-                    rising_flux.values
-                )
-
                 dt = delta_t(rising_flux)
 
+                # perform sigmoid fit
+                [a[i], b[i], c[i]] = fit_sigmoid(
+                    dt,
+                    rising_flux.values
+                )
+                
                 # predicted flux with fit parameters
                 pred_flux = get_predicted_flux(dt, a[i], b[i], c[i])
 
