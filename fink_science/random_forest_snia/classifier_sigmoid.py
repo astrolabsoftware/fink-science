@@ -154,30 +154,6 @@ def get_ewma_derivative(data, ewma_window):
     return ewma_derivative
 
 
-def get_idx_longest_rising_sequence(data):
-    """Find the longest rising sequence of data
-
-    Parameters
-    ----------
-    data: pandas DataFrame
-
-    Returns
-    -------
-    idx_longest_seq: np.array
-    with the longest contigous sequence in data
-
-    """
-    # reset the index to make it start with 1 (1, len(data))
-    sequence = np.array(data.reset_index().dropna().index.values)
-    # find the longest contigous sequence
-    idx_longest_seq = max(
-        np.split(sequence, np.where(np.diff(sequence) != 1)[0] + 1),
-        key=len
-    )
-
-    return idx_longest_seq
-
-
 def get_sn_ratio(data):
     """Compute signal to noise ratio
 
@@ -291,6 +267,7 @@ def get_train_test(percent_train):
 
     return sample
 
+
 def average_intraday_data(df_intra):
 
     """Average over intraday data points
@@ -308,7 +285,7 @@ def average_intraday_data(df_intra):
     """
 
     df_average = df_intra.copy()
-    df_average['MJD'].values = df_average['MJD'].apply(
+    df_average['MJD'] = df_average['MJD'].apply(
         lambda x: np.around(x, decimals=0))
     df_average = df_average.groupby('MJD').mean()
     df_average['MJD'] = df_average.index.values
