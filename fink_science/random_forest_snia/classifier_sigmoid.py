@@ -292,9 +292,9 @@ def get_train_test(percent_train):
     return sample
 
 def average_intraday_data(df_intra):
-    
+
     """Average over intraday data points
-        
+
      Parameters
      ----------
      df_intra: pd.DataFrame
@@ -305,15 +305,16 @@ def average_intraday_data(df_intra):
      -------
      df_average: pd.DataFrame
         containing only daily data
-    
     """
-    
+
     df_average = df_intra.copy()
-    df_average['MJD'].values = np.around(df_average['MJD'].values.astype(np.float), decimals=0)
+    df_average['MJD'].values = df_average['MJD'].apply(
+        lambda x: np.around(x, decimals=0))
     df_average = df_average.groupby('MJD').mean()
     df_average['MJD'] = df_average.index.values
-    
+
     return df_average
+
 
 def get_sigmoid_features_dev(data_all: pd.DataFrame):
     """Compute the features needed for the Random Forest classification based
@@ -390,7 +391,7 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
                     dt,
                     rising_flux.values
                 )
-                
+
                 # predicted flux with fit parameters
                 pred_flux = get_predicted_flux(dt, a[i], b[i], c[i])
 
