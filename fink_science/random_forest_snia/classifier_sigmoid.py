@@ -24,6 +24,7 @@ from fink_science.random_forest_snia.sigmoid import fsigmoid
 columns_to_keep = ['MJD', 'FLT', 'FLUXCAL', 'FLUXCALERR']
 fluxes = ['FLUXCAL', 'FLUXCALERR']
 
+
 def filter_data(data, filt):
     """Select data according to the value of the
        filter (for ZTF only g, r)
@@ -154,14 +155,14 @@ def get_ewma_derivative(data, ewma_window):
     return ewma_derivative
 
 
-def get_sn_ratio(data):
+def get_sn_ratio(data, data_err):
     """Compute signal to noise ratio
 
     Parameters
-    ----------
-    data: pandas DataFrame
-    assulming columns 'FLUXCAL' and
-    'FLUXCALERR'
+    data: np.array
+     rising flux, 'FLUXCAL'
+    data_err: np.array
+     error in the rising flyx, 'FLUXCALERR'
 
     Returns
     -------
@@ -171,14 +172,8 @@ def get_sn_ratio(data):
 
     """
 
-    # get rising flux
-    rising = data['FLUXCAL']
-
-    # get errorbars of the flux
-    noise = data['FLUXCALERR']
-
     # average signal to noise ratio
-    snr = (rising / noise).mean()
+    snr = (data / data_err).mean()
 
     return snr
 
@@ -200,18 +195,18 @@ def get_predicted_flux(dt, a, b, c):
 
     Returns
     -------
-    predicted_df: pandas DataFrame
-    with predicted data based on the fitted values a, b, c
+    predicted_df: np.array
+    with predicted flux based on the fitted values a, b, c
 
     """
 
     predicted_array = fsigmoid(dt, a, b, c)
-    predicted_df = pd.DataFrame(predicted_array)\
+    predicted_flux = pd.DataFrame(predicted_array)\
         .round(decimals=4)\
         .replace(0.0, 0.00001)[0]\
         .values
 
-    return predicted_df
+    return predicted_flux
 
 
 def get_data_to_export(data_full, data_rising):
@@ -352,28 +347,27 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
 
             # at least three points (needed for the sigmoid fit)
             if(len(rising_data) > min_rising_points):
-                # compute signal to noise ratio
-                snratio[i] = get_sn_ratio(rising_data)
 
                 # focus on flux
-                rising_flux = rising_data['FLUXCAL']
+                rising_flux = rising_data['FLUXCAL'].values
+                rising_flux_err = rising_data['FLUXCALERR'].values
+
+                # compute signal to noise ratio
+                snratio[i] = get_sn_ratio(rising_flux, rising_flux_err)
 
                 # get N rising points
-                nrise[i] = len(rising_data)
+                nrise[i] = len(rising_flux)
 
                 dt = delta_t(rising_flux)
 
                 # perform sigmoid fit
-                [a[i], b[i], c[i]] = fit_sigmoid(
-                    dt,
-                    rising_flux.values
-                )
+                [a[i], b[i], c[i]] = fit_sigmoid(dt, rising_flux)
 
                 # predicted flux with fit parameters
                 pred_flux = get_predicted_flux(dt, a[i], b[i], c[i])
 
                 # compute chi-square
-                chisq[i] = compute_chi_square(rising_flux.values, pred_flux)
+                chisq[i] = compute_chi_square(rising_flux, pred_flux)
 
             else:
                 # if rising flux has less than three
