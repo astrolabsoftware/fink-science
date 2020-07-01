@@ -24,6 +24,7 @@ from fink_science.random_forest_snia.sigmoid import fsigmoid
 columns_to_keep = ['MJD', 'FLT', 'FLUXCAL', 'FLUXCALERR']
 fluxes = ['FLUXCAL', 'FLUXCALERR']
 
+
 def filter_data(data, filt):
     """Select data according to the value of the
        filter (for ZTF only g, r)
@@ -154,38 +155,14 @@ def get_ewma_derivative(data, ewma_window):
     return ewma_derivative
 
 
-def get_idx_longest_rising_sequence(data):
-    """Find the longest rising sequence of data
-
-    Parameters
-    ----------
-    data: pandas DataFrame
-
-    Returns
-    -------
-    idx_longest_seq: np.array
-    with the longest contigous sequence in data
-
-    """
-    # reset the index to make it start with 1 (1, len(data))
-    sequence = np.array(data.reset_index().dropna().index.values)
-    # find the longest contigous sequence
-    idx_longest_seq = max(
-        np.split(sequence, np.where(np.diff(sequence) != 1)[0] + 1),
-        key=len
-    )
-
-    return idx_longest_seq
-
-
-def get_sn_ratio(data):
+def get_sn_ratio(data, data_err):
     """Compute signal to noise ratio
 
     Parameters
-    ----------
-    data: pandas DataFrame
-    assulming columns 'FLUXCAL' and
-    'FLUXCALERR'
+    data: np.array
+     rising flux, 'FLUXCAL'
+    data_err: np.array
+     error in the rising flyx, 'FLUXCALERR'
 
     Returns
     -------
@@ -195,14 +172,8 @@ def get_sn_ratio(data):
 
     """
 
-    # get rising flux
-    rising = data['FLUXCAL']
-
-    # get errorbars of the flux
-    noise = data['FLUXCALERR']
-
     # average signal to noise ratio
-    snr = (rising / noise).mean()
+    snr = (data / data_err).mean()
 
     return snr
 
@@ -224,18 +195,18 @@ def get_predicted_flux(dt, a, b, c):
 
     Returns
     -------
-    predicted_df: pandas DataFrame
-    with predicted data based on the fitted values a, b, c
+    predicted_df: np.array
+    with predicted flux based on the fitted values a, b, c
 
     """
 
     predicted_array = fsigmoid(dt, a, b, c)
-    predicted_df = pd.DataFrame(predicted_array)\
+    predicted_flux = pd.DataFrame(predicted_array)\
         .round(decimals=4)\
         .replace(0.0, 0.00001)[0]\
         .values
 
-    return predicted_df
+    return predicted_flux
 
 
 def get_data_to_export(data_full, data_rising):
@@ -292,6 +263,31 @@ def get_train_test(percent_train):
     return sample
 
 
+def average_intraday_data(df_intra):
+
+    """Average over intraday data points
+
+     Parameters
+     ----------
+     df_intra: pd.DataFrame
+        containing the history of the flux
+        with intraday data
+
+     Returns
+     -------
+     df_average: pd.DataFrame
+        containing only daily data
+    """
+
+    df_average = df_intra.copy()
+    df_average['MJD'] = df_average['MJD'].apply(
+        lambda x: np.around(x, decimals=0))
+    df_average = df_average.groupby('MJD').mean()
+    df_average['MJD'] = df_average.index.values
+
+    return df_average
+
+
 def get_sigmoid_features_dev(data_all: pd.DataFrame):
     """Compute the features needed for the Random Forest classification based
     on the sigmoid model.
@@ -335,8 +331,10 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
     for i in list_filters:
         # select filter
         data_tmp = filter_data(data_all[columns_to_keep], i)
+        # average over intraday data points
+        data_tmp_avg = average_intraday_data(data_tmp)
         # mask negative flux below low bound
-        data_mjd = mask_negative_data(data_tmp, low_bound)
+        data_mjd = mask_negative_data(data_tmp_avg, low_bound)
 
         # check data have at least 5 points
         if len(data_mjd['FLUXCAL'].values > min_data_points):
@@ -344,35 +342,32 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
             deriv_ewma = get_ewma_derivative(data_mjd['FLUXCAL'], ewma_window)
             # mask data with negative part
             data_masked = data_mjd.mask(deriv_ewma < 0)
-            # find the index of the longest continuous raising sequence
-            index_longest_seq = get_idx_longest_rising_sequence(data_masked)
             # get longest raising sequence
-            rising_data = data_masked.iloc[index_longest_seq].dropna()
+            rising_data = data_masked.dropna()
 
             # at least three points (needed for the sigmoid fit)
             if(len(rising_data) > min_rising_points):
-                # compute signal to noise ratio
-                snratio[i] = get_sn_ratio(rising_data)
 
                 # focus on flux
-                rising_flux = rising_data['FLUXCAL']
+                rising_flux = rising_data['FLUXCAL'].values
+                rising_flux_err = rising_data['FLUXCALERR'].values
+
+                # compute signal to noise ratio
+                snratio[i] = get_sn_ratio(rising_flux, rising_flux_err)
 
                 # get N rising points
-                nrise[i] = len(rising_data)
-
-                # perform sigmoid fit
-                [a[i], b[i], c[i]] = fit_sigmoid(
-                    delta_t(rising_flux),
-                    rising_flux.values
-                )
+                nrise[i] = len(rising_flux)
 
                 dt = delta_t(rising_flux)
+
+                # perform sigmoid fit
+                [a[i], b[i], c[i]] = fit_sigmoid(dt, rising_flux)
 
                 # predicted flux with fit parameters
                 pred_flux = get_predicted_flux(dt, a[i], b[i], c[i])
 
                 # compute chi-square
-                chisq[i] = compute_chi_square(rising_flux.values, pred_flux)
+                chisq[i] = compute_chi_square(rising_flux, pred_flux)
 
             else:
                 # if rising flux has less than three

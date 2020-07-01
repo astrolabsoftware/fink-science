@@ -13,27 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
-import pandas as pd
 
 from scipy.optimize import least_squares
 from scipy.stats import chisquare
 
-def delta_t(dataframe: pd.DataFrame) -> pd.DataFrame:
-    """ Re-index a DataFrame relatively to the first index.
+
+def delta_t(time_index: np.array) -> np.array:
+    """ Re-index an index relatively to the first data point.
 
     Parameters
     ----------
-    dataframe : pandas DataFrame
+    time_index : np.array
 
     Returns
     -------
-    dataframe_t0 : pandas DataFrame
-        reindexed using time relative to t0
+    relative_time : np.array
+        time relative to the first
+        data point in the dataframe
     """
 
-    dataframe_t0 = dataframe.index - dataframe.index[0]
+    relative_time = time_index - time_index[0]
 
-    return dataframe_t0
+    return relative_time
 
 
 def fsigmoid(x: np.array, a: float, b: float, c: float) -> np.array:
