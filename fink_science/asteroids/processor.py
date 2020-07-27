@@ -15,6 +15,9 @@
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import IntegerType
 
+from fink_science import __file__
+import os
+
 import pandas as pd
 import numpy as np
 
@@ -119,7 +122,8 @@ if __name__ == "__main__":
     """ Execute the test suite """
 
     globs = globals()
-    ztf_alert_sample = 'fink_science/data/alerts/alerts.parquet'
+    path = os.path.dirname(__file__)
+    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
