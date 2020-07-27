@@ -22,6 +22,7 @@ import os
 
 from fink_science.conversion import mag2fluxcal_snana
 
+from fink_science import __file__
 from fink_science.utilities import load_scikit_model
 from fink_science.random_forest_snia.classifier_bazin import fit_all_bands
 from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_features_dev
@@ -325,13 +326,15 @@ if __name__ == "__main__":
     """ Execute the test suite """
 
     globs = globals()
-    ztf_alert_sample = 'fink_science/data/alerts/alerts.parquet'
+    path = os.path.dirname(__file__)
+
+    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path_bazin = 'fink_science/data/models/default-model_bazin.obj'
+    model_path_bazin = '{}/data/models/default-model_bazin.obj'.format(path)
     globs["model_path_bazin"] = model_path_bazin
 
-    model_path_sigmoid = 'fink_science/data/models/default-model_sigmoid.obj'
+    model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
     globs["model_path_sigmoid"] = model_path_sigmoid
 
     # Run the test suite

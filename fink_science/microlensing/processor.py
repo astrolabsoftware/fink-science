@@ -19,6 +19,7 @@ import numpy as np
 import os
 import warnings
 
+from fink_science import __file__
 from fink_science.microlensing.classifier import load_external_model
 from fink_science.microlensing.classifier import load_mulens_schema_twobands
 from fink_science.conversion import dc_mag
@@ -85,8 +86,6 @@ def mulens(
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
-    >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> model_path = curdir + '/../data/models/'
     >>> rf, pca = load_external_model(model_path)
     >>> rfbcast = spark.sparkContext.broadcast(rf)
     >>> pcabcast = spark.sparkContext.broadcast(pca)
@@ -145,10 +144,11 @@ if __name__ == "__main__":
     """ Execute the test suite """
 
     globs = globals()
-    ztf_alert_sample = 'fink_science/data/alerts/alerts.parquet'
+    path = os.path.dirname(__file__)
+    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = 'fink_science/data/models'
+    model_path = '{}/data/models'.format(path)
     globs["model_path"] = model_path
 
     # Run the test suite
