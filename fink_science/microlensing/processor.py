@@ -86,8 +86,6 @@ def mulens(
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
-    >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> model_path = curdir + '/../data/models/'
     >>> rf, pca = load_external_model(model_path)
     >>> rfbcast = spark.sparkContext.broadcast(rf)
     >>> pcabcast = spark.sparkContext.broadcast(pca)
