@@ -148,7 +148,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = 'file://{}/data/models'.format(path)
+    model_path = '{}/data/models'.format(path)
     globs["model_path"] = model_path
 
     # Run the test suite

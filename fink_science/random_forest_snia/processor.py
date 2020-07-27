@@ -331,10 +331,10 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path_bazin = 'file://{}/data/models/default-model_bazin.obj'.format(path)
+    model_path_bazin = '{}/data/models/default-model_bazin.obj'.format(path)
     globs["model_path_bazin"] = model_path_bazin
 
-    model_path_sigmoid = 'file://{}/data/models/default-model_sigmoid.obj'.format(path)
+    model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
     globs["model_path_sigmoid"] = model_path_sigmoid
 
     # Run the test suite

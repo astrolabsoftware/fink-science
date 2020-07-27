@@ -140,7 +140,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = 'file://{}/data/models/vanilla_S_0_CLF_2_R_none_photometry_DF_1.0_N_global_lstm_32x2_0.05_128_True_mean_C.pt'.format(path)
+    model_path = '{}/data/models/vanilla_S_0_CLF_2_R_none_photometry_DF_1.0_N_global_lstm_32x2_0.05_128_True_mean_C.pt'.format(path)
     globs["model_path"] = model_path
 
     # Run the test suite
