@@ -24,10 +24,14 @@ import numpy as np
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(IntegerType(), PandasUDFType.SCALAR)
-def roid_catcher(fid, magpsf, ssdistnr) -> pd.Series:
-    """ Determine if the alert is an asteroid using two criteria:
+def roid_catcher(jd, ndethist, sgscore1, ssdistnr, distpsnr1):
+    """ Determine if the alert is an asteroid using two methods:
         1. The alert has been flagged as an asteroid by ZTF (MPC) within 5"
-        2. First time the alert is seen, and |mag_r - mag_g| ~ 0.5
+        2. The alert satisfies Fink criteria for an asteroid
+            2.1 No stellar counterpart, sgscore1 < 0.76 (Tachibana & Miller 2018)
+            2.2 Number of detection is 1 or 2
+            2.3 No Panstarrs counterpart within 1"
+            2.4 If 2 detections, observations must be done within 30 min.
 
     The alerts are labeled using:
         [3] if the asteroid has been flagged by ZTF
@@ -61,7 +65,7 @@ def roid_catcher(fid, magpsf, ssdistnr) -> pd.Series:
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns
-    >>> what = ['fid', 'magpsf']
+    >>> what = ['fid']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -72,7 +76,7 @@ def roid_catcher(fid, magpsf, ssdistnr) -> pd.Series:
     ...    df = concat_col(df, colname, prefix=prefix)
 
     # Perform the fit + classification (default model)
-    >>> args = [F.col(i) for i in what_prefix] + [F.col('candidate.ssdistnr')]
+    >>> args = ['cjd', 'candidate.ndethist', 'candidate.sgscore1', 'candidate.ssdistnr', 'candidate.distpsnr1']
     >>> df = df.withColumn('roid', roid_catcher(*args))
 
     # Drop temp columns
@@ -80,41 +84,37 @@ def roid_catcher(fid, magpsf, ssdistnr) -> pd.Series:
 
     >>> df.agg({"roid": "min"}).collect()[0][0]
     0
-
-    >>> df.agg({"roid": "max"}).collect()[0][0]
-    1
     """
-    flags = []
-    for mags, filts in zip(magpsf, fid):
-        nmeasurements = []
-        last_mags = []
-        for filt in np.unique(filts):
-            mask_filt = np.where(filts == filt)[0]
-            mag_filt = np.array(mags)[mask_filt]
-            nmeasurements.append(len([i for i in mag_filt if i == i]))
-            last_mags.append(mag_filt[-1])
-        if np.sum(nmeasurements) == 1:
-            flags.append(1)
-        elif nmeasurements == [1, 1]:
-            # need to expand the logic...
-            f1 = np.abs(np.diff(last_mags))[0] > 0.4
-            f2 = np.abs((np.diff(last_mags)))[0] < 0.6
-            if f1 & f2:
-                flags.append(2)
-            else:
-                flags.append(0)
-        else:
-            flags.append(0)
+    flags = np.zeros_like(ndethist.values, dtype=int)
 
-    flags = np.array(flags)
+    # first detection
+    f0 = ndethist == 1
+    flags[f0] = 1
 
-    # Caught by ZTF already
-    f_distance1 = ssdistnr > 0
-    f_distance2 = ssdistnr < 5
+    # Probable asteroid
+    f1 = sgscore1 < 0.76
+    f2 = ndethist <= 2
+    flags[f1 & f2] = 2
+
+    # criterion on distance to Panstarr (1 arcsec)
+    f_distance1 = distpsnr1 < 1
+    f_distance2 = distpsnr1 > 0
     mask_roid = f_distance1 & f_distance2
-    flags[mask_roid] = 3
+    flags[mask_roid] = 0
 
-    # return asteroid labels
+    # Remove long trend
+    f3 = ndethist == 2
+    f4 = jd[f3].apply(lambda x: np.diff(x)[-1]) > (30. / (24. * 60.))
+    flags[f3 & f4] = 0
+
+    # Add ZTF information
+    if ssdistnr is not None:
+        # Caught by ZTF already
+        f_distance1 = ssdistnr > 0
+        f_distance2 = ssdistnr < 5
+        mask_roid = f_distance1 & f_distance2
+        flags[mask_roid] = 3
+
     return pd.Series(flags)
 
 
