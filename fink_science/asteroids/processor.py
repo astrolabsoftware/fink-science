@@ -65,7 +65,7 @@ def roid_catcher(jd, ndethist, sgscore1, ssdistnr, distpsnr1):
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns
-    >>> what = ['fid']
+    >>> what = ['jd']
 
     # Use for creating temp name
     >>> prefix = 'c'
