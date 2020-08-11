@@ -73,11 +73,11 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model_name, model_ext=None) -> pd.
     ...    df = concat_col(df, colname, prefix=prefix)
 
     # Perform the fit + classification (default model)
-    >>> args = ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf', 'snn_snia_vs_nonia']
+    >>> args = ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf', F.lit('snn_snia_vs_nonia')]
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
     # Note that we can also specify a model
-    >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf', 'snn_snia_vs_nonia']] + [F.lit(model_path)]
+    >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf', F.lit('')]] + [F.lit(model_path)]
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
     # Drop temp columns
