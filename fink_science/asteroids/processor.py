@@ -24,7 +24,7 @@ import numpy as np
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(IntegerType(), PandasUDFType.SCALAR)
-def roid_catcher(jd, ndethist, sgscore1, ssdistnr, distpsnr1):
+def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
     """ Determine if the alert is an asteroid using two methods:
         1. The alert has been flagged as an asteroid by ZTF (MPC) within 5"
         2. The alert satisfies Fink criteria for an asteroid
@@ -41,13 +41,26 @@ def roid_catcher(jd, ndethist, sgscore1, ssdistnr, distpsnr1):
 
     Parameters
     ----------
-    fid: Spark DataFrame Column
-        Filter IDs (ints)
+    jd: Spark DataFrame Column
+        Observation Julian date at start of exposure [days]
     magpsf: Spark DataFrame Column
-        Magnitude from PSF-fit photometry (floats)
+        Magnitude from PSF-fit photometry [mag]
+    ndethist: Spark DataFrame Column
+        Number of spatially-coincident detections falling within 1.5 arcsec
+        going back to beginning of survey; only detections that fell on the
+        same field and readout-channel ID where the input candidate was
+        observed are counted. All raw detections down to a
+        photometric S/N of ~ 3 are included. [int]
+    sgscore1: Spark DataFrame Column
+        Star/Galaxy score of closest source from PS1 catalog
+        0 <= sgscore <= 1 where closer to 1 implies higher
+        likelihood of being a star [float]
     ssdistnr: Spark DataFrame Column
         Distance to nearest known solar system object,
         set to -999.0 if none [arcsec].
+    distpsnr1: Spark DataFrame Column
+        Distance of closest source from PS1 catalog;
+        if exists within 30 arcsec [arcsec]
 
     Returns
     ----------
@@ -65,7 +78,7 @@ def roid_catcher(jd, ndethist, sgscore1, ssdistnr, distpsnr1):
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns
-    >>> what = ['jd']
+    >>> what = ['jd', 'magpsf']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -76,7 +89,10 @@ def roid_catcher(jd, ndethist, sgscore1, ssdistnr, distpsnr1):
     ...    df = concat_col(df, colname, prefix=prefix)
 
     # Perform the fit + classification (default model)
-    >>> args = ['cjd', 'candidate.ndethist', 'candidate.sgscore1', 'candidate.ssdistnr', 'candidate.distpsnr1']
+    >>> args = [
+    ...     'cjd', 'cmagpsf',
+    ...     'candidate.ndethist', 'candidate.sgscore1',
+    ...     'candidate.ssdistnr', 'candidate.distpsnr1']
     >>> df = df.withColumn('roid', roid_catcher(*args))
 
     # Drop temp columns
@@ -86,6 +102,9 @@ def roid_catcher(jd, ndethist, sgscore1, ssdistnr, distpsnr1):
     0
     """
     flags = np.zeros_like(ndethist.values, dtype=int)
+
+    # remove NaN
+    nalerthist = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x)))
 
     # first detection
     f0 = ndethist == 1
@@ -102,10 +121,14 @@ def roid_catcher(jd, ndethist, sgscore1, ssdistnr, distpsnr1):
     mask_roid = f_distance1 & f_distance2
     flags[mask_roid] = 0
 
-    # Remove long trend
-    f3 = ndethist == 2
+    # Remove long trend (within the observation)
+    f3 = nalerthist == 2
     f4 = jd[f3].apply(lambda x: np.diff(x)[-1]) > (30. / (24. * 60.))
     flags[f3 & f4] = 0
+
+    # Remove very long trend (outside the current observation)
+    f5 = (ndethist == 2) & (nalerthist == 1)
+    flags[f5] = 0
 
     # Add ZTF information
     if ssdistnr is not None:
