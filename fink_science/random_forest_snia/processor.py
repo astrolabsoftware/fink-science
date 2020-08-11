@@ -95,7 +95,7 @@ def rfscore_bazin(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/../data/models/default-model_bazin.obj'
+        model = curdir + '/data/models/default-model_bazin.obj'
         clf = load_scikit_model(model)
 
     # Make predictions
@@ -155,12 +155,12 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
+    >>> df.agg({"pIa": "min"}).collect()[0][0]
+    0.0
+
     # Note that we can also specify a model
     >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path_sigmoid)]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
-
-    # Drop temp columns
-    >>> df = df.drop(*what_prefix)
 
     >>> df.agg({"pIa": "min"}).collect()[0][0]
     0.0
@@ -202,7 +202,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/../data/models/default-model_sigmoid.obj'
+        model = curdir + '/data/models/default-model_sigmoid.obj'
         clf = load_scikit_model(model)
 
     test_features = []
@@ -265,12 +265,12 @@ def rfscore_sigmoid(
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('pIa', rfscore_sigmoid(*args))
 
+    >>> df.agg({"pIa": "min"}).collect()[0][0]
+    0.0
+
     # Note that we can also specify a model
     >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path_sigmoid)]
     >>> df = df.withColumn('pIa', rfscore_sigmoid(*args))
-
-    # Drop temp columns
-    >>> df = df.drop(*what_prefix)
 
     >>> df.agg({"pIa": "min"}).collect()[0][0]
     0.0
@@ -288,7 +288,7 @@ def rfscore_sigmoid(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/../data/models/default-model_sigmoid.obj'
+        model = curdir + '/data/models/default-model_sigmoid.obj'
         clf = load_scikit_model(model)
 
     test_features = []

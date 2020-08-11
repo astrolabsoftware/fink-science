@@ -1,0 +1,1 @@
+{"vanilla_S_0_CLF_2_R_none_photometry_DF_1.0_N_global_lstm_32x2_0.05_128_True_mean": {"training_time": 3025.878172636032, "AUC": 0.9557301595017308, "Acc": 0.873448275862069, "loss": 0.2665138849819188}}
