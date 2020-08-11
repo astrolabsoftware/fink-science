@@ -91,11 +91,11 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model_name, model_ext=None) -> pd.
     """
     if model_ext is not None:
         # take the first element of the Series
-        model = model_ext[0]
+        model = model_ext.values[0]
     else:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + 'data/models/snn_models/{}/model.pt'.format(model_name[0])
+        model = curdir + 'data/models/snn_models/{}/model.pt'.format(model_name.values[0])
 
     # add an exploded column with SNID
     df_tmp = pd.DataFrame.from_dict(

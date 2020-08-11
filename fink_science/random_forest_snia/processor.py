@@ -288,7 +288,7 @@ def rfscore_sigmoid(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/../data/models/default-model_sigmoid.obj'
+        model = curdir + 'data/models/default-model_sigmoid.obj'
         clf = load_scikit_model(model)
 
     test_features = []

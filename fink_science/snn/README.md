@@ -49,7 +49,7 @@ args = ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf', F.lit('snn_snia_vs_noni
 df = df.withColumn('pIa', snn_ia(*args))
 
 # Note that we can also specify the path to a model (needs to be distributed though)
-args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf', F.lit('')]] + [F.lit(model_path)]
+args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']] + [F.lit(''), F.lit(model_path)]
 df = df.withColumn('pIa', snn_ia(*args))
 ```
 
