@@ -76,12 +76,12 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model_name, model_ext=None) -> pd.
     >>> args = ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf', F.lit('snn_snia_vs_nonia')]
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
+    >>> df.agg({"pIa": "min"}).collect()[0][0] >= 0.0
+    True
+
     # Note that we can also specify a model
     >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']] + [F.lit(''), F.lit(model_path)]
     >>> df = df.withColumn('pIa', snn_ia(*args))
-
-    # Drop temp columns
-    >>> df = df.drop(*what_prefix)
 
     >>> df.agg({"pIa": "min"}).collect()[0][0] >= 0.0
     True
@@ -95,7 +95,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model_name, model_ext=None) -> pd.
     else:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + 'data/models/snn_models/{}/model.pt'.format(model_name.values[0])
+        model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
 
     # add an exploded column with SNID
     df_tmp = pd.DataFrame.from_dict(
