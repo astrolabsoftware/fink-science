@@ -29,7 +29,7 @@ from fink_science.snn.utilities import reformat_to_df
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def snn_ia(candid, jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
+def snn_ia(candid, jd, fid, magpsf, sigmapsf, model_name, model_ext=None) -> pd.Series:
     """ Compute probabilities of alerts to be SN Ia using SuperNNova
 
     Parameters
@@ -42,9 +42,12 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
         Filter IDs (int)
     magpsf, sigmapsf: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
-    model: Spark DataFrame Column, optional
-        Path to the trained model. Default is None, in which case the default
-        model `data/models/<vanilla_S_0_...>.pt` is loaded.
+    model_name: Spark DataFrame Column
+        SuperNNova pre-trained model. Currently available:
+            * snn_snia_vs_nonia
+            * snn_sn_vs_all
+    model_ext: Spark DataFrame Column, optional
+        Path to the trained model (overwrite `model`). Default is None
 
     Returns
     ----------
@@ -70,15 +73,15 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     ...    df = concat_col(df, colname, prefix=prefix)
 
     # Perform the fit + classification (default model)
-    >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']]
+    >>> args = ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf', F.lit('snn_snia_vs_nonia')]
     >>> df = df.withColumn('pIa', snn_ia(*args))
+
+    >>> df.agg({"pIa": "min"}).collect()[0][0] >= 0.0
+    True
 
     # Note that we can also specify a model
-    >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']] + [F.lit(model_path)]
+    >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']] + [F.lit(''), F.lit(model_path)]
     >>> df = df.withColumn('pIa', snn_ia(*args))
-
-    # Drop temp columns
-    >>> df = df.drop(*what_prefix)
 
     >>> df.agg({"pIa": "min"}).collect()[0][0] >= 0.0
     True
@@ -86,13 +89,13 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
     True
     """
-    # Load pre-trained model
-    if model is None:
-        curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/../data/models/vanilla_S_0_CLF_2_R_none_photometry_DF_1.0_N_global_lstm_32x2_0.05_128_True_mean_C.pt'
-    else:
+    if model_ext is not None:
         # take the first element of the Series
-        model = model[0]
+        model = model_ext.values[0]
+    else:
+        # Load pre-trained model
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
 
     # add an exploded column with SNID
     df_tmp = pd.DataFrame.from_dict(
@@ -140,7 +143,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = '{}/data/models/vanilla_S_0_CLF_2_R_none_photometry_DF_1.0_N_global_lstm_32x2_0.05_128_True_mean_C.pt'.format(path)
+    model_path = '{}/data/models/snn_models/snn_sn_vs_all/model.pt'.format(path)
     globs["model_path"] = model_path
 
     # Run the test suite
