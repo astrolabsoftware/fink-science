@@ -21,7 +21,6 @@ astroquery
 
 # Supernnova
 supernnova
-torch==1.6.0+cpu
 h5py
 natsort
 colorama
