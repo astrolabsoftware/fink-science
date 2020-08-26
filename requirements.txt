@@ -21,7 +21,6 @@ astroquery
 
 # Supernnova
 supernnova
-torch
 h5py
 natsort
 colorama
