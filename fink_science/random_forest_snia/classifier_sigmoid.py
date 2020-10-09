@@ -348,7 +348,7 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
             if(len(rising_data) > min_rising_points):
 
                 # focus on flux
-		rising_time = rising_data['FLUXCAL'].index.values
+                rising_time = rising_data['FLUXCAL'].index.values
                 rising_flux = rising_data['FLUXCAL'].values
                 rising_flux_err = rising_data['FLUXCALERR'].values
 
