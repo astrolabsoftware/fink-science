@@ -22,6 +22,7 @@ import os
 
 from fink_science.conversion import mag2fluxcal_snana
 
+from fink_science import __file__
 from fink_science.utilities import load_scikit_model
 from fink_science.random_forest_snia.classifier_bazin import fit_all_bands
 from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_features_dev
@@ -94,7 +95,7 @@ def rfscore_bazin(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/../data/models/default-model_bazin.obj'
+        model = curdir + '/data/models/default-model_bazin.obj'
         clf = load_scikit_model(model)
 
     # Make predictions
@@ -154,12 +155,12 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
+    >>> df.agg({"pIa": "min"}).collect()[0][0]
+    0.0
+
     # Note that we can also specify a model
     >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path_sigmoid)]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
-
-    # Drop temp columns
-    >>> df = df.drop(*what_prefix)
 
     >>> df.agg({"pIa": "min"}).collect()[0][0]
     0.0
@@ -203,7 +204,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/../data/models/default-model_sigmoid.obj'
+        model = curdir + '/data/models/default-model_sigmoid.obj'
         clf = load_scikit_model(model)
 
     test_features = []
@@ -266,12 +267,12 @@ def rfscore_sigmoid(
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('pIa', rfscore_sigmoid(*args))
 
+    >>> df.agg({"pIa": "min"}).collect()[0][0]
+    0.0
+
     # Note that we can also specify a model
     >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path_sigmoid)]
     >>> df = df.withColumn('pIa', rfscore_sigmoid(*args))
-
-    # Drop temp columns
-    >>> df = df.drop(*what_prefix)
 
     >>> df.agg({"pIa": "min"}).collect()[0][0]
     0.0
@@ -289,7 +290,7 @@ def rfscore_sigmoid(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/../data/models/default-model_sigmoid.obj'
+        model = curdir + '/data/models/default-model_sigmoid.obj'
         clf = load_scikit_model(model)
 
     test_features = []
@@ -327,13 +328,15 @@ if __name__ == "__main__":
     """ Execute the test suite """
 
     globs = globals()
-    ztf_alert_sample = 'fink_science/data/alerts/alerts.parquet'
+    path = os.path.dirname(__file__)
+
+    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path_bazin = 'fink_science/data/models/default-model_bazin.obj'
+    model_path_bazin = '{}/data/models/default-model_bazin.obj'.format(path)
     globs["model_path_bazin"] = model_path_bazin
 
-    model_path_sigmoid = 'fink_science/data/models/default-model_sigmoid.obj'
+    model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
     globs["model_path_sigmoid"] = model_path_sigmoid
 
     # Run the test suite
