@@ -91,13 +91,25 @@ def fit_sigmoid(time: np.array, flux: np.array) -> list:
 
     Returns
     -------
-    output : list of float
+    result : list of float
         best fit parameter values
     """
     flux = np.asarray(flux)
     t0 = time[flux.argmax()] - time[0]
-    guess = [1, t0 / 2, np.max(flux)]
-
+    if(t0 > 0):
+        slope = (flux.argmax()-flux.argmin())/(time[flux.argmax()] -time[flux.argmin()] )
+    else:
+        slope = 1.
+    f0 = flux[0]
+    aguess = slope
+    cguess = np.max(flux)
+    
+    if f0!=0 and cguess/f0 != 1. :
+        bguess = ( np.log(cguess/f0-1.) )/aguess
+    else:
+        bguess = 1.0
+        
+    guess = [aguess, bguess, cguess]
     result = least_squares(errfunc_sigmoid, guess, args=(time, flux))
 
     return result.x

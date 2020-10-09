@@ -159,6 +159,7 @@ def get_sn_ratio(data, data_err):
     """Compute signal to noise ratio
 
     Parameters
+    ----------
     data: np.array
      rising flux, 'FLUXCAL'
     data_err: np.array
@@ -195,7 +196,7 @@ def get_predicted_flux(dt, a, b, c):
 
     Returns
     -------
-    predicted_df: np.array
+    predicted_flux: np.array
     with predicted flux based on the fitted values a, b, c
 
     """
@@ -237,7 +238,6 @@ def get_data_to_export(data_full, data_rising):
 
 
 def get_train_test(percent_train):
-
     """Randomly choose test or train label
 
     Parameters
@@ -264,7 +264,6 @@ def get_train_test(percent_train):
 
 
 def average_intraday_data(df_intra):
-
     """Average over intraday data points
 
      Parameters
@@ -313,7 +312,7 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
     ewma_window = 3
 
     # N min data points
-    min_data_points = 5
+    min_data_points = 4
 
     # N min rising data points
     min_rising_points = 3
@@ -349,6 +348,7 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
             if(len(rising_data) > min_rising_points):
 
                 # focus on flux
+                rising_time = rising_data['FLUXCAL'].index.values
                 rising_flux = rising_data['FLUXCAL'].values
                 rising_flux_err = rising_data['FLUXCALERR'].values
 
@@ -358,7 +358,10 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
                 # get N rising points
                 nrise[i] = len(rising_flux)
 
-                dt = delta_t(rising_flux)
+                dt = delta_t(rising_time)
+
+                # perform sigmoid fit
+                [a[i], b[i], c[i]] = fit_sigmoid(dt, rising_flux)
 
                 # perform sigmoid fit
                 [a[i], b[i], c[i]] = fit_sigmoid(dt, rising_flux)
