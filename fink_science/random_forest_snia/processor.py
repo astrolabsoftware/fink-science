@@ -196,8 +196,6 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
         'FLUXCALERR': error,
         'FLT': fid[mask].explode().replace({1: 'g', 2: 'r'})
     })
-    pdf = pdf.dropna()
-    pdf = pdf.drop_duplicates(subset=['FLUXCAL'])
 
     # Load pre-trained model `clf`
     if model is not None:
