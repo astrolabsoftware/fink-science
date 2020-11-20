@@ -1,3 +1,18 @@
+# Copyright 2020 AstroLab Software
+# Author: Biswajit Biswas
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from LightCurve import LightCurve
 import numpy as np
 from scipy.optimize import minimize
@@ -70,7 +85,7 @@ class PredictLightCurve:
         self.bands = None
         self.pcs = None
 
-        self.min_flux_threshold = 0
+        self.min_flux_threshold = 200
         self.num_prediction_points = 51
         self.mid_point_dict = None
 
@@ -99,8 +114,6 @@ class PredictLightCurve:
             pc_out = {0: pc_dict['u'][0:self.num_pc_components], 1: pc_dict['r'][0:self.num_pc_components],
                       2: pc_dict['i'][0:self.num_pc_components], 3: pc_dict['g'][0:self.num_pc_components],
                       4: pc_dict['z'][0:self.num_pc_components], 5: pc_dict['Y'][0:self.num_pc_components]}
-            # num_pc_components = int(num_pc_components)
-            # print(pc_dict['u'])
 
         else:
             pc_out = {}
@@ -127,10 +140,8 @@ class PredictLightCurve:
         event_df = self.lc.df
 
         for band in self.bands:
-            # print(band)
             band_index = event_df[self.lc.band_col_name] == band
             band_df = event_df[band_index]
-            # print(band_df)
             if len(band_df) > 0:
                 max_index = np.argmax(band_df[self.lc.brightness_col_name])
                 if band_df[self.lc.brightness_col_name][max_index] > self.min_flux_threshold:
@@ -187,7 +198,6 @@ class PredictLightCurve:
 
                 band_index = event_df[self.lc.band_col_name] == band
                 band_df = event_df[band_index]
-                # print(band_df)
                 pcs = self.pcs[band]
                 if len(band_df) > 0:
 
@@ -196,11 +206,9 @@ class PredictLightCurve:
                     b2 = b2.astype(int)
                     light_curve_seg = np.zeros(self.num_prediction_points)
                     light_curve_seg[b2[:]] = band_df[self.lc.brightness_col_name]
-                    # initial_guess = np.amax(band_df[self.lc.brightness_col_name]) * np.array([.93, .03, .025])
                     initial_guess = np.zeros(self.num_pc_components)
                     result = minimize(calc_loss, initial_guess, args=(pcs, light_curve_seg))
                     coeff_all_band[band] = list(result.x)
-                    # print(result.x)
                     num_points_dict[band] = len(b2)
 
                 else:

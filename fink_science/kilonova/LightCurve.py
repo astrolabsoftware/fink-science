@@ -1,6 +1,20 @@
+# Copyright 2020 AstroLab Software
+# Author: Biswajit Biswas
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 from astropy.table import Table
-
 
 class LightCurve:
 
@@ -33,17 +47,13 @@ class LightCurve:
         else:
 
             max_flux_pos = np.argmax(self.df[self.brightness_col_name])
-
-            # length =len(object_df['mjd'])
             max_flux_date = object_df[self.time_col_name][max_flux_pos]
             max_flux_val = self.df[self.brightness_col_name][max_flux_pos]
-            # print(object_df['flux_err'])
 
             time_from_max = np.abs(object_df[self.time_col_name] - max_flux_date)
             time_from_max[np.where(time_from_max < 7)] = 0
-            # filtered_flux = object_df['flux']
-            # normalization = np.sum(index_greater_than_half)
+
             penalty = np.sum(np.abs(self.df[self.brightness_col_name]) * np.abs(time_from_max)) / max_flux_val
-            print(penalty)
+
             penalty = np.log(np.abs(penalty) + 1)
         return penalty

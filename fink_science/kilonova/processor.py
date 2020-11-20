@@ -1,3 +1,18 @@
+# Copyright 2020 AstroLab Software
+# Author: Biswajit Biswas
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import DoubleType
 
@@ -83,19 +98,13 @@ def rfscore_kn_pca(jd, fid, magpsf, sigmapsf, model=None, num_pc_components=None
     if model is not None:
         clf = load_scikit_model(model.values[0])
 
-    # need to define this later
+    # set path
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/kilonova_model.pkl'
         clf = load_scikit_model(model)
 
-    # else:
-    #    curdir = os.path.dirname(os.path.abspath(__file__))
-    #    model = curdir + 'models/pickle_model.pkl'
-    #
-    #    clf = load_scikit_model(model)
-
-    # remember to initialize bands and
+    # remember to initialize bands
     bands = ['g', 'r']
     test_features = []
     ids = pd.Series(range(len(jd)))
