@@ -33,6 +33,8 @@ setuptools.setup(
             'data/alerts/*.parquet',
             'data/models/*.obj',
             'data/models/*.sav',
+            'data/models/*.npy',
+            'data/models/*.pkl',
             'data/models/snn_models/*/*.pt',
             'data/models/snn_models/*/*.json',
             'data/models/snn_models/*/*.txt'],
