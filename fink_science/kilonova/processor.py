@@ -80,7 +80,7 @@ def rfscore_kn_pca(jd, fid, magpsf, sigmapsf, model=None, num_pc_components=None
 
     >>> df = df.withColumn('pKN',  rfscore_kn_pca(*args))
 
-    >>> df.agg({"pIa": "min"}).collect()[0][0] >= 0.0
+    >>> df.agg({"pKN": "min"}).collect()[0][0] >= 0.0
     """
 
     if num_pc_components is None:
