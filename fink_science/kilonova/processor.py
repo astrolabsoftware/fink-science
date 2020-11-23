@@ -61,25 +61,26 @@ def rfscore_kn_pca(jd, fid, magpsf, sigmapsf, model=None, num_pc_components=None
     __________
 
     >>> from fink_science.utilities import concat_col
-    >>> from pyspark.sql import functions as F
+
     >>> df = spark.read.load(ztf_alert_sample)
+
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+
     # Use for creating temp name
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
+
     # Append temp columns with historical + current measurements
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
-     Examples
-    ----------
-
     # Perform the fit + classification (default model)
     >>> args = ['cjd', 'cfid', 'cmagpsf','csigmapsf']
+
     >>> df = df.withColumn('pKN',  rfscore_kn_pca(*args))
 
-    >>>df_change.select(['pKN']).show()
+    >>> df.agg({"pIa": "min"}).collect()[0][0] >= 0.0
     """
 
     if num_pc_components is None:
