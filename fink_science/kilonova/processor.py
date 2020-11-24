@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import DoubleType
 
@@ -26,6 +25,8 @@ from PredictLightCurve import PredictLightCurve
 from fink_science import __file__
 from fink_science.conversion import mag2fluxcal_snana
 from fink_science.utilities import load_scikit_model
+
+from fink_science.tester import spark_unit_tests
 
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
@@ -143,3 +144,16 @@ def rfscore_kn_pca(jd, fid, magpsf, sigmapsf, model=None, num_pc_components=None
     to_return[mask] = probabilities.T[1]
 
     return pd.Series(to_return)
+
+
+if __name__ == "__main__":
+    """ Execute the test suite """
+
+    globs = globals()
+    path = os.path.dirname(__file__)
+
+    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
+    globs["ztf_alert_sample"] = ztf_alert_sample
+
+    # Run the test suite
+    spark_unit_tests(globs)
