@@ -20,7 +20,7 @@ import numpy as np
 
 import os
 
-from PredictLightCurve import PredictLightCurve
+from fink_science.kilonova.PredictLightCurve import PredictLightCurve
 
 from fink_science import __file__
 from fink_science.conversion import mag2fluxcal_snana
