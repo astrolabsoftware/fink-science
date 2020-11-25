@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import DoubleType
 
@@ -21,11 +20,13 @@ import numpy as np
 
 import os
 
-from PredictLightCurve import PredictLightCurve
+from fink_science.kilonova.PredictLightCurve import PredictLightCurve
 
 from fink_science import __file__
 from fink_science.conversion import mag2fluxcal_snana
 from fink_science.utilities import load_scikit_model
+
+from fink_science.tester import spark_unit_tests
 
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
@@ -61,25 +62,27 @@ def rfscore_kn_pca(jd, fid, magpsf, sigmapsf, model=None, num_pc_components=None
     __________
 
     >>> from fink_science.utilities import concat_col
-    >>> from pyspark.sql import functions as F
+
     >>> df = spark.read.load(ztf_alert_sample)
+
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+
     # Use for creating temp name
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
+
     # Append temp columns with historical + current measurements
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
-     Examples
-    ----------
-
     # Perform the fit + classification (default model)
     >>> args = ['cjd', 'cfid', 'cmagpsf','csigmapsf']
+
     >>> df = df.withColumn('pKN',  rfscore_kn_pca(*args))
 
-    >>>df_change.select(['pKN']).show()
+    >>> df.agg({"pKN": "min"}).collect()[0][0] >= 0.0
+    True
     """
 
     if num_pc_components is None:
@@ -142,3 +145,16 @@ def rfscore_kn_pca(jd, fid, magpsf, sigmapsf, model=None, num_pc_components=None
     to_return[mask] = probabilities.T[1]
 
     return pd.Series(to_return)
+
+
+if __name__ == "__main__":
+    """ Execute the test suite """
+
+    globs = globals()
+    path = os.path.dirname(__file__)
+
+    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
+    globs["ztf_alert_sample"] = ztf_alert_sample
+
+    # Run the test suite
+    spark_unit_tests(globs)

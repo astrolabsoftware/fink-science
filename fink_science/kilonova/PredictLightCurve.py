@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from LightCurve import LightCurve
+from fink_science.kilonova.LightCurve import LightCurve
 import numpy as np
 from scipy.optimize import minimize
 
