@@ -25,19 +25,21 @@ from fink_science.tester import spark_unit_tests
 
 @pandas_udf(IntegerType(), PandasUDFType.SCALAR)
 def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
-    """ Determine if the alert is an asteroid using two methods:
-        1. The alert has been flagged as an asteroid by ZTF (MPC) within 5"
-        2. The alert satisfies Fink criteria for an asteroid
-            2.1 No stellar counterpart, sgscore1 < 0.76 (Tachibana & Miller 2018)
-            2.2 Number of detection is 1 or 2
-            2.3 No Panstarrs counterpart within 1"
-            2.4 If 2 detections, observations must be done within 30 min.
+    """ Determine if an alert is a potential Solar System object (SSO) using two criteria:
+
+    1. The alert has been flagged as an SSO by ZTF (MPC) within 5"
+    2. The alert satisfies Fink criteria for a SSO
+        1. No stellar counterpart from PS1, sgscore1 < 0.76 (Tachibana & Miller 2018)
+        2. Number of detection is 1 or 2
+        3. No Panstarrs counterpart within 1"
+        4. If 2 detections, observations must be done within 30 min.
 
     The alerts are labeled using:
-        [3] if the asteroid has been flagged by ZTF
-        [2] if the asteroid has been flagged by Fink
+
+        [3] if the alert has been flagged by ZTF as SSO candidate
+        [2] if the alert has been flagged by Fink as SSO candidate
         [1] if is the first time ZTF sees this object
-        [0] if it is likely not an asteroid
+        [0] if it is likely not a SSO
 
     Parameters
     ----------
@@ -65,10 +67,10 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
     Returns
     ----------
     out: integer
-        3 if the asteroid has been flagged by ZTF
-        2 if the asteroid has been flagged by Fink
+        3 if the alert has been flagged by ZTF as SSO
+        2 if the alert has been flagged by Fink as SSO
         1 if it is the first time ZTF sees this object
-        0 if it is likely not an asteroid
+        0 if it is likely not a SSO
 
     Examples
     ----------
