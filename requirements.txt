@@ -10,7 +10,7 @@ coverage>=4.2
 codecov
 
 # Spark
-pyarrow==0.14.1
+pyarrow
 
 # xmatch
 astropy
