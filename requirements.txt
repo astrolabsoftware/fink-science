@@ -2,7 +2,7 @@
 numpy>=1.17
 pandas
 scipy
-sklearn
+sklearn==0.23
 
 # Coverage
 coveralls
