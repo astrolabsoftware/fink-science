@@ -118,7 +118,7 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
     flags[f1 & f2] = 2
 
     # criterion on distance to Panstarr (1 arcsec)
-    f_distance1 = distpsnr1 < 1
+    f_distance1 = distpsnr1 < 5
     f_distance2 = distpsnr1 > 0
     mask_roid = f_distance1 & f_distance2
     flags[mask_roid] = 0
@@ -132,12 +132,19 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
     f5 = (ndethist == 2) & (nalerthist == 1)
     flags[f5] = 0
 
-    # Add ZTF information
+    # Add alerts caught by ZTF already from MPC
     if ssdistnr is not None:
-        # Caught by ZTF already
-        f_distance1 = ssdistnr > 0
-        f_distance2 = ssdistnr < 5
-        mask_roid = f_distance1 & f_distance2
+        # alerts should be at max 5'' away from MPC object
+        f_distance1 = ssdistnr >= 0.0
+        f_distance2 = ssdistnr < 5.0
+
+        # Distance to Panstarrs object should be bigger than distance to MPC object
+        f_relative_distance = (abs(distpsnr1) - ssdistnr) > 0.0
+
+        # Not seen many times with the same objectId
+        f_ndethist = ndethist <= 2
+
+        mask_roid = f_distance1 & f_distance2 & f_relative_distance & f_ndethist
         flags[mask_roid] = 3
 
     return pd.Series(flags)
