@@ -106,6 +106,27 @@ def load_scikit_model(fn: str = ''):
     """
     return pickle.load(open(fn, 'rb'))
 
+def load_pcs(fn, npcs):
+    """ Load PC from disk into a Pandas DataFrame
+
+    Parameters
+    ----------
+    fn: str
+        Filename. This file should be known from all machines!
+    npcs: int
+        Number of principal components to load
+
+    Return
+    ----------
+    clf: sklearn.ensemble.forest.RandomForestClassifier
+    """
+    comp = pd.read_csv(path)
+    pcs = {}
+    for i in range(npcs):
+        pcs[i + 1] = comp.iloc[i].values
+
+    return pd.DataFrame(pcs)
+
 
 if __name__ == "__main__":
     """ Execute the test suite """
