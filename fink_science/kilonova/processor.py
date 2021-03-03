@@ -22,6 +22,7 @@ import os
 
 from fink_science.conversion import mag2fluxcal_snana
 from fink_science.utilities import load_scikit_model, load_pcs
+from fink_science.kilonova.lib_kn import extract_all_filters_fink
 
 from fink_science import __file__
 
