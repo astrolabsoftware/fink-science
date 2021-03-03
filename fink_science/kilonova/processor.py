@@ -25,6 +25,8 @@ from fink_science.utilities import load_scikit_model, load_pcs
 
 from fink_science import __file__
 
+from fink_science.tester import spark_unit_tests
+
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None) -> pd.Series:
     """ Return the probability of an alert to be a Kilonova using a Random
@@ -130,17 +132,17 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
         model = load_scikit_model(model_path.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/kn_model.pkl'
+        model_path = curdir + '/data/models/model_1PC_2KN_Cosmins_models.pkl'
         model = load_scikit_model(model_path)
 
     # Load pcs
     if pcs_path is not None:
         pcs = load_pcs(pcs_path.values[0], npcs)
     else:
-        # default - 3 components?
+        # default - 1 component
         curdir = os.path.dirname(os.path.abspath(__file__))
         pcs_path_ = curdir + '/data/models/components.csv'
-        pcs = load_pcs(pcs_path_, npcs=3)
+        pcs = load_pcs(pcs_path_, npcs=1)
 
     test_features = []
     filters = ['g', 'r']
