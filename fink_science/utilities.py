@@ -121,7 +121,7 @@ def load_pcs(fn, npcs):
     ----------
     clf: sklearn.ensemble.forest.RandomForestClassifier
     """
-    comp = pd.read_csv(path)
+    comp = pd.read_csv(fn)
     pcs = {}
     for i in range(npcs):
         pcs[i + 1] = comp.iloc[i].values
