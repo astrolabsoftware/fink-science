@@ -12,6 +12,7 @@ This repository contains science modules used to generate added values to alert 
 - `microlensing`: returns the predicted class (among microlensing, variable star, cataclysmic event, and constant event) & probability of an alert to be a microlensing event in each band using [LIA](https://github.com/dgodinez77/LIA).
 - `asteroids`: Determine if the alert is a Solar System Object (experimental).
 - `nalerthist`: Number of detections contained in each alert (current+history). Upper limits are not taken into account.
+- `kilonova`: returns the probability of an alert to be a kilonova using a Random Forest Classifier (binary classification).
 
 You will find README in each subfolder describing the module.
 
