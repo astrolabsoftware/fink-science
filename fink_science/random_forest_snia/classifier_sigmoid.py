@@ -23,7 +23,7 @@ from fink_science.random_forest_snia.sigmoid import fsigmoid
 
 columns_to_keep = ['MJD', 'FLT', 'FLUXCAL', 'FLUXCALERR']
 fluxes = ['FLUXCAL', 'FLUXCALERR']
-
+RF_FEATURE_NAMES = 'a_g,b_g,c_g,snratio_g,chisq_g,nrise_g,a_r,b_r,c_r,snratio_r,chisq_r,nrise_r'.split(',')
 
 def filter_data(data, filt):
     """Select data according to the value of the
