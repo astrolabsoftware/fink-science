@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf, PandasUDFType, split
 from pyspark.sql.types import DoubleType, StringType
 
 import pandas as pd
@@ -186,7 +186,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf) -> pd.Series:
     ...   index = RF_FEATURE_NAMES.index(name)
     ...   df = df.withColumn(name, split(df['features'], ',')[index])
 
-    # take the first 100 alerts with higher score
+    # Order alerts by feature score
     >>> df.orderBy(RF_FEATURE_NAMES[0], ascending=False).count()
     """
     # Flag empty alerts
