@@ -33,7 +33,6 @@ jobs:
     - name: Set up env [1/2]
       run: |
         echo "FINK_SCIENCE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
-        echo `python -V`
     - name: Install Java 8
       run: |
         source conf/java8_for_xenial.sh
@@ -42,7 +41,6 @@ jobs:
         axel -n10 --quiet https://archive.apache.org/dist/spark/spark-${{ matrix.spark-version }}/spark-${{ matrix.spark-version }}-bin-hadoop2.7.tgz
         tar -xf spark-${{ matrix.spark-version }}-bin-hadoop2.7.tgz
         echo "SPARK_HOME=$FINK_SCIENCE/spark-${{ matrix.spark-version }}-bin-hadoop2.7" >> $GITHUB_ENV
-        echo `python -V`
     - name: Set up env [2/2]
       run: |
         echo "SPARKLIB=${SPARK_HOME}/python:${SPARK_HOME}/python/lib/py4j-0.10.7-src.zip" >> $GITHUB_ENV
@@ -50,13 +48,9 @@ jobs:
         echo "${SPARK_HOME}/bin:${SPARK_HOME}/sbin" >> $GITHUB_PATH
         echo "spark.yarn.jars=${SPARK_HOME}/jars/*.jar" > ${SPARK_HOME}/conf/spark-defaults.conf
         echo "ARROW_PRE_0_15_IPC_FORMAT=1" > ${SPARK_HOME}/conf/spark-env.sh
-        echo `python -V`
     - name: Install Python dependencies
       run: |
-        echo `python -V`
         pip install --upgrade pip setuptools wheel
-        echo `python -V`
-        echo `pip -V`
         source ./install_python_deps.sh
         echo "PYTHONPATH="${PYTHONPATH}:${SPARKLIB}:${FINK_SCIENCE}"" >> $GITHUB_ENV
     - name: Check env
@@ -65,9 +59,9 @@ jobs:
         echo "SPARK_HOME: $SPARK_HOME"
         echo "SPARKLIB: $SPARKLIB"
         echo "PYTHONPATH: $PYTHONPATH"
+        echo "JAVA_HOME: $JAVA_HOME"
         echo `python -V`
     - name: Run test suites
       run: |
-        echo `python -V`
         ./run_tests.sh
         bash <(curl -s https://codecov.io/bash)
