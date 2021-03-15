@@ -1,4 +1,4 @@
-name: Sentinel
+name: Failure
 
 on:
   push:
