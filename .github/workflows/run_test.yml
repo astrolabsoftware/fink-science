@@ -51,9 +51,8 @@ jobs:
     - name: Install Python dependencies
       run: |
         pip install --upgrade pip setuptools wheel
-        pip install -r requirements.txt
-        pip install torch==1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
-        echo "PYTHONPATH="${SPARKLIB}:${FINK_SCIENCE}"" >> $GITHUB_ENV
+        source ./install_python_deps.sh
+        echo "PYTHONPATH="${PYTHONPATH}:${SPARKLIB}:${FINK_SCIENCE}"" >> $GITHUB_ENV
     - name: Check env
       run: |
         echo "FINK_SCIENCE: $FINK_SCIENCE"
