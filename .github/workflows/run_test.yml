@@ -36,6 +36,7 @@ jobs:
     - name: Install Java 8
       run: |
         source conf/java8_for_xenial.sh
+        echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
     - name: Install Spark 2.4.7
       run: |
         axel -n10 --quiet https://archive.apache.org/dist/spark/spark-${{ matrix.spark-version }}/spark-${{ matrix.spark-version }}-bin-hadoop2.7.tgz
