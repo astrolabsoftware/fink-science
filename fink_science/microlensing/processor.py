@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pyspark.sql.functions import udf, col
+from pyspark.sql.functions import pandas_udf, PandasUDFType, split
+from pyspark.sql.types import StringType, FloatType
 
 import numpy as np
+import pandas as pd
 
 import os
 import warnings
@@ -22,6 +25,9 @@ import warnings
 from fink_science import __file__
 from fink_science.microlensing.classifier import load_external_model
 from fink_science.microlensing.classifier import load_mulens_schema_twobands
+from fink_science.microlensing.classifier import _extract
+from fink_science.microlensing.classifier import LIA_FEATURE_NAMES
+
 from fink_science.conversion import dc_mag
 
 from LIA import microlensing_classifier
@@ -135,9 +141,110 @@ def mulens(
         output = microlensing_classifier.predict(mag, err, rf, pca)
 
         # Update the results
-        out.extend([str(output[0]), float(output[1][0])])
+        # Beware, in the branch FINK the order has changed
+        # classification,p_cons,p_CV,p_ML,p_var = microlensing_classifier.predict()
+        out.extend([str(output[0]), float(output[3][0])])
 
     return out
+
+@pandas_udf(StringType(), PandasUDFType.SCALAR)
+def extract_features_mulens(
+        fid, magpsf, sigmapsf, magnr, sigmagnr,
+        magzpsci, isdiffpos):
+    """ Returns the predicted class (among microlensing, variable star,
+    cataclysmic event, and constant event) & probability of an alert to be
+    a microlensing event in each band using a Random Forest Classifier.
+
+    Parameters
+    ----------
+    fid: Spark DataFrame Column
+        Filter IDs (int)
+    magpsf, sigmapsf: Spark DataFrame Columns
+        Magnitude from PSF-fit photometry, and 1-sigma error
+    magnr, sigmagnr: Spark DataFrame Columns
+        Magnitude of nearest source in reference image PSF-catalog
+        within 30 arcsec and 1-sigma error
+    magzpsci: Spark DataFrame Column
+        Magnitude zero point for photometry estimates
+    isdiffpos: Spark DataFrame Column
+        t => candidate is from positive (sci minus ref) subtraction
+        f => candidate is from negative (ref minus sci) subtraction
+
+    Returns
+    ----------
+    out: list of string
+        Return the features (2 * 47)
+
+    Examples
+    ----------
+    >>> from fink_science.utilities import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns
+    >>> what = ['fid', 'magpsf', 'sigmapsf', 'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> df = df.withColumn('features', extract_features_mulens(*args))
+
+    >>> for name in LIA_FEATURE_NAMES:
+    ...   index = LIA_FEATURE_NAMES.index(name)
+    ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
+
+    # Trigger something
+    >>> df.agg({LIA_FEATURE_NAMES[0]: "min"}).collect()[0][0]
+    0.0
+    """
+    warnings.filterwarnings('ignore')
+
+    # Loop over alerts
+    outs = []
+    for index in range(len(fid)):
+        # Select only valid measurements (not upper limits)
+        maskNotNone = np.array(magpsf.values[index]) == np.array(magpsf.values[index])
+
+        # Loop over filters
+        out = ''
+        for filt in [1, 2]:
+            maskFilter = np.array(fid.values[index]) == filt
+            m = maskNotNone * maskFilter
+
+            # Reject if less than 10 measurements
+            if np.sum(m) < 10:
+                out += ','.join(['0'] * len(LIA_FEATURE_NAMES))
+                continue
+
+            # Compute DC mag
+            mag, err = np.array([
+                dc_mag(i[0], i[1], i[2], i[3], i[4], i[5], i[6])
+                for i in zip(
+                    np.array(fid.values[index])[m],
+                    np.array(magpsf.values[index])[m],
+                    np.array(sigmapsf.values[index])[m],
+                    np.array(magnr.values[index])[m],
+                    np.array(sigmagnr.values[index])[m],
+                    np.array(magzpsci.values[index])[m],
+                    np.array(isdiffpos.values[index])[m])
+            ]).T
+
+            # Run the classifier
+            output = _extract(mag, err)
+
+            # Update the results
+            out += output
+        outs.append(out)
+
+    return pd.Series(outs)
 
 
 if __name__ == "__main__":

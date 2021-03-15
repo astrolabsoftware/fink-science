@@ -15,7 +15,31 @@
 import pickle
 import os
 
+from LIA import extract_features
+
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+
+LIA_FEATURE_NAMES = ['f{}_{}'.format(j, i) for i in ['g', 'r'] for j in range(47)]
+
+def _extract(mag, magerr):
+    """ Extract features used by LIA classifier
+
+    Parameters
+    ----------
+    mag : array
+        Magnitude array (single band)
+    magerr : array
+        Corresponing photometric errors (single band)
+
+    Returns
+    -------
+    out: str
+        String containing all the features for one band
+    """
+    stat_array = extract_features.extract_all(mag, magerr, convert=True)
+    out = ','.join(np.array(stat_array, dtype=str))
+
+    return out
 
 def load_mulens_schema_twobands():
     """ DataFrame Schema for the mulens UDF using 2 filter bands
