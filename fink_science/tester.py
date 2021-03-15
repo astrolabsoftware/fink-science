@@ -79,7 +79,7 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
 
     conf = SparkConf()
     confdic = {
-        "spark.jars.packages": 'org.apache.spark:spark-avro_2.11:2.4.4',
+        "spark.jars.packages": 'org.apache.spark:spark-avro_2.11:2.4.7',
         "spark.python.daemon.module": "coverage_daemon"}
     conf.setMaster("local[2]")
     conf.setAppName("fink_science_test")
