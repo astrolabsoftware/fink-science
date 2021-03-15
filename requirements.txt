@@ -17,7 +17,7 @@ astropy
 astroquery
 
 # Microlensing
--e git://github.com/dgodinez77/LIA.git#egg=LIA
+-e git://github.com/dgodinez77/LIA.git@FINK#egg=LIA
 
 # Supernnova
 supernnova
