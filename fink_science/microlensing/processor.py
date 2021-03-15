@@ -17,6 +17,7 @@ from pyspark.sql.functions import pandas_udf, PandasUDFType, split
 from pyspark.sql.types import StringType, FloatType
 
 import numpy as np
+import pandas as pd
 
 import os
 import warnings
@@ -140,7 +141,9 @@ def mulens(
         output = microlensing_classifier.predict(mag, err, rf, pca)
 
         # Update the results
-        out.extend([str(output[0]), float(output[1][0])])
+        # Beware, in the branch FINK the order has changed
+        # classification,p_cons,p_CV,p_ML,p_var = microlensing_classifier.predict()
+        out.extend([str(output[0]), float(output[3][0])])
 
     return out
 
@@ -180,7 +183,7 @@ def extract_features_mulens(
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns
-    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf', 'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+    >>> what = ['fid', 'magpsf', 'sigmapsf', 'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -196,10 +199,11 @@ def extract_features_mulens(
 
     >>> for name in LIA_FEATURE_NAMES:
     ...   index = LIA_FEATURE_NAMES.index(name)
-    ...   df = df.withColumn(name, split(df['features'], ',')[index])
+    ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
 
-    # Order alerts by feature score
-    >>> df.orderBy(LIA_FEATURE_NAMES[0], ascending=False).count()
+    # Trigger something
+    >>> df.agg({LIA_FEATURE_NAMES[0]: "min"}).collect()[0][0]
+    0.0
     """
     warnings.filterwarnings('ignore')
 
@@ -217,7 +221,7 @@ def extract_features_mulens(
 
             # Reject if less than 10 measurements
             if np.sum(m) < 10:
-                out += ','.join(['0'] * 47)
+                out += ','.join(['0'] * len(LIA_FEATURE_NAMES))
                 continue
 
             # Compute DC mag
