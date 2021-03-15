@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pyspark.sql.functions import pandas_udf, PandasUDFType, split
-from pyspark.sql.types import DoubleType, StringType
+from pyspark.sql.types import DoubleType, StringType, FloatType
 
 import pandas as pd
 import numpy as np
@@ -184,10 +184,11 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf) -> pd.Series:
 
     >>> for name in RF_FEATURE_NAMES:
     ...   index = RF_FEATURE_NAMES.index(name)
-    ...   df = df.withColumn(name, split(df['features'], ',')[index])
+    ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
 
-    # Order alerts by feature score
-    >>> df.orderBy(RF_FEATURE_NAMES[0], ascending=False).count()
+    # Trigger something
+    >>> df.agg({RF_FEATURE_NAMES[0]: "min"}).collect()[0][0]
+    0.0
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
