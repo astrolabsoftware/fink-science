@@ -111,7 +111,8 @@ def mulens(
     warnings.filterwarnings('ignore')
 
     # Select only valid measurements (not upper limits)
-    maskNotNone = np.array(magpsf) == np.array(magpsf)
+    badval = None
+    maskNotNone = np.array(magpsf) != badval
 
     out = []
     for filt in [1, 2]:
