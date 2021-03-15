@@ -1,4 +1,4 @@
-# Copyright 2020 AstroLab Software
+# Copyright 2020-2021 AstroLab Software
 # Author: Marco Leoni, Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -96,19 +96,20 @@ def fit_sigmoid(time: np.array, flux: np.array) -> list:
     """
     flux = np.asarray(flux)
     t0 = time[flux.argmax()] - time[0]
-    if(t0 > 0):
-        slope = (flux.argmax()-flux.argmin())/(time[flux.argmax()] -time[flux.argmin()] )
+    if t0 > 0:
+        dt = time[flux.argmax()] - time[flux.argmin()]
+        slope = (flux.argmax() - flux.argmin()) / dt
     else:
         slope = 1.
     f0 = flux[0]
     aguess = slope
     cguess = np.max(flux)
-    
-    if f0!=0 and cguess/f0 != 1. :
-        bguess = ( np.log(cguess/f0-1.) )/aguess
+
+    if f0 != 0 and cguess / f0 != 1.:
+        bguess = np.log(cguess / f0 - 1.) / aguess
     else:
         bguess = 1.0
-        
+
     guess = [aguess, bguess, cguess]
     result = least_squares(errfunc_sigmoid, guess, args=(time, flux))
 

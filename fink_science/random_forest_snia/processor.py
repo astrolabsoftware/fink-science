@@ -1,4 +1,4 @@
-# Copyright 2019-2020 AstroLab Software
+# Copyright 2019-2021 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pyspark.sql.functions import pandas_udf, PandasUDFType, split
-from pyspark.sql.types import DoubleType, StringType, FloatType
+from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.types import DoubleType, StringType
 
 import pandas as pd
 import numpy as np
@@ -162,6 +162,8 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf) -> pd.Series:
 
     Examples
     ----------
+    >>> from pyspark.sql.functions import split
+    >>> from pyspark.sql.types import FloatType
     >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
