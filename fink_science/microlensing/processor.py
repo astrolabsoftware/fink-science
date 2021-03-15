@@ -1,4 +1,4 @@
-# Copyright 2020 AstroLab Software
+# Copyright 2020-2021 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pyspark.sql.functions import udf, col
-from pyspark.sql.functions import pandas_udf, PandasUDFType, split
-from pyspark.sql.types import StringType, FloatType
+from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.types import StringType
 
 import numpy as np
 import pandas as pd
@@ -23,8 +22,6 @@ import os
 import warnings
 
 from fink_science import __file__
-from fink_science.microlensing.classifier import load_external_model
-from fink_science.microlensing.classifier import load_mulens_schema_twobands
 from fink_science.microlensing.classifier import _extract
 from fink_science.microlensing.classifier import LIA_FEATURE_NAMES
 
@@ -68,6 +65,8 @@ def mulens(
 
     Examples
     ---------
+    >>> from fink_science.microlensing.classifier import load_external_model
+    >>> from fink_science.microlensing.classifier import load_mulens_schema_twobands
     >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
@@ -96,8 +95,8 @@ def mulens(
     >>> rfbcast = spark.sparkContext.broadcast(rf)
     >>> pcabcast = spark.sparkContext.broadcast(pca)
 
-    >>> t = udf(mulens_wrapper, schema)
-    >>> args = [col(i) for i in what_prefix]
+    >>> t = F.udf(mulens_wrapper, schema)
+    >>> args = [F.col(i) for i in what_prefix]
     >>> df_mulens = df.withColumn('mulens', t(*args))
 
     # Drop temp columns
@@ -112,7 +111,7 @@ def mulens(
     warnings.filterwarnings('ignore')
 
     # Select only valid measurements (not upper limits)
-    maskNotNone = np.array(magpsf) != None
+    maskNotNone = np.array(magpsf) is not None
 
     out = []
     for filt in [1, 2]:
@@ -177,6 +176,8 @@ def extract_features_mulens(
 
     Examples
     ----------
+    >>> from pyspark.sql.functions import split
+    >>> from pyspark.sql.types import FloatType
     >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 

@@ -15,6 +15,8 @@
 import pickle
 import os
 
+import numpy as np
+
 from LIA import extract_features
 
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType
