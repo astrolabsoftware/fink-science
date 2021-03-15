@@ -21,6 +21,9 @@ import numpy as np
 import pandas as pd
 import pickle
 
+KN_FEATURE_NAMES_1PC = 'npoints_g,residuo_g,coeff1_g,npoints_r,residuo_r,coeff1_r'.split(',')
+KN_FEATURE_NAMES_3PC = 'npoints_g,residuo_g,coeff1_g,coeff2_g,coeff3_g,npoints_r,residuo_r,coeff1_r,coeff2_r,coeff3_r'.split(',')
+
 def filter_points(
         obs_mjd: np.array, obs_flux: np.array,
         pc_epoch_grid: np.array):
