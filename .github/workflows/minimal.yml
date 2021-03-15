@@ -1,4 +1,4 @@
-name: Failure
+name: test
 
 on:
   push:
