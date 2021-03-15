@@ -1,4 +1,4 @@
-# Copyright 2019 AstroLab Software
+# Copyright 2019-2021 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +17,6 @@ import csv
 import logging
 import requests
 import numpy as np
-import pandas as pd
-
-from astroquery.simbad import Simbad
-import astropy.coordinates as coord
-import astropy.units as u
 
 from fink_science.tester import regular_unit_tests
 

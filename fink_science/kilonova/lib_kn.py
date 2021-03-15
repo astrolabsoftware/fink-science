@@ -12,14 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import pandas as pd
-import numpy as np
-import argparse
-import h5py
 import numpy as np
 import pandas as pd
-import pickle
 
 KN_FEATURE_NAMES_1PC = 'npoints_g,residuo_g,coeff1_g,npoints_r,residuo_r,coeff1_r'.split(',')
 KN_FEATURE_NAMES_3PC = 'npoints_g,residuo_g,coeff1_g,coeff2_g,coeff3_g,npoints_r,residuo_r,coeff1_r,coeff2_r,coeff3_r'.split(',')

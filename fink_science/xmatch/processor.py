@@ -1,4 +1,4 @@
-# Copyright 2019 AstroLab Software
+# Copyright 2019-2021 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import BooleanType, StringType
+from pyspark.sql.types import StringType
 
 import pandas as pd
 import numpy as np
