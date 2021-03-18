@@ -35,6 +35,7 @@ setuptools.setup(
             'data/models/*.sav',
             'data/models/*.npy',
             'data/models/*.pkl',
+            'data/models/*.csv'
             'data/models/snn_models/*/*.pt',
             'data/models/snn_models/*/*.json',
             'data/models/snn_models/*/*.txt'],
