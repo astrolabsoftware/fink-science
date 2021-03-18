@@ -15,8 +15,7 @@
 import numpy as np
 import pandas as pd
 
-KN_FEATURE_NAMES_1PC = 'npoints_g,residuo_g,coeff1_g,npoints_r,residuo_r,coeff1_r'.split(',')
-KN_FEATURE_NAMES_3PC = 'npoints_g,residuo_g,coeff1_g,coeff2_g,coeff3_g,npoints_r,residuo_r,coeff1_r,coeff2_r,coeff3_r'.split(',')
+KN_FEATURE_NAMES_1PC = 'npoints_g,residuo_g,coeff1_g,maxflux_g,npoints_r,residuo_r,coeff1_r,maxflux_r'.split(',')
 
 def filter_points(
         obs_mjd: np.array, obs_flux: np.array,
@@ -90,7 +89,7 @@ def filter_points(
 def extract_features(
         mjd: np.array, flux: np.array, epoch_lim: list,
         time_bin: float, pcs: pd.DataFrame,
-        flux_lim=0, norm=False):
+        flux_lim=0):
     """
     Extract features from light curve.
 
@@ -111,8 +110,6 @@ def extract_features(
         values their amplitude at each epoch in the grid.
     flux_lim: float (optional)
         Min flux cut applied to all points. Default is 0.
-    norm: bool (optional)
-        If True normalize such that max(flux) = 1. Default is False.
 
     Returns
     -------
@@ -145,10 +142,7 @@ def extract_features(
             coef_mat[key] = pcs[key].values[mjd_flag]
 
         # fit coefficients
-        if norm:
-            max_newflux = max(new_flux)
-        else:
-            max_newflux = 1
+        max_newflux = max(new_flux)
 
         x, res, rank, s = np.linalg.lstsq(
             coef_mat.values,
@@ -171,7 +165,7 @@ def extract_features(
         features.append(max_newflux)
 
     else:
-        features = [0 for i in range(len(pcs.keys()) + 3)]
+        features = [0 for i in range(npcs + 3)]
 
     return features
 
@@ -179,7 +173,7 @@ def extract_features(
 def extract_all_filters_fink(
         epoch_lim: list, pcs: pd.DataFrame,
         time_bin: float, filters: list,
-        lc: pd.DataFrame, flux_lim=0, norm=False):
+        lc: pd.DataFrame, flux_lim=0):
     """Extract features from 1 object in all available filters.
 
     Parameters
@@ -200,8 +194,6 @@ def extract_all_filters_fink(
         Width of time gap between two elements in PCs.
     flux_lim: float (optional)
         Min flux cut applied to all points. Default is 0.
-    norm: bool (optional)
-        If True normalize such that max(flux) = 1. Default is False.
 
     Returns
     -------
@@ -227,6 +219,6 @@ def extract_all_filters_fink(
             flux_lim=flux_lim
         )
 
-        all_features = all_features + res[:-1]
+        all_features = all_features + res
 
     return all_features
