@@ -303,7 +303,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
         features = extract_all_filters_fink(
             epoch_lim=epoch_lim, pcs=pcs,
             time_bin=time_bin, filters=filters,
-            lc=pdf_sub, flux_lim=flux_lim, norm=False)
+            lc=pdf_sub, flux_lim=flux_lim)
         test_features.append(features)
 
     to_return_features = np.zeros(
