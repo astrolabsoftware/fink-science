@@ -306,12 +306,10 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
             lc=pdf_sub, flux_lim=flux_lim, norm=False)
         test_features.append(features)
 
-    if npcs == 1:
-        KN_FEATURE_NAMES = KN_FEATURE_NAMES_1PC
-    else:
-        KN_FEATURE_NAMES = KN_FEATURE_NAMES_3PC
-
-    to_return_features = np.zeros((len(jd), len(KN_FEATURE_NAMES)), dtype=float)
+    to_return_features = np.zeros(
+        (len(jd), len(KN_FEATURE_NAMES_1PC)),
+        dtype=float
+    )
     to_return_features[mask] = test_features
 
     concatenated_features = [
