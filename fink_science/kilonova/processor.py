@@ -23,7 +23,7 @@ import os
 from fink_science.conversion import mag2fluxcal_snana
 from fink_science.utilities import load_scikit_model, load_pcs
 from fink_science.kilonova.lib_kn import extract_all_filters_fink
-from fink_science.kilonova.lib_kn import KN_FEATURE_NAMES_1PC, KN_FEATURE_NAMES_3PC
+from fink_science.kilonova.lib_kn import KN_FEATURE_NAMES_1PC
 from fink_science import __file__
 
 from fink_science.tester import spark_unit_tests
@@ -43,14 +43,14 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
         Magnitude from PSF-fit photometry, and 1-sigma error
     model_path: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
-        model `data/models/model_3PC_2KN_Cosmins_models.pkl` is loaded.
+        model `data/models/model_1PC_2KN_Cosmins_models.pkl` is loaded.
     pcs_path: Spark DataFrame Column, optional
         Path to the Principal Component file. Default is None, in which case
         the `data/models/components.csv` is loaded.
     npcs: Spark DataFrame Column, optional
         Integer representing the number of Principal Component to use. It
         should be consistent to the training model used. Default is None (i.e.
-        default npcs for the default `model_path`, that is 3).
+        default npcs for the default `model_path`, that is 1).
 
     Returns
     ----------
@@ -154,7 +154,7 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
         features = extract_all_filters_fink(
             epoch_lim=epoch_lim, pcs=pcs,
             time_bin=time_bin, filters=filters,
-            lc=pdf_sub, flux_lim=flux_lim, norm=False)
+            lc=pdf_sub, flux_lim=flux_lim)
         test_features.append(features)
 
     # Remove pathological values
@@ -163,8 +163,7 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
         'residuo_'
     ] + [
         'coeff' + str(i + 1) + '_' for i in range(len(pcs.keys()))
-    ]
-    # + ['max_flux_value_']
+    ] + ['maxflux_']
 
     columns = [i + j for j in ['g', 'r'] for i in names_root]
 
@@ -211,7 +210,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
     npcs: Spark DataFrame Column, optional
         Integer representing the number of Principal Component to use. It
         should be consistent to the training model used. Default is None (i.e.
-        default npcs for the default `model_path`, that is 3).
+        default npcs for the default `model_path`, that is 1).
 
     Returns
     ----------
@@ -304,15 +303,13 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
         features = extract_all_filters_fink(
             epoch_lim=epoch_lim, pcs=pcs,
             time_bin=time_bin, filters=filters,
-            lc=pdf_sub, flux_lim=flux_lim, norm=False)
+            lc=pdf_sub, flux_lim=flux_lim)
         test_features.append(features)
 
-    if npcs == 1:
-        KN_FEATURE_NAMES = KN_FEATURE_NAMES_1PC
-    else:
-        KN_FEATURE_NAMES = KN_FEATURE_NAMES_3PC
-
-    to_return_features = np.zeros((len(jd), len(KN_FEATURE_NAMES)), dtype=float)
+    to_return_features = np.zeros(
+        (len(jd), len(KN_FEATURE_NAMES_1PC)),
+        dtype=float
+    )
     to_return_features[mask] = test_features
 
     concatenated_features = [
