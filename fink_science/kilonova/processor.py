@@ -177,7 +177,7 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
     matrix_clean = matrix[~zeros]
 
     # If all alerts are flagged as bad
-    if np.shape(matrix_clean) == (0, 8):
+    if np.shape(matrix_clean) == (0, len(KN_FEATURE_NAMES_1PC)):
         to_return = np.zeros(len(jd), dtype=float)
         return pd.Series(to_return)
 
