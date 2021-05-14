@@ -5,9 +5,9 @@ This module perform a classification of alerts based on image visual content. It
 # Procedure
 
 The image classification perform in three steps :
-* Filter images that are noised and/or corrupted (corrupted image contains Nan based on python definition of Nan
+* Filter images that are noised and/or corrupted (corrupted image contains Nan based on python definition of Nan)
 
-* All images that are not noised and not corrupted are binarize with a threshold computed by triangle_thershold method
+* All images that are not noised and not corrupted are binarize with a threshold computed by triangle_thershold method from scikit_image library
 then binary image which contains only small region are categorize as star else they go to the third step
 
 * Final step use chan_vese algorithm to segment images and produce again a binary image. 
@@ -21,7 +21,7 @@ This module adds one new columns for ZTF data:
 |---------|
 | str     |
 
-The labels assign by the classification. labels are 'safe_noised', 'corrupted_noised', 'corrupted_clear', 'safe_clear_star', 'safe_clear_extend'
+The labels added by the classification are 'safe_noised', 'corrupted_noised', 'corrupted_clear', 'safe_clear_star', 'safe_clear_extend'
 
 # Classification Example
 
