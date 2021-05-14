@@ -37,7 +37,7 @@ def labels_assignation(stamps: bytes) -> pd.Series:
     Examples
     --------
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
-    >>> img_classification_df = df.withColumn('labels', ic.labels_assignation(df['cutoutScience.stampData'])).toPandas()
+    >>> img_classification_df = df.withColumn('labels', labels_assignation(df['cutoutScience.stampData'])).toPandas()
 
     >>> safe_clear_star = img_classification_df[img_classification_df['objectId'] == 'ZTF18acrunkm']
     >>> list(safe_clear_star['labels'] == 'safe_clear_star')[0] == True
