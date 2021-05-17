@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import image_classification as ic
+from fink_science.image_classification.image_classification import img_labelisation
 import pandas as pd
 import os
 from pyspark.sql.functions import pandas_udf, PandasUDFType
@@ -57,7 +57,7 @@ def labels_assignation(stamps: bytes) -> pd.Series:
     """
     res = []
     for cutout in stamps.values:
-        res.append(ic.img_labelisation(cutout))
+        res.append(img_labelisation(cutout))
 
     return pd.Series(res)
 

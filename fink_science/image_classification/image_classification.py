@@ -17,7 +17,7 @@ import gzip
 import io
 from astropy.io import fits
 import numpy as np
-import utils
+from fink_science.image_classification.utils import img_normalizer
 
 from skimage.exposure import equalize_adapthist
 from skimage.filters import median
@@ -174,7 +174,7 @@ def img_labelisation(stamp):
                     label_img += "star"
                 else:
                     # image is normalized between -1 and 1
-                    norm_img = utils.img_normalizer(img, -1, 1)
+                    norm_img = img_normalizer(img, -1, 1)
                     # then a median filter is applied to reduce some noise
                     norm_img = median(norm_img)
                     # and finally the image contrast is enhanced by an histogram equalization method
