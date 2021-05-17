@@ -17,9 +17,6 @@ import io
 from astropy.io import fits
 import numpy as np
 
-from pyspark.context import SparkContext
-from pyspark.sql.session import SparkSession
-
 def unzip_cutout(stamp):
     """ Extract an image from a gzip format file
     Image is contains on a fits format file. Due to a significant number of corrupted images,
