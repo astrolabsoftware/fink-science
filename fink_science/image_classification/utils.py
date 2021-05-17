@@ -110,22 +110,3 @@ def img_normalizer(img, vmin=0, vmax=1):
            [ 102.16882492,  102.16882492,  102.16882492]])
     """
     return (vmax - vmin) * sigmoid(img) + vmin
-
-
-if __name__ == "__main__":
-
-    sc = SparkContext('local')
-    spark = SparkSession(sc)
-
-    test_1 = np.array([[0, 1, 2], [3, 40, 5], [2, 1, 0]])
-    test_2 = np.array([[0, 0, 0], [1, 0.5, 1], [1, 1, 1]])
-
-    print(img_normalizer(test_1))
-    print(img_normalizer(test_2, vmin=-255, vmax=255))
-
-    path_data_21 = '/user/julien.peloton/ztf_alerts/science_reprocessed/year=2021/month=03/day=05'
-    print("load data")
-    df_21 = spark.read.format('parquet').load(path_data_21)
-
-    print("end of load data")
-    print("alerts available: {}".format(df_21.count()))
