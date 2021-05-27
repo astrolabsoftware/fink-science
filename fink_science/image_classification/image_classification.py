@@ -165,45 +165,58 @@ def img_labelisation(stamp):
                 region_props = regionprops_table(labeled_img, intensity_image=img, properties=properties)
                 region_df = pd.DataFrame(region_props)
 
-                # get the object of maximal size in the segmented image
-                object_max_size = np.max(list(region_df['perimeter']))
+                object_max_size = list(region_df['perimeter'])
+                if len(object_max_size) > 0:
 
-                # if the maximal size object is small enough then the image is classed as star
-                # else the image go to the second pass
-                if object_max_size < star_limit:
-                    label_img += "star"
-                else:
-                    # image is normalized between -1 and 1
-                    norm_img = img_normalizer(img, -1, 1)
-                    # then a median filter is applied to reduce some noise
-                    norm_img = median(norm_img)
-                    # and finally the image contrast is enhanced by an histogram equalization method
-                    norm_img = equalize_adapthist(norm_img, clip_limit=0.01, nbins=512)
+                    # get the object of maximal size in the segmented image
+                    object_max_size = np.max(object_max_size)
 
-                    # the enhanced image is then processed by the chan vese algorithm.
-                    # the image is segmented between high intensity region and low intensity region.
-                    # source: https://arxiv.org/abs/1107.2782
-                    cv = chan_vese(norm_img, mu=0, lambda1=1, lambda2=2, tol=1e-9, max_iter=600,
-                                   dt=100, init_level_set="checkerboard").astype(np.bool)
-
-                    # the segmented region is then labeled in order to compute some information
-                    labeled_img_cv = label(cv, connectivity=1).astype(np.byte)
-                    # the properties computed are the same as the first part but the area is added. It is just a properties
-                    # that return the number of pixels of the region.
-                    properties = ('label', 'area', 'perimeter')
-                    region_props_cv = regionprops_table(labeled_img_cv, intensity_image=img, properties=properties)
-                    region_df_chan_vese = pd.DataFrame(region_props_cv)
-                    # a small filter remove the regions with only one pixels. we assume that one pixel area are just noise.
-                    zero_filter = region_df_chan_vese[region_df_chan_vese['area'] != 1]
-
-                    object_max_size = np.max(list(zero_filter['perimeter']))
-
-                    # a new higher threshold is used because median filtering and histogram equalization tend to
-                    # expand the size of ponctual object.
-                    if object_max_size < 40:
+                    # if the maximal size object is small enough then the image is classed as star
+                    # else the image go to the second pass
+                    if object_max_size < star_limit:
                         label_img += "star"
                     else:
-                        # extend label is given to images that pass all steps.
-                        label_img += "extend"
+                        # image is normalized between -1 and 1
+                        norm_img = img_normalizer(img, -1, 1)
+                        # then a median filter is applied to reduce some noise
+                        norm_img = median(norm_img)
+                        # and finally the image contrast is enhanced by an histogram equalization method
+                        norm_img = equalize_adapthist(norm_img, clip_limit=0.01, nbins=512)
+
+                        # the enhanced image is then processed by the chan vese algorithm.
+                        # the image is segmented between high intensity region and low intensity region.
+                        # source: https://arxiv.org/abs/1107.2782
+                        cv = chan_vese(norm_img, mu=0, lambda1=1, lambda2=2, tol=1e-9, max_iter=600,
+                                       dt=100, init_level_set="checkerboard").astype(np.bool)
+
+                        # the segmented region is then labeled in order to compute some information
+                        labeled_img_cv = label(cv, connectivity=1).astype(np.byte)
+                        # the properties computed are the same as the first part but the area is added. It is just a properties
+                        # that return the number of pixels of the region.
+                        properties = ('label', 'area', 'perimeter')
+                        region_props_cv = regionprops_table(labeled_img_cv, intensity_image=img, properties=properties)
+                        region_df_chan_vese = pd.DataFrame(region_props_cv)
+                        # a small filter remove the regions with only one pixels. we assume that one pixel area are just noise.
+                        zero_filter = region_df_chan_vese[region_df_chan_vese['area'] != 1]
+
+                        object_size = list(zero_filter['perimeter'])
+
+                        if len(object_size) > 0:
+
+                            object_max_size = np.max(object_size)
+
+                            # a new higher threshold is used because median filtering and histogram equalization tend to
+                            # expand the size of ponctual object.
+                            if object_max_size < 40:
+                                label_img += "star"
+                            else:
+                                # extend label is given to images that pass all steps.
+                                label_img += "extend"
+
+                        else:
+                            label_img += "errorchanvese"
+
+                else:
+                    label_img += "errorthreshold"
 
             return label_img
