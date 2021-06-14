@@ -15,7 +15,16 @@
 import numpy as np
 import pandas as pd
 
-KN_FEATURE_NAMES_1PC = 'npoints_g,residuo_g,coeff1_g,maxflux_g,npoints_r,residuo_r,coeff1_r,maxflux_r'.split(',')
+def get_features_name(npcs):
+    names_root = [
+        'npoints_',
+        'residuo_'
+    ] + [
+        'coeff' + str(i + 1) + '_' for i in range(npcs)
+    ] + ['maxflux_']
+
+    return [i + j for j in ['g', 'r'] for i in names_root]
+
 
 def filter_points(
         obs_mjd: np.array, obs_flux: np.array,

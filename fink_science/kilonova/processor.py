@@ -23,7 +23,7 @@ import os
 from fink_science.conversion import mag2fluxcal_snana
 from fink_science.utilities import load_scikit_model, load_pcs
 from fink_science.kilonova.lib_kn import extract_all_filters_fink
-from fink_science.kilonova.lib_kn import KN_FEATURE_NAMES_1PC
+from fink_science.kilonova.lib_kn import get_features_name
 from fink_science import __file__
 
 from fink_science.tester import spark_unit_tests
@@ -177,7 +177,7 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
     matrix_clean = matrix[~zeros]
 
     # If all alerts are flagged as bad
-    if np.shape(matrix_clean) == (0, len(KN_FEATURE_NAMES_1PC)):
+    if np.shape(matrix_clean) == (0, len(get_features_name(npcs))):
         to_return = np.zeros(len(jd), dtype=float)
         return pd.Series(to_return)
 
@@ -312,7 +312,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
         test_features.append(features)
 
     to_return_features = np.zeros(
-        (len(jd), len(KN_FEATURE_NAMES_1PC)),
+        (len(jd), len(get_features_name(npcs))),
         dtype=float
     )
     to_return_features[mask] = test_features
