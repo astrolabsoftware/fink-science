@@ -291,7 +291,6 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
         'FLT': fid[mask].explode().replace({1: 'g', 2: 'r'})
     })
 
-
     # Load pcs
     if npcs is not None:
         npcs = int(npcs.values[0])
@@ -339,7 +338,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = '{}/data/models/KN_model_2PC'.format(path)
+    model_path = '{}/data/models/KN_model_2PC.pkl'.format(path)
     globs["model_path"] = model_path
 
     comp_path = '{}/data/models/components.csv'.format(path)
