@@ -140,7 +140,7 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
     else:
         npcs = 2
     if pcs_path is not None:
-        pcs_path_ = pcs_path.values
+        pcs_path_ = pcs_path.values[0]
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         pcs_path_ = curdir + '/data/models/components.csv'
@@ -297,7 +297,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
     else:
         npcs = 2
     if pcs_path is not None:
-        pcs_path_ = pcs_path.values
+        pcs_path_ = pcs_path.values[0]
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         pcs_path_ = curdir + '/data/models/components.csv'
