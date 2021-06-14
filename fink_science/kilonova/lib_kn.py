@@ -16,6 +16,20 @@ import numpy as np
 import pandas as pd
 
 def get_features_name(npcs):
+    """
+    Create the list of feature names depending on the number of principal components.
+
+    Parameters
+    ----------
+    npcs : int
+        number of principal components to use
+
+    Returns
+    -------
+    list
+        name of the features.
+
+    """
     names_root = [
         'npoints_',
         'residuo_'
