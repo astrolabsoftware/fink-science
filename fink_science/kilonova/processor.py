@@ -80,7 +80,7 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
     >>> df = df.withColumn('pKNe', knscore(*args))
 
     # Note that we can also specify a model
-    >>> extra_args = [F.lit(model_path), F.lit(comp_path), F.lit(1)]
+    >>> extra_args = [F.lit(model_path), F.lit(comp_path), F.lit(2)]
     >>> args = [F.col(i) for i in what_prefix] + extra_args
     >>> df = df.withColumn('pKNe', knscore(*args))
 
