@@ -23,7 +23,7 @@ import os
 from fink_science.conversion import mag2fluxcal_snana
 from fink_science.utilities import load_scikit_model, load_pcs
 from fink_science.kilonova.lib_kn import extract_all_filters_fink
-from fink_science.kilonova.lib_kn import KN_FEATURE_NAMES_1PC
+from fink_science.kilonova.lib_kn import get_features_name
 from fink_science import __file__
 
 from fink_science.tester import spark_unit_tests
@@ -43,7 +43,7 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
         Magnitude from PSF-fit photometry, and 1-sigma error
     model_path: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
-        model `data/models/model_1PC_2KN_Cosmins_models.pkl` is loaded.
+        model `data/models/KN_model_2PC.pkl` is loaded.
     pcs_path: Spark DataFrame Column, optional
         Path to the Principal Component file. Default is None, in which case
         the `data/models/components.csv` is loaded.
@@ -80,7 +80,7 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
     >>> df = df.withColumn('pKNe', knscore(*args))
 
     # Note that we can also specify a model
-    >>> extra_args = [F.lit(model_path), F.lit(comp_path), F.lit(1)]
+    >>> extra_args = [F.lit(model_path), F.lit(comp_path), F.lit(2)]
     >>> args = [F.col(i) for i in what_prefix] + extra_args
     >>> df = df.withColumn('pKNe', knscore(*args))
 
@@ -131,18 +131,20 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
         model = load_scikit_model(model_path.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/model_1PC_2KN_Cosmins_models.pkl'
+        model_path = curdir + '/data/models/KN_model_2PC.pkl'
         model = load_scikit_model(model_path)
 
     # Load pcs
-    if pcs_path is not None:
+    if npcs is not None:
         npcs = int(npcs.values[0])
-        pcs = load_pcs(pcs_path.values[0], npcs)
     else:
-        # default - 1 component
+        npcs = 2
+    if pcs_path is not None:
+        pcs_path_ = pcs_path.values[0]
+    else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         pcs_path_ = curdir + '/data/models/components.csv'
-        pcs = load_pcs(pcs_path_, npcs=1)
+    pcs = load_pcs(pcs_path_, npcs=npcs)
 
     test_features = []
     filters = ['g', 'r']
@@ -177,7 +179,7 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
     matrix_clean = matrix[~zeros]
 
     # If all alerts are flagged as bad
-    if np.shape(matrix_clean) == (0, len(KN_FEATURE_NAMES_1PC)):
+    if np.shape(matrix_clean) == (0, len(get_features_name(npcs))):
         to_return = np.zeros(len(jd), dtype=float)
         return pd.Series(to_return)
 
@@ -227,6 +229,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
     >>> from pyspark.sql.functions import split
     >>> from pyspark.sql.types import FloatType
     >>> from fink_science.utilities import concat_col
+    >>> from fink_science.kilonova.lib_kn import get_features_name
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
@@ -246,12 +249,13 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('features', extract_features_knscore(*args))
 
-    >>> for name in KN_FEATURE_NAMES_1PC:
-    ...   index = KN_FEATURE_NAMES_1PC.index(name)
+    >>> KN_FEATURE_NAMES_2PC = get_features_name(2)
+    >>> for name in KN_FEATURE_NAMES_2PC:
+    ...   index = KN_FEATURE_NAMES_2PC.index(name)
     ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
 
     # Trigger something
-    >>> df.agg({KN_FEATURE_NAMES_1PC[0]: "min"}).collect()[0][0]
+    >>> df.agg({KN_FEATURE_NAMES_2PC[0]: "min"}).collect()[0][0]
     0.0
     """
     epoch_lim = [-50, 50]
@@ -288,15 +292,16 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
     })
 
     # Load pcs
-    if pcs_path is not None:
+    if npcs is not None:
         npcs = int(npcs.values[0])
-        pcs = load_pcs(pcs_path.values[0], npcs)
     else:
-        # default - 1 component
-        npcs = 1
+        npcs = 2
+    if pcs_path is not None:
+        pcs_path_ = pcs_path.values[0]
+    else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         pcs_path_ = curdir + '/data/models/components.csv'
-        pcs = load_pcs(pcs_path_, npcs=npcs)
+    pcs = load_pcs(pcs_path_, npcs=npcs)
 
     test_features = []
     filters = ['g', 'r']
@@ -312,7 +317,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
         test_features.append(features)
 
     to_return_features = np.zeros(
-        (len(jd), len(KN_FEATURE_NAMES_1PC)),
+        (len(jd), len(get_features_name(npcs))),
         dtype=float
     )
     to_return_features[mask] = test_features
@@ -333,7 +338,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = '{}/data/models/model_1PC_2KN_Cosmins_models.pkl'.format(path)
+    model_path = '{}/data/models/KN_model_2PC.pkl'.format(path)
     globs["model_path"] = model_path
 
     comp_path = '{}/data/models/components.csv'.format(path)
