@@ -77,7 +77,7 @@ def peak_snr(img):
     """
     return np.max(img) / np.mean(img)
 
-def img_labelisation(stamp, noise_threshold = 3.5):
+def img_labelisation(stamp, noise_threshold=3.5):
     """ Perform image classification based on their visual content.
     Two final labels available for images which are not noisy and not corrupted.
     Star labels means this image contains only ponctual object.
