@@ -11,7 +11,7 @@ The image classification performs in three steps :
 then binary images which contain only small regions are categorized as star else they go to the third step
 
 * Final step uses the chan_vese algorithm to segment images and produce again a binary image. 
-All binary image which contains at least one large region will be categorize as extend, the other will be categorize as star.
+All binary images which contain at least one large region will be categorized as extend, the other will be categorize as star.
 
 # Added values
 

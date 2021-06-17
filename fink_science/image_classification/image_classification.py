@@ -80,11 +80,11 @@ def peak_snr(img):
 def img_labelisation(stamp, noise_threshold=3.5):
     """ Perform image classification based on their visual content.
     Two final labels available for images which are not noisy and not corrupted.
-    Star labels means this image contains only ponctual object.
+    Star label means this image contains only ponctual objects.
     Extend label means this image contains at least one extend object.
 
     Object size is only based on a perimeter calculation and custom thresholding, false positive
-    can occurs when ponctual object is sufficiently large or multiple ponctual object is
+    can occur when ponctual objects is sufficiently large or multiple ponctual object is
     sufficiently close to pass thresholds.
 
     Parameters
@@ -141,7 +141,7 @@ def img_labelisation(stamp, noise_threshold=3.5):
                 label_img += "safe_"
 
             if peak_snr(img) <= noise_threshold:
-                label_img += "noised"
+                label_img += "noisy"
             else:
                 label_img += "clear"
 
