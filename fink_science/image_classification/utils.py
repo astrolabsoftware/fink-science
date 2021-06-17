@@ -77,7 +77,6 @@ def sigmoid(img):
     exp_norm = np.exp(inv_norm)
     return 1 / (1 + exp_norm)
 
-# Normalisation de l'image en utilisant la fonction sigmoid (donne de bon résultat)
 def img_normalizer(img, vmin=0, vmax=1):
     """ Compute a non-linear normalisation thanks to sigmoid function of the image.
 

@@ -77,13 +77,13 @@ def peak_snr(img):
     """
     return np.max(img) / np.mean(img)
 
-def img_labelisation(stamp):
-    """ Perform image classification based on their visuel content.
-    Two final labels available for images which are not noised and not corrupted.
+def img_labelisation(stamp, noise_threshold = 3.5):
+    """ Perform image classification based on their visual content.
+    Two final labels available for images which are not noisy and not corrupted.
     Star labels means this image contains only ponctual object.
-    Extend labels means this image contains at least one extend object.
+    Extend label means this image contains at least one extend object.
 
-    Object size is only based on a perimeter calculation and hand-on thresholding, false positive
+    Object size is only based on a perimeter calculation and custom thresholding, false positive
     can occurs when ponctual object is sufficiently large or multiple ponctual object is
     sufficiently close to pass thresholds.
 
@@ -95,8 +95,8 @@ def img_labelisation(stamp):
     Returns
     -------
     out: string
-        a string which contains all the labels assign during the classification process
-    All possibles returns are:
+        a string which contains all the labels assigned during the classification process
+    All possible returns are:
         - 'corrupted_noised'
         - 'corrupted_clear'
         - 'safe_noised'
@@ -126,8 +126,6 @@ def img_labelisation(stamp):
     with gzip.open(io.BytesIO(stamp), 'rb') as fits_file:
         with fits.open(io.BytesIO(fits_file.read())) as hdul:
             img = hdul[0].data[::-1]
-
-            noise_threshold = 3.5
 
             label_img = ""
 
