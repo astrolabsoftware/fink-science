@@ -97,9 +97,9 @@ def img_labelisation(stamp, noise_threshold=3.5):
     out: string
         a string which contains all the labels assigned during the classification process
     All possible returns are:
-        - 'corrupted_noised'
+        - 'corrupted_noisy'
         - 'corrupted_clear'
-        - 'safe_noised'
+        - 'safe_noisy'
         - 'safe_clear_star'
         - 'safe_clear_extend'
 
@@ -113,7 +113,7 @@ def img_labelisation(stamp, noise_threshold=3.5):
 
     >>> example_byte_array = list(df[df['objectId'] == 'ZTF20aafdzuq']['cutoutScience'])[0]['stampData']
     >>> img_labelisation(example_byte_array)
-    'safe_noised'
+    'safe_noisy'
 
     >>> example_byte_array = list(df[df['objectId'] == 'ZTF18aabipja']['cutoutScience'])[0]['stampData']
     >>> img_labelisation(example_byte_array)
@@ -129,7 +129,7 @@ def img_labelisation(stamp, noise_threshold=3.5):
 
             label_img = ""
 
-            # detect if image is corrupted or/and is noised
+            # detect if image is corrupted or/and is noisy
             if np.any(np.isnan(img)):
                 label_img += "corrupted_"
 
@@ -145,7 +145,7 @@ def img_labelisation(stamp, noise_threshold=3.5):
             else:
                 label_img += "clear"
 
-            # if image is not corrupted and not noised
+            # if image is not corrupted and not noisy
             if label_img == "safe_clear":
                 label_img += "_"
                 # define threshold between ponctual object and extend object for the first pass
