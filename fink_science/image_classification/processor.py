@@ -44,7 +44,7 @@ def labels_assignation(stamps: bytes) -> pd.Series:
     True
 
     >>> safe_clear_star = img_classification_df[img_classification_df['objectId'] == 'ZTF20aafdzuq']
-    >>> list(safe_clear_star['labels'] == 'safe_noised')[0] == True
+    >>> list(safe_clear_star['labels'] == 'safe_noisy')[0] == True
     True
 
     >>> safe_clear_star = img_classification_df[img_classification_df['objectId'] == 'ZTF18aabipja']
