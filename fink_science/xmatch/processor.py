@@ -137,6 +137,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     Examples
     ----------
     >>> from pyspark.sql.functions import lit
+
     Simulate fake data
     >>> ra = [26.8566983, 26.24497]
     >>> dec = [-26.9677112, -26.7569436]
@@ -155,11 +156,12 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     <BLANKLINE>
 
     Test the processor by adding a new column with the result of the xmatch
-    >>> df = df.withColumn(
-    ...     'cdsxmatch', crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'))))
-    >>> df.show() # doctest: +NORMALIZE_WHITESPACE
+    >>> df.withColumn(
+    ...     'gcvs',
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'))
+    ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+----------+-----------+---------+
-    | id|        ra|        dec|cdsxmatch|
+    | id|        ra|        dec|gcvs     |
     +---+----------+-----------+---------+
     |  1|26.8566983|-26.9677112|     Star|
     |  2|  26.24497|-26.7569436|  Unknown|
@@ -167,10 +169,11 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     <BLANKLINE>
 
     >>> df = df.withColumn(
-    ...     'cdsxmatch', crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'))))
-    >>> df.show() # doctest: +NORMALIZE_WHITESPACE
+    ...     'vsx',
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'))
+    ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+----------+-----------+---------+
-    | id|        ra|        dec|cdsxmatch|
+    | id|        ra|        dec|vsx      |
     +---+----------+-----------+---------+
     |  1|26.8566983|-26.9677112|     Star|
     |  2|  26.24497|-26.7569436|  Unknown|
