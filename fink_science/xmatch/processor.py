@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pyspark.sql.functions import pandas_udf, PandasUDFType, lit
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import StringType
 
 from astropy.coordinates import SkyCoord
@@ -136,6 +136,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
 
     Examples
     ----------
+    >>> from pyspark.sql.functions import lit
     Simulate fake data
     >>> ra = [26.8566983, 26.24497]
     >>> dec = [-26.9677112, -26.7569436]

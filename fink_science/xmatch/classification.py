@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import io
-import os
 import csv
 import logging
 import requests
@@ -37,6 +36,7 @@ def extract_gcvs(filename):
 
     Examples
     ----------
+    >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
     >>> catalog = curdir + '/data/catalogs/gcvs.parquet'
     >>> ra, dec, vartype = extract_gcvs(catalog)
@@ -59,6 +59,7 @@ def extract_vsx(filename):
 
     Examples
     ----------
+    >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
     >>> catalog = curdir + '/data/catalogs/vsx.parquet'
     >>> ra, dec, vtype = extract_gcvs(catalog)
