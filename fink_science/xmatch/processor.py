@@ -221,7 +221,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     )
     pdf_merge = pd.merge(pdf, pdf_matches, how='left', on='candid')
 
-    m = (pdf_merge['match'] == True)
+    m = pdf_merge['match'].apply(lambda x: x is True)
 
     # Now get types for these
     catalog_ztf_merge = SkyCoord(
