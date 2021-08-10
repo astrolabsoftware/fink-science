@@ -38,7 +38,7 @@ def extract_gcvs(filename):
     ----------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> catalog = curdir + '../data/catalogs/gcvs.parquet'
+    >>> catalog = curdir + '/../data/catalogs/gcvs.parquet'
     >>> ra, dec, vartype = extract_gcvs(catalog)
     """
     pdf = pd.read_parquet(filename)
@@ -61,7 +61,7 @@ def extract_vsx(filename):
     ----------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> catalog = curdir + '../data/catalogs/vsx.parquet'
+    >>> catalog = curdir + '/../data/catalogs/vsx.parquet'
     >>> ra, dec, vtype = extract_gcvs(catalog)
     """
     pdf_vsx = pd.read_parquet(filename)
