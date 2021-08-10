@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import io
+import os
 import csv
 import logging
 import requests
 import numpy as np
+import pandas as pd
 
 from fink_science.tester import regular_unit_tests
 
