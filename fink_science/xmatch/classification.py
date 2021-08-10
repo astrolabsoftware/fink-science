@@ -20,6 +20,50 @@ import numpy as np
 
 from fink_science.tester import regular_unit_tests
 
+def extract_gcvs(filename):
+    """ Read the gcvs catalog and extract useful columns
+
+    Parameters
+    ----------
+    filename: str
+        Path to the catalog (parquet file)
+
+    Returns
+    ----------
+    out: pd.Series, pd.Series, pd.Series
+        ra, dec, VarType from the catalog
+
+    Examples
+    ----------
+    >>> curdir = os.path.dirname(os.path.abspath(__file__))
+    >>> catalog = curdir + '/data/catalogs/gcvs.parquet'
+    >>> ra, dec, vartype = extract_gcvs(catalog)
+    """
+    pdf = pd.read_parquet(filename)
+    return pdf['ra'], pdf['dec'], pdf['VarType']
+
+def extract_vsx(filename):
+    """ Read the vsx catalog and extract useful columns
+
+    Parameters
+    ----------
+    filename: str
+        Path to the catalog (parquet file)
+
+    Returns
+    ----------
+    out: pd.Series, pd.Series, pd.Series
+        ra, dec, VarType from the catalog
+
+    Examples
+    ----------
+    >>> curdir = os.path.dirname(os.path.abspath(__file__))
+    >>> catalog = curdir + '/data/catalogs/vsx.parquet'
+    >>> ra, dec, vtype = extract_gcvs(catalog)
+    """
+    pdf_vsx = pd.read_parquet(filename)
+    return pdf_vsx['RAJ2000'], pdf_vsx['DEJ2000'], pdf_vsx['VType']
+
 def generate_csv(s: str, lists: list) -> str:
     """ Make a string (CSV formatted) given lists of data and header.
     Parameters
