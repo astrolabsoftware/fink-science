@@ -25,6 +25,7 @@ import numpy as np
 from fink_science.xmatch.classification import cross_match_alerts_raw
 from fink_science.xmatch.classification import extract_vsx, extract_gcvs
 from fink_science.tester import spark_unit_tests
+from fink_science import __file__
 
 from typing import Any
 
@@ -139,20 +140,20 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     >>> from pyspark.sql.functions import lit
 
     Simulate fake data
-    >>> ra = [26.8566983, 26.24497]
-    >>> dec = [-26.9677112, -26.7569436]
+    >>> ra = [26.8566983, 101.3520545]
+    >>> dec = [-26.9677112, 24.5421872]
     >>> id = ["1", "2"]
 
     Wrap data into a Spark DataFrame
     >>> rdd = spark.sparkContext.parallelize(zip(id, ra, dec))
     >>> df = rdd.toDF(['id', 'ra', 'dec'])
     >>> df.show() # doctest: +NORMALIZE_WHITESPACE
-    +---+----------+-----------+
-    | id|        ra|        dec|
-    +---+----------+-----------+
-    |  1|26.8566983|-26.9677112|
-    |  2|  26.24497|-26.7569436|
-    +---+----------+-----------+
+    +---+-----------+-----------+
+    | id|         ra|        dec|
+    +---+-----------+-----------+
+    |  1| 26.8566983|-26.9677112|
+    |  2|101.3520545| 24.5421872|
+    +---+-----------+-----------+
     <BLANKLINE>
 
     Test the processor by adding a new column with the result of the xmatch
@@ -160,24 +161,24 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     ...     'gcvs',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
-    +---+----------+-----------+---------+
-    | id|        ra|        dec|gcvs     |
-    +---+----------+-----------+---------+
-    |  1|26.8566983|-26.9677112|     Star|
-    |  2|  26.24497|-26.7569436|  Unknown|
-    +---+----------+-----------+---------+
+    +---+-----------+-----------+-------+
+    | id|         ra|        dec|   gcvs|
+    +---+-----------+-----------+-------+
+    |  1| 26.8566983|-26.9677112|Unknown|
+    |  2|101.3520545| 24.5421872|     RR|
+    +---+-----------+-----------+-------+
     <BLANKLINE>
 
     >>> df = df.withColumn(
     ...     'vsx',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
-    +---+----------+-----------+---------+
-    | id|        ra|        dec|vsx      |
-    +---+----------+-----------+---------+
-    |  1|26.8566983|-26.9677112|     Star|
-    |  2|  26.24497|-26.7569436|  Unknown|
-    +---+----------+-----------+---------+
+    +---+-----------+-----------+----+
+    | id|         ra|        dec| vsx|
+    +---+-----------+-----------+----+
+    |  1| 26.8566983|-26.9677112|MISC|
+    |  2|101.3520545| 24.5421872|RRAB|
+    +---+-----------+-----------+----+
     <BLANKLINE>
     """
     pdf = pd.DataFrame(
