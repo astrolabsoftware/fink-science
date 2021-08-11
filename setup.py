@@ -38,7 +38,8 @@ setuptools.setup(
             'data/models/*.csv',
             'data/models/snn_models/*/*.pt',
             'data/models/snn_models/*/*.json',
-            'data/models/snn_models/*/*.txt'],
+            'data/models/snn_models/*/*.txt',
+            'data/catalogs/*.parquet'],
     },
 
     classifiers=[
