@@ -7,7 +7,10 @@
 
 This repository contains science modules used to generate added values to alert collected by the [Fink broker](https://github.com/astrolabsoftware/fink-broker). It currently contains:
 
-- `xmatch`: returns the SIMBAD closest counterpart of an alert, based on position.
+- `xmatch`: perform a crossmatch of the stream with external catalogs
+  - `cdsxmatch`: returns the SIMBAD closest counterpart of an alert, based on position using the [CDS xmatch service](http://cdsxmatch.u-strasbg.fr/xmatch) (online).
+  - `gcvs`: returns the closest counterpart of an alert in the [General Catalog of Variable Stars](http://www.sai.msu.su/groups/cluster/gcvs/gcvs/).
+  - `vsx`: returns the closest counterpart of an alert in the [International Variable Star Index](https://www.aavso.org/vsx/).
 - `random_forest_snia`: returns the probability of an alert to be a SNe Ia using a Random Forest Classifier (binary classification)
 - `snn`: returns the probability of an alert to be a SNe Ia using [SuperNNova](https://github.com/supernnova/SuperNNova). Two pre-trained models:
   - `snn_snia_vs_nonia`: Ia vs core-collapse SNe
