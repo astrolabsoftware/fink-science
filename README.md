@@ -24,7 +24,7 @@ You will find README in each subfolder describing the module.
 
 ## How to contribute
 
-Learn how to [design](https://fink-broker.readthedocs.io/en/latest/tutorials/create-science-module/) your science module, and integrate it inside the Fink broker.
+Learn how to [design](tutorial/) your science module, and integrate it inside the Fink broker.
 
 ## Installation
 

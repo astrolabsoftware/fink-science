@@ -17,7 +17,7 @@ from pyspark.sql.types import DoubleType
 
 import pandas as pd
 
-from mymodule import compute_delta
+from utilities import compute_delta
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def deltamaglatest(magpsf) -> pd.Series:
