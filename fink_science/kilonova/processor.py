@@ -43,14 +43,14 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
         Magnitude from PSF-fit photometry, and 1-sigma error
     model_path: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
-        model `data/models/KN_model_2PC.pkl` is loaded.
+        model `data/models/kn_diff_pc_sets.pkl` is loaded.
     pcs_path: Spark DataFrame Column, optional
         Path to the Principal Component file. Default is None, in which case
-        the `data/models/components.csv` is loaded.
+        the `data/models/mixed_pcs.csv` is loaded.
     npcs: Spark DataFrame Column, optional
         Integer representing the number of Principal Component to use. It
         should be consistent to the training model used. Default is None (i.e.
-        default npcs for the default `model_path`, that is 1).
+        default npcs for the default `model_path`, that is 3).
 
     Returns
     ----------
@@ -80,7 +80,7 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
     >>> df = df.withColumn('pKNe', knscore(*args))
 
     # Note that we can also specify a model
-    >>> extra_args = [F.lit(model_path), F.lit(comp_path), F.lit(2)]
+    >>> extra_args = [F.lit(model_path), F.lit(comp_path), F.lit(3)]
     >>> args = [F.col(i) for i in what_prefix] + extra_args
     >>> df = df.withColumn('pKNe', knscore(*args))
 
@@ -93,7 +93,6 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
     >>> df.agg({"pKNe": "max"}).collect()[0][0] < 1.0
     True
     """
-    epoch_lim = [-50, 50]
     time_bin = 0.25
     flux_lim = 0
 
@@ -131,19 +130,19 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
         model = load_scikit_model(model_path.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/KN_model_2PC.pkl'
+        model_path = curdir + '/data/models/kn_diff_pc_sets.pkl'
         model = load_scikit_model(model_path)
 
     # Load pcs
     if npcs is not None:
         npcs = int(npcs.values[0])
     else:
-        npcs = 2
+        npcs = 3
     if pcs_path is not None:
         pcs_path_ = pcs_path.values[0]
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        pcs_path_ = curdir + '/data/models/components.csv'
+        pcs_path_ = curdir + '/data/models/mixed_pcs.csv'
     pcs = load_pcs(pcs_path_, npcs=npcs)
 
     test_features = []
@@ -154,20 +153,13 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
         pdf_sub = pdf[pdf['SNID'] == id]
         pdf_sub = pdf_sub[pdf_sub['FLUXCAL'] == pdf_sub['FLUXCAL']]
         features = extract_all_filters_fink(
-            epoch_lim=epoch_lim, pcs=pcs,
+            pcs=pcs,
             time_bin=time_bin, filters=filters,
             lc=pdf_sub, flux_lim=flux_lim)
         test_features.append(features)
 
     # Remove pathological values
-    names_root = [
-        'npoints_',
-        'residuo_'
-    ] + [
-        'coeff' + str(i + 1) + '_' for i in range(len(pcs.keys()))
-    ] + ['maxflux_']
-
-    columns = [i + j for j in ['g', 'r'] for i in names_root]
+    columns = get_features_name(npcs)
 
     matrix = pd.DataFrame(test_features, columns=columns)
 
@@ -213,11 +205,11 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
         Magnitude from PSF-fit photometry, and 1-sigma error
     pcs_path: Spark DataFrame Column, optional
         Path to the Principal Component file. Default is None, in which case
-        the `data/models/components.csv` is loaded.
+        the `data/models/mixed_pcs.csv` is loaded.
     npcs: Spark DataFrame Column, optional
         Integer representing the number of Principal Component to use. It
         should be consistent to the training model used. Default is None (i.e.
-        default npcs for the default `model_path`, that is 1).
+        default npcs for the default `model_path`, that is 3).
 
     Returns
     ----------
@@ -249,16 +241,15 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('features', extract_features_knscore(*args))
 
-    >>> KN_FEATURE_NAMES_2PC = get_features_name(2)
-    >>> for name in KN_FEATURE_NAMES_2PC:
-    ...   index = KN_FEATURE_NAMES_2PC.index(name)
+    >>> KN_FEATURE_NAMES_3PC = get_features_name(3)
+    >>> for name in KN_FEATURE_NAMES_3PC:
+    ...   index = KN_FEATURE_NAMES_3PC.index(name)
     ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
 
     # Trigger something
-    >>> df.agg({KN_FEATURE_NAMES_2PC[0]: "min"}).collect()[0][0]
+    >>> df.agg({KN_FEATURE_NAMES_3PC[0]: "min"}).collect()[0][0]
     0.0
     """
-    epoch_lim = [-50, 50]
     time_bin = 0.25
     flux_lim = 0
 
@@ -295,12 +286,12 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
     if npcs is not None:
         npcs = int(npcs.values[0])
     else:
-        npcs = 2
+        npcs = 3
     if pcs_path is not None:
         pcs_path_ = pcs_path.values[0]
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        pcs_path_ = curdir + '/data/models/components.csv'
+        pcs_path_ = curdir + '/data/models/mixed_pcs.csv'
     pcs = load_pcs(pcs_path_, npcs=npcs)
 
     test_features = []
@@ -311,7 +302,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf, pcs_path=None, npcs=None
         pdf_sub = pdf[pdf['SNID'] == id]
         pdf_sub = pdf_sub[pdf_sub['FLUXCAL'] == pdf_sub['FLUXCAL']]
         features = extract_all_filters_fink(
-            epoch_lim=epoch_lim, pcs=pcs,
+            pcs=pcs,
             time_bin=time_bin, filters=filters,
             lc=pdf_sub, flux_lim=flux_lim)
         test_features.append(features)
@@ -338,10 +329,10 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = '{}/data/models/KN_model_2PC.pkl'.format(path)
+    model_path = '{}/data/models/kn_diff_pc_sets.pkl'.format(path)
     globs["model_path"] = model_path
 
-    comp_path = '{}/data/models/components.csv'.format(path)
+    comp_path = '{}/data/models/mixed_pcs.csv'.format(path)
     globs["comp_path"] = comp_path
 
     # Run the test suite
