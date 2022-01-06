@@ -102,13 +102,14 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
-    if len(jd[mask]) == 0:
-        return pd.Series(np.zeros(len(jd), dtype=float))
 
     mask *= (ndethist.astype(int) <= 20)
 
     list_of_sn_host = return_list_of_sn_host()
     mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
+
+    if len(jd[mask]) == 0:
+        return pd.Series(np.zeros(len(jd), dtype=float))
 
     # add an exploded column with SNID
     df_tmp = pd.DataFrame.from_dict(
