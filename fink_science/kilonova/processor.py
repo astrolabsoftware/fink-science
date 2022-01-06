@@ -117,7 +117,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_p
 
     mask *= (ndethist.astype(int) <= 20)
 
-    mask *= jd.astype(float).apply(lambda x: x[-1]) - jdstarthist.astype(float) < 20
+    mask *= jd.apply(lambda x: float(x[-1])) - jdstarthist.astype(float) < 20
 
     list_of_kn_host = return_list_of_kn_host()
     mask *= cdsxmatch.apply(lambda x: x in list_of_kn_host)
