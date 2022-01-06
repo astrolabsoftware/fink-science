@@ -81,14 +81,17 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     ...    df = concat_col(df, colname, prefix=prefix)
 
     # Perform the fit + classification (default model)
-    >>> args = [F.col(i) for i in what_prefix] + [F.col('cdsxmatch'), F.col('ndethist')]
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('cdsxmatch'), F.col('candidate.ndethist')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
     >>> df.agg({"pIa": "min"}).collect()[0][0]
     0.0
 
     # Note that we can also specify a model
-    >>> args = [F.col(i) for i in what_prefix] + [F.col('cdsxmatch'), F.col('ndethist')] + [F.lit(model_path_sigmoid)]
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('cdsxmatch'), F.col('candidate.ndethist')]
+    >>> args += [F.lit(model_path_sigmoid)]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
     >>> df.agg({"pIa": "min"}).collect()[0][0]
