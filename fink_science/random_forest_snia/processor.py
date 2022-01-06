@@ -35,6 +35,8 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit).
 
+    You need to run the SIMBAD crossmatch before.
+
     Parameters
     ----------
     jd: Spark DataFrame Column
@@ -58,10 +60,14 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
 
     Examples
     ----------
+    >>> from fink_science.xmatch.processor import cdsxmatch
     >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
+
+    >>> colnames = [df['objectId'], df['candidate.ra'], df['candidate.dec']]
+    >>> df = df.withColumn('cdsxmatch', cdsxmatch(*colnames))
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
