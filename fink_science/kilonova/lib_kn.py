@@ -15,6 +15,42 @@
 import numpy as np
 import pandas as pd
 
+def return_list_of_kn_host():
+    """ Return potential KN host names
+
+    This includes:
+    - List of object names in SIMBAD that would correspond to extra-galactic object
+    - Unknown objects
+    - objects with failed crossmatch
+
+    In practice, this exclude galactic objects from SIMBAD.
+
+    """
+    list_simbad_galaxies = [
+        "galaxy",
+        "Galaxy",
+        "EmG",
+        "Seyfert",
+        "Seyfert_1",
+        "Seyfert_2",
+        "BlueCompG",
+        "StarburstG",
+        "LSB_G",
+        "HII_G",
+        "High_z_G",
+        "GinPair",
+        "GinGroup",
+        "BClG",
+        "GinCl",
+        "PartofG",
+    ]
+
+    keep_cds = \
+        ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail"] + \
+        list_simbad_galaxies
+
+    return keep_cds
+
 def get_features_name(npcs):
     """
     Create the list of feature names depending on the number of principal components.

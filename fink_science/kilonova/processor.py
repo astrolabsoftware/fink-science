@@ -24,23 +24,32 @@ from fink_science.conversion import mag2fluxcal_snana
 from fink_science.utilities import load_scikit_model, load_pcs
 from fink_science.kilonova.lib_kn import extract_all_filters_fink
 from fink_science.kilonova.lib_kn import get_features_name
+from fink_science.kilonova.lib_kn import return_list_of_kn_host
 from fink_science import __file__
 
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None) -> pd.Series:
+def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_path=None, pcs_path=None, npcs=None) -> pd.Series:
     """ Return the probability of an alert to be a Kilonova using a Random
     Forest Classifier.
+
+    You need to run the SIMBAD crossmatch before.
 
     Parameters
     ----------
     jd: Spark DataFrame Column
-        JD times (float)
+        JD times (vectors of floats)
     fid: Spark DataFrame Column
-        Filter IDs (int)
+        Filter IDs (vectors of ints)
     magpsf, sigmapsf: Spark DataFrame Columns
-        Magnitude from PSF-fit photometry, and 1-sigma error
+        Magnitude from PSF-fit photometry, and 1-sigma error (vectors of floats)
+    cdsxmatch: Spark DataFrame Column
+        Type of object found in Simbad (string)
+    ndethist: Spark DataFrame Column
+        Column containing the number of detection by ZTF at 3 sigma (int)
+    jdstarthist: Spark DataFrame Column
+        Column containing first time variability has been seen
     model_path: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/KN_model_2PC.pkl` is loaded.
@@ -59,10 +68,14 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
 
     Examples
     ----------
+    >>> from fink_science.xmatch.processor import cdsxmatch
     >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
+
+    >>> colnames = [df['objectId'], df['candidate.ra'], df['candidate.dec']]
+    >>> df = df.withColumn('cdsxmatch', cdsxmatch(*colnames))
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
@@ -77,10 +90,12 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('candidate.jdstarthist'), F.col('cdsxmatch'), F.col('candidate.ndethist')]
     >>> df = df.withColumn('pKNe', knscore(*args))
 
     # Note that we can also specify a model
-    >>> extra_args = [F.lit(model_path), F.lit(comp_path), F.lit(2)]
+    >>> extra_args = [F.col('candidate.jdstarthist'), F.col('cdsxmatch'), F.col('candidate.ndethist')]
+    >>> extra_args += [F.lit(model_path), F.lit(comp_path), F.lit(2)]
     >>> args = [F.col(i) for i in what_prefix] + extra_args
     >>> df = df.withColumn('pKNe', knscore(*args))
 
@@ -99,6 +114,14 @@ def knscore(jd, fid, magpsf, sigmapsf, model_path=None, pcs_path=None, npcs=None
 
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
+
+    mask *= (ndethist.astype(int) <= 20)
+
+    mask *= jd.apply(lambda x: float(x[-1])) - jdstarthist.astype(float) < 20
+
+    list_of_kn_host = return_list_of_kn_host()
+    mask *= cdsxmatch.apply(lambda x: x in list_of_kn_host)
+
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
