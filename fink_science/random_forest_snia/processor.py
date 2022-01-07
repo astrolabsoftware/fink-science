@@ -26,22 +26,29 @@ from fink_science import __file__
 from fink_science.utilities import load_scikit_model
 from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_features_dev
 from fink_science.random_forest_snia.classifier_sigmoid import RF_FEATURE_NAMES
+from fink_science.random_forest_snia.classifier_sigmoid import return_list_of_sn_host
 
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
+def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit).
+
+    You need to run the SIMBAD crossmatch before.
 
     Parameters
     ----------
     jd: Spark DataFrame Column
-        JD times (float)
+        JD times (vectors of floats)
     fid: Spark DataFrame Column
-        Filter IDs (int)
+        Filter IDs (vectors of ints)
     magpsf, sigmapsf: Spark DataFrame Columns
-        Magnitude from PSF-fit photometry, and 1-sigma error
+        Magnitude from PSF-fit photometry, and 1-sigma error (vectors of floats)
+    cdsxmatch: Spark DataFrame Column
+        Type of object found in Simbad (string)
+    ndethist: Spark DataFrame Column
+        Column containing the number of detection by ZTF at 3 sigma (int)
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/default-model.obj` is loaded.
@@ -53,10 +60,14 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
 
     Examples
     ----------
+    >>> from fink_science.xmatch.processor import cdsxmatch
     >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
+
+    >>> colnames = [df['objectId'], df['candidate.ra'], df['candidate.dec']]
+    >>> df = df.withColumn('cdsxmatch', cdsxmatch(*colnames))
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
@@ -71,13 +82,16 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('cdsxmatch'), F.col('candidate.ndethist')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
     >>> df.agg({"pIa": "min"}).collect()[0][0]
     0.0
 
     # Note that we can also specify a model
-    >>> args = [F.col(i) for i in what_prefix] + [F.lit(model_path_sigmoid)]
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('cdsxmatch'), F.col('candidate.ndethist')]
+    >>> args += [F.lit(model_path_sigmoid)]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
     >>> df.agg({"pIa": "min"}).collect()[0][0]
@@ -88,6 +102,12 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, model=None) -> pd.Series:
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
+
+    mask *= (ndethist.astype(int) <= 20)
+
+    list_of_sn_host = return_list_of_sn_host()
+    mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
+
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 

@@ -17,6 +17,42 @@ import pandas as pd
 
 from fink_science.tester import regular_unit_tests
 
+def return_list_of_sn_host():
+    """ Return potential SN host names
+
+    This includes:
+    - List of object names in SIMBAD that would correspond to extra-galactic object
+    - Unknown objects
+    - objects with failed crossmatch
+
+    In practice, this exclude galactic objects from SIMBAD.
+
+    """
+    list_simbad_galaxies = [
+        "galaxy",
+        "Galaxy",
+        "EmG",
+        "Seyfert",
+        "Seyfert_1",
+        "Seyfert_2",
+        "BlueCompG",
+        "StarburstG",
+        "LSB_G",
+        "HII_G",
+        "High_z_G",
+        "GinPair",
+        "GinGroup",
+        "BClG",
+        "GinCl",
+        "PartofG",
+    ]
+
+    keep_cds = \
+        ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail"] + \
+        list_simbad_galaxies
+
+    return keep_cds
+
 def reformat_to_df(pred_probs, ids=None):
     """ Reformat supernnova predictions to DataFrame.
 

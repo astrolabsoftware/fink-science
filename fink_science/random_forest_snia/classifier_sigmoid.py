@@ -25,6 +25,42 @@ columns_to_keep = ['MJD', 'FLT', 'FLUXCAL', 'FLUXCALERR']
 fluxes = ['FLUXCAL', 'FLUXCALERR']
 RF_FEATURE_NAMES = 'a_g,b_g,c_g,snratio_g,chisq_g,nrise_g,a_r,b_r,c_r,snratio_r,chisq_r,nrise_r'.split(',')
 
+def return_list_of_sn_host():
+    """ Return potential SN host names
+
+    This includes:
+    - List of object names in SIMBAD that would correspond to extra-galactic object
+    - Unknown objects
+    - objects with failed crossmatch
+
+    In practice, this exclude galactic objects from SIMBAD.
+
+    """
+    list_simbad_galaxies = [
+        "galaxy",
+        "Galaxy",
+        "EmG",
+        "Seyfert",
+        "Seyfert_1",
+        "Seyfert_2",
+        "BlueCompG",
+        "StarburstG",
+        "LSB_G",
+        "HII_G",
+        "High_z_G",
+        "GinPair",
+        "GinGroup",
+        "BClG",
+        "GinCl",
+        "PartofG",
+    ]
+
+    keep_cds = \
+        ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail"] + \
+        list_simbad_galaxies
+
+    return keep_cds
+
 def filter_data(data, filt):
     """Select data according to the value of the
        filter (for ZTF only g, r)
