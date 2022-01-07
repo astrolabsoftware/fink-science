@@ -10,7 +10,7 @@ This repository contains science modules used to generate added values to alert 
 | Source | Field in Fink alerts | Type | Contents |
 |:---|:-----|:-------|:--------|
 | [fink_science/xmatch](fink_science/xmatch)|`cdsxmatch` | string | Counterpart (cross-match) in the Simbad database using the [CDS xmatch service](http://cdsxmatch.u-strasbg.fr/xmatch). Contains also crossmatch to the [General Catalog of Variable Stars](http://www.sai.msu.su/groups/cluster/gcvs/gcvs/) and the [International Variable Star Index](https://www.aavso.org/vsx/) (not yet deployed) |
-| [fink_science/random_forest_snia](fink_science/random_forest_snia)| `rf_snia_vs_nonia` | float | Probability to be a rising SNe Ia based on Random Forest classifier (1 is SN Ia). Based on https://arxiv.org/abs/1804.03765 |
+| [fink_science/random_forest_snia](fink_science/random_forest_snia)| `rf_snia_vs_nonia` | float | Probability to be a rising SNe Ia based on Random Forest classifier (1 is SN Ia). Based on https://arxiv.org/abs/2111.11438 |
 | [fink_science/snn](fink_science/snn)| `snn_snia_vs_nonia` | float | Probability to be a SNe Ia based on [SuperNNova](https://supernnova.readthedocs.io/en/latest/) classifier (1 is SN Ia). Based on https://arxiv.org/abs/1901.06384 |
 | [fink_science/snn](fink_science/snn)| `snn_sn_vs_all` | float | Probability to be a SNe based on [SuperNNova](https://supernnova.readthedocs.io/en/latest/) classifier (1 is SNe). Based on https://arxiv.org/abs/1901.06384 |
 | [fink_science/microlensing](fink_science/microlensing)| `mulens`| struct | predicted classes and scores by [LIA](https://github.com/dgodinez77/LIA) for filter band g, r |
