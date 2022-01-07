@@ -120,7 +120,6 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
-
     if model_ext is not None:
         # take the first element of the Series
         model = model_ext.values[0]
