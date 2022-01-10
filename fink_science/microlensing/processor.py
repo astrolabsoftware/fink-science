@@ -54,16 +54,12 @@ def mulens(
     isdiffpos: Spark DataFrame Column
         t => candidate is from positive (sci minus ref) subtraction
         f => candidate is from negative (ref minus sci) subtraction
-    rf: RandomForestClassifier
-        sklearn.ensemble._forest.RandomForestClassifier
-    pca: PCA
-        sklearn.decomposition._pca.PCA
 
     Returns
     ----------
     out: list
-        Returns the class (string) and microlensing score (double) ordered as
-        [class_band_1, ml_score_band1, class_band_2, ml_score_band2]
+        Returns the mean of the probabilities (one probability per band) if the
+        event was considered as microlensing in both bands, otherwise 0.0.
 
     Examples
     ---------
@@ -87,12 +83,12 @@ def mulens(
 
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += ['candidate.ndethist']
-    >>> df_mulens = df.withColumn('mulens', mulens(*args))
+    >>> df = df.withColumn('new_mulens', mulens(*args))
 
     # Drop temp columns
-    >>> df_mulens = df_mulens.drop(*what_prefix)
+    >>> df = df.drop(*what_prefix)
 
-    >>> df.filter(df['mulens'] > 0.0).count()
+    >>> df.filter(df['new_mulens'] > 0.0).count()
     0
     """
     warnings.filterwarnings('ignore')
