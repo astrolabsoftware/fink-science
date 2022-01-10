@@ -1,4 +1,4 @@
-# Copyright 2020-2021 AstroLab Software
+# Copyright 2020-2022 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StringType
+from pyspark.sql.types import StringType, DoubleType
 
 import numpy as np
 import pandas as pd
@@ -31,9 +31,10 @@ from LIA import microlensing_classifier
 
 from fink_science.tester import spark_unit_tests
 
+@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def mulens(
         fid, magpsf, sigmapsf, magnr, sigmagnr,
-        magzpsci, isdiffpos, rf, pca):
+        magzpsci, isdiffpos, ndethist):
     """ Returns the predicted class (among microlensing, variable star,
     cataclysmic event, and constant event) & probability of an alert to be
     a microlensing event in each band using a Random Forest Classifier.
@@ -65,18 +66,10 @@ def mulens(
 
     Examples
     ---------
-    >>> from fink_science.microlensing.classifier import load_external_model
-    >>> from fink_science.microlensing.classifier import load_mulens_schema_twobands
     >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
-    # wrapper to pass broadcasted values
-    >>> def mulens_wrapper(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
-    ...     return mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos, rfbcast.value, pcabcast.value)
-
     >>> df = spark.read.load(ztf_alert_sample)
-
-    >>> schema = load_mulens_schema_twobands()
 
     # Required alert columns
     >>> what = [
@@ -91,58 +84,77 @@ def mulens(
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
-    >>> rf, pca = load_external_model(model_path)
-    >>> rfbcast = spark.sparkContext.broadcast(rf)
-    >>> pcabcast = spark.sparkContext.broadcast(pca)
-
-    >>> t = F.udf(mulens_wrapper, schema)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> df_mulens = df.withColumn('mulens', t(*args))
+    >>> args += ['candidate.ndethist']
+    >>> df_mulens = df.withColumn('mulens', mulens(*args))
 
     # Drop temp columns
     >>> df_mulens = df_mulens.drop(*what_prefix)
 
-    >>> df.filter(df['mulens.class_2'] == 'ML').count()
+    >>> df.filter(df['mulens'] > 0.0).count()
     0
     """
     warnings.filterwarnings('ignore')
 
-    # Select only valid measurements (not upper limits)
-    badval = None
-    maskNotNone = np.array(magpsf) != badval
+    # broadcast models
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    model_path = curdir + '/data/models/'
+    rf, pca = load_external_model(model_path)
 
-    out = []
-    for filt in [1, 2]:
-        maskFilter = np.array(fid) == filt
-        m = maskNotNone * maskFilter
+    valid_index = np.arange(len(magpsf), dtype=int)
 
-        # Reject if less than 10 measurements
-        if np.sum(m) < 10:
-            out.extend(['', 0.0])
-            continue
+    # At most 100 measurements in each band
+    mask = (ndethist.astype(int) < 100)
 
-        # Compute DC mag
-        mag, err = np.array([
-            dc_mag(i[0], i[1], i[2], i[3], i[4], i[5], i[6])
-            for i in zip(
-                np.array(fid)[m],
-                np.array(magpsf)[m],
-                np.array(sigmapsf)[m],
-                np.array(magnr)[m],
-                np.array(sigmagnr)[m],
-                np.array(magzpsci)[m],
-                np.array(isdiffpos)[m])
-        ]).T
+    # At least 10 measurements in each band
+    mask *= magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) >= 20
 
-        # Run the classifier
-        output = microlensing_classifier.predict(mag, err, rf, pca)
+    to_return = np.zeros(len(magpsf), dtype=float)
 
-        # Update the results
-        # Beware, in the branch FINK the order has changed
-        # classification,p_cons,p_CV,p_ML,p_var = microlensing_classifier.predict()
-        out.extend([str(output[0]), float(output[3][0])])
+    for index in valid_index[mask.values]:
+        # Select only valid measurements (not upper limits)
+        maskNotNone = np.array(magpsf.values[index]) == np.array(magpsf.values[index])
 
-    return out
+        classes = []
+        probs = []
+        for filt in [1, 2]:
+            maskFilter = np.array(fid.values[index]) == filt
+            m = maskNotNone * maskFilter
+
+            # Reject if less than 10 measurements
+            if np.sum(m) < 10:
+                classes.append('')
+                continue
+
+            # Compute DC mag
+            mag, err = np.array([
+                dc_mag(i[0], i[1], i[2], i[3], i[4], i[5], i[6])
+                for i in zip(
+                    np.array(fid.values[index])[m],
+                    np.array(magpsf.values[index])[m],
+                    np.array(sigmapsf.values[index])[m],
+                    np.array(magnr.values[index])[m],
+                    np.array(sigmagnr.values[index])[m],
+                    np.array(magzpsci.values[index])[m],
+                    np.array(isdiffpos.values[index])[m])
+            ]).T
+
+            # Run the classifier
+            output = microlensing_classifier.predict(mag, err, rf, pca)
+
+            # Update the results
+            # Beware, in the branch FINK the order has changed
+            # classification,p_cons,p_CV,p_ML,p_var = microlensing_classifier.predict()
+            classes.append(str(output[0]))
+            probs.append(float(output[3][0]))
+
+        # Append mean of classification if ML favoured, otherwise 0
+        if np.all(np.array(classes) == 'ML'):
+            to_return[index] = np.mean(probs)
+        else:
+            to_return[index] = 0.0
+
+    return pd.Series(to_return)
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def extract_features_mulens(

@@ -43,25 +43,6 @@ def _extract(mag, magerr):
 
     return out
 
-def load_mulens_schema_twobands():
-    """ DataFrame Schema for the mulens UDF using 2 filter bands
-
-    Returns
-    --------
-    schema: StructType
-        StructType with StructFields describing new columns to be added
-        when using `mulens` in pyspark UDF. There are 2 new columns per
-        filter bands: the classification name (str) and
-        the mulens score (double).
-    """
-    schema = StructType([
-        StructField("class_1", StringType(), True),
-        StructField("ml_score_1", DoubleType(), True),
-        StructField("class_2", StringType(), True),
-        StructField("ml_score_2", DoubleType(), True)
-    ])
-    return schema
-
 def load_external_model(model_path):
     """ Unpickle pre-loaded models from LIA.
 
