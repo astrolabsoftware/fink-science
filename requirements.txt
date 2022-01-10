@@ -17,7 +17,8 @@ astropy
 astroquery
 
 # Microlensing
--e git://github.com/dgodinez77/LIA.git@FINK#egg=LIA
+# You would simply use pip install git+https://github.com/JulienPeloton/LIA.git@4513654b15a0760312eff2661b0fcf4989171ce3 --upgrade
+-e git://github.com/JulienPeloton/LIA.git@4513654b15a0760312eff2661b0fcf4989171ce3#egg=LIA
 
 # Supernnova
 supernnova

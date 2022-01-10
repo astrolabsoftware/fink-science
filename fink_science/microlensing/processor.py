@@ -102,11 +102,8 @@ def mulens(
     # Drop temp columns
     >>> df_mulens = df_mulens.drop(*what_prefix)
 
-    >>> df_mulens.agg({"mulens.ml_score_1": "min"}).collect()[0][0]
-    0.0
-
-    >>> df_mulens.agg({"mulens.ml_score_1": "max"}).collect()[0][0] < 1.0
-    True
+    >>> df.filter(df['mulens.class_2'] == 'ML').count()
+    0
     """
     warnings.filterwarnings('ignore')
 
@@ -254,7 +251,7 @@ if __name__ == "__main__":
 
     globs = globals()
     path = os.path.dirname(__file__)
-    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     model_path = '{}/data/models'.format(path)

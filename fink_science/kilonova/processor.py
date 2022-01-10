@@ -1,4 +1,4 @@
-# Copyright 2021 AstroLab Software
+# Copyright 2021-2022 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -93,6 +93,16 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_p
     >>> args += [F.col('candidate.jdstarthist'), F.col('cdsxmatch'), F.col('candidate.ndethist')]
     >>> df = df.withColumn('pKNe', knscore(*args))
 
+    >>> df.filter(df['pKNe'] > 0.5).count()
+    0
+
+    >>> df.filter(df['pKNe'] > 0.5).select(['rf_kn_vs_nonkn', 'pKNe']).show()
+    +--------------+----+
+    |rf_kn_vs_nonkn|pKNe|
+    +--------------+----+
+    +--------------+----+
+    <BLANKLINE>
+
     # Note that we can also specify a model
     >>> extra_args = [F.col('candidate.jdstarthist'), F.col('cdsxmatch'), F.col('candidate.ndethist')]
     >>> extra_args += [F.lit(model_path), F.lit(comp_path), F.lit(2)]
@@ -102,11 +112,8 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_p
     # Drop temp columns
     >>> df = df.drop(*what_prefix)
 
-    >>> df.agg({"pKNe": "min"}).collect()[0][0]
-    0.0
-
-    >>> df.agg({"pKNe": "max"}).collect()[0][0] < 1.0
-    True
+    >>> df.filter(df['pKNe'] > 0.5).count()
+    0
     """
     epoch_lim = [-50, 50]
     time_bin = 0.25
@@ -358,7 +365,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     model_path = '{}/data/models/KN_model_2PC.pkl'.format(path)
