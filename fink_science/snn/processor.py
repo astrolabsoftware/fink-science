@@ -95,20 +95,6 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> df.filter(df['pIa'] > 0.5).count()
     7
 
-    >>> df.filter(df['pIa'] > 0.5).select(['snn_snia_vs_nonia', 'pIa']).show()
-    +------------------+------------------+
-    | snn_snia_vs_nonia|               pIa|
-    +------------------+------------------+
-    |0.5939322710037231|0.5126258730888367|
-    | 0.768829882144928|0.5285555720329285|
-    |0.8179996609687805|0.7612735033035278|
-    |0.6516984701156616| 0.568986177444458|
-    |0.7546510696411133|0.5689865946769714|
-    |0.5832051038742065|0.5099397897720337|
-    |0.7556943893432617|0.7612766623497009|
-    +------------------+------------------+
-    <BLANKLINE>
-
     # Note that we can also specify a model
     >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']]
     >>> args += [F.col('roid'), F.col('cdsxmatch'), F.col('candidate.jdstarthist')]
