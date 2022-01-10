@@ -19,8 +19,6 @@ import numpy as np
 
 from LIA import extract_features
 
-from pyspark.sql.types import StructType, StructField, StringType, DoubleType
-
 LIA_FEATURE_NAMES = ['f{}_{}'.format(j, i) for i in ['g', 'r'] for j in range(47)]
 
 def _extract(mag, magerr):

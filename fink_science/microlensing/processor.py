@@ -24,6 +24,7 @@ import warnings
 from fink_science import __file__
 from fink_science.microlensing.classifier import _extract
 from fink_science.microlensing.classifier import LIA_FEATURE_NAMES
+from fink_science.microlensing.classifier import load_external_model
 
 from fink_science.conversion import dc_mag
 
