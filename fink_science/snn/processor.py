@@ -1,4 +1,4 @@
-# Copyright 2020 AstroLab Software
+# Copyright 2020-2022 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,8 +92,8 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> args += [F.lit('snn_snia_vs_nonia')]
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
-    >>> df.agg({"pIa": "min"}).collect()[0][0] >= 0.0
-    True
+    >>> df.filter(df['pIa'] > 0.5).count()
+    7
 
     # Note that we can also specify a model
     >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']]
@@ -101,11 +101,8 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> args += [F.lit(''), F.lit(model_path)]
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
-    >>> df.agg({"pIa": "min"}).collect()[0][0] >= 0.0
-    True
-
-    >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
-    True
+    >>> df.filter(df['pIa'] > 0.5).count()
+    7
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
@@ -175,7 +172,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     model_path = '{}/data/models/snn_models/snn_sn_vs_all/model.pt'.format(path)

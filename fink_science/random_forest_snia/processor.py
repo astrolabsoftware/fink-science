@@ -85,8 +85,21 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     >>> args += [F.col('cdsxmatch'), F.col('candidate.ndethist')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
-    >>> df.agg({"pIa": "min"}).collect()[0][0]
-    0.0
+    >>> df.filter(df['pIa'] > 0.5).count()
+    6
+
+    >>> df.filter(df['pIa'] > 0.5).select(['rf_snia_vs_nonia', 'pIa']).show()
+    +----------------+-----+
+    |rf_snia_vs_nonia|  pIa|
+    +----------------+-----+
+    |           0.839|0.839|
+    |           0.782|0.782|
+    |           0.887|0.887|
+    |           0.785|0.785|
+    |            0.88| 0.88|
+    |           0.777|0.777|
+    +----------------+-----+
+    <BLANKLINE>
 
     # Note that we can also specify a model
     >>> args = [F.col(i) for i in what_prefix]
@@ -94,8 +107,8 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     >>> args += [F.lit(model_path_sigmoid)]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
-    >>> df.agg({"pIa": "min"}).collect()[0][0]
-    0.0
+    >>> df.filter(df['pIa'] > 0.5).count()
+    6
 
     >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
     True
@@ -210,7 +223,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf) -> pd.Series:
 
     # Trigger something
     >>> df.agg({RF_FEATURE_NAMES[0]: "min"}).collect()[0][0]
-    0.0
+    -2663.2421875
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
@@ -263,7 +276,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
