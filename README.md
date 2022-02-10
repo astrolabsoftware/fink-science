@@ -17,6 +17,7 @@ This repository contains science modules used to generate added values to alert 
 | [fink_science/asteroids](fink_science/asteroids)| `roid` | int | Determine if the alert is a Solar System object |
 | [fink_science/kilonova](fink_science/kilonova)| `rf_kn_vs_nonkn` | float | probability of an alert to be a kilonova using a Random Forest Classifier (binary classification). |
 | [fink_science/nalerthist](fink_science/nalerthist)| `nalerthist` | int | Number of detections contained in each alert (current+history). Upper limits are not taken into account. |
+| [fink_science/snad](fink_science/snad)| `lc_*` | double | Numerous [light curve features](https://arxiv.org/pdf/2012.01419.pdf#section.A1) used in astrophysics. |
 
 You will find README in each subfolder describing the module.
 
