@@ -100,8 +100,11 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
     # Drop temp columns
     >>> df = df.drop(*what_prefix)
 
-    >>> df.agg({"roid": "min"}).collect()[0][0]
-    0
+    >>> df.filter(df['roid'] == 2).count()
+    3
+
+    >>> df.filter(df['roid'] == 3).count()
+    3
     """
     flags = np.zeros_like(ndethist.values, dtype=int)
 
@@ -155,7 +158,7 @@ if __name__ == "__main__":
 
     globs = globals()
     path = os.path.dirname(__file__)
-    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite

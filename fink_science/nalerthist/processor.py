@@ -57,7 +57,7 @@ def nalerthist(magpsf) -> pd.Series:
     1
 
     >>> df.agg({"nalerthist": "max"}).collect()[0][0]
-    9
+    40
     """
     nalerthist = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x)))
     return nalerthist
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
