@@ -157,17 +157,25 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
         clf = load_scikit_model(model)
 
     test_features = []
+    flag = []
     for id in np.unique(pdf['SNID']):
         pdf_sub = pdf[pdf['SNID'] == id]
         features = get_sigmoid_features_dev(pdf_sub)
+        if (features[0] == 0) or (features[6] == 0):
+            flag.append(False)
+        else:
+            flag.append(True)
         test_features.append(features)
+
+    flag = np.array(flag, dtype=np.bool)
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
+    probabilities[~flag] = 0.0
 
     # Take only probabilities to be Ia
     to_return = np.zeros(len(jd), dtype=float)
-    to_return[mask] = probabilities.T[0]
+    to_return[mask] = probabilities.T[1]
 
     return pd.Series(to_return)
 

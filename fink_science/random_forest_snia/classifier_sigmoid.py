@@ -348,10 +348,10 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
     ewma_window = 3
 
     # N min data points
-    min_data_points = 4
+    min_data_points = 3
 
     # N min rising data points
-    min_rising_points = 3
+    min_rising_points = 1
 
     list_filters = ['g', 'r']
 
