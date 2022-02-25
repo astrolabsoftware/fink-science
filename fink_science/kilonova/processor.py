@@ -106,7 +106,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_p
     # Note that we can also specify a model
 
     >>> extra_args = [F.col('candidate.jdstarthist'), F.col('cdsxmatch'), F.col('candidate.ndethist')]
-    >>> extra_args += [F.lit(model_path), F.lit(comp_path), F.lit(2)]
+    >>> extra_args += [F.lit(model_path), F.lit(comp_path), F.lit(3)]
 
     >>> args = [F.col(i) for i in what_prefix] + extra_args
     >>> df = df.withColumn('pKNe', knscore(*args))
