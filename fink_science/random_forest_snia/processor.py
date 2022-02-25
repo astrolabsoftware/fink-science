@@ -86,18 +86,17 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    6
+    5
 
     >>> df.filter(df['pIa'] > 0.5).select(['rf_snia_vs_nonia', 'pIa']).show()
     +----------------+-----+
     |rf_snia_vs_nonia|  pIa|
     +----------------+-----+
-    |           0.839|0.839|
-    |           0.782|0.782|
-    |           0.887|0.887|
-    |           0.785|0.785|
-    |            0.88| 0.88|
-    |           0.777|0.777|
+    |           0.839|0.597|
+    |           0.887|0.629|
+    |           0.785|0.596|
+    |            0.88|0.641|
+    |           0.777|0.611|
     +----------------+-----+
     <BLANKLINE>
 
@@ -108,7 +107,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    6
+    5
 
     >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
     True
@@ -157,17 +156,25 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
         clf = load_scikit_model(model)
 
     test_features = []
+    flag = []
     for id in np.unique(pdf['SNID']):
         pdf_sub = pdf[pdf['SNID'] == id]
         features = get_sigmoid_features_dev(pdf_sub)
+        if (features[0] == 0) or (features[6] == 0):
+            flag.append(False)
+        else:
+            flag.append(True)
         test_features.append(features)
+
+    flag = np.array(flag, dtype=np.bool)
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
+    probabilities[~flag] = 0.0
 
     # Take only probabilities to be Ia
     to_return = np.zeros(len(jd), dtype=float)
-    to_return[mask] = probabilities.T[0]
+    to_return[mask] = probabilities.T[1]
 
     return pd.Series(to_return)
 
@@ -223,7 +230,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf) -> pd.Series:
 
     # Trigger something
     >>> df.agg({RF_FEATURE_NAMES[0]: "min"}).collect()[0][0]
-    -2663.2421875
+    -84236.9296875
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3

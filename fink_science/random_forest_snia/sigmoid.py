@@ -1,4 +1,4 @@
-# Copyright 2020-2021 AstroLab Software
+# Copyright 2020-2022 AstroLab Software
 # Author: Marco Leoni, Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
