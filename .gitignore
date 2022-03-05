@@ -1,4 +1,5 @@
 .coverage
+.coverage*
 dist/
 *.pyc
 htmlcov
@@ -6,3 +7,4 @@ htmlcov
 .DS_Store
 fink_science.egg-info/
 *.crc
+default.profraw

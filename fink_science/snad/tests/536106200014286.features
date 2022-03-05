@@ -1,0 +1,83 @@
+amplitude: 2.666
+
+beyond_1_std: 0.4049
+
+beyond_2_std: 0.008097
+
+chi2: 3244
+
+cusum: 0.2225
+
+eta: 0.04555
+
+eta_e: 3.803e+07
+
+inter_percentile_range_10: 3.546
+
+inter_percentile_range_25: 2.276
+
+kurtosis: -1.084
+
+linear_fit_reduced_chi2: 3227
+
+linear_fit_slope: -0.000326
+
+linear_fit_slope_sigma: 3.762e-06
+
+linear_trend: -0.0002292
+
+linear_trend_sigma: 0.0002255
+
+magnitude_percentage_ratio_20_10: 0.7704
+
+magnitude_percentage_ratio_40_5: 0.2463
+
+maximum_slope: 58.53
+
+mean: 14.21
+
+median_absolute_deviation: 1.132
+
+median_buffer_range_percentage_5: 0.3158
+
+percent_amplitude: 2.689
+
+percent_difference_magnitude_percentile_20: 0.1913
+
+percent_difference_magnitude_percentile_5: 0.2727
+
+period_0: 368.7
+
+period_1: 187.1
+
+period_2: 154.8
+
+period_s_to_n_0: 30.94
+
+period_s_to_n_1: 10.17
+
+period_s_to_n_2: 4.379
+
+periodogram_amplitude: 48.89
+
+periodogram_beyond_1_std: 0.01648
+
+periodogram_beyond_2_std: 0.006592
+
+periodogram_cusum: 0.07841
+
+periodogram_eta: 0.03466
+
+periodogram_inter_percentile_range_25: 0.7199
+
+periodogram_percent_amplitude: 97.32
+
+periodogram_standard_deviation: 3.132
+
+skew: -0.0476
+
+standard_deviation: 1.343
+
+stetson_K: 0.8712
+
+weighted_mean: 14.58
