@@ -1,4 +1,4 @@
-# Copyright 2019-2021 AstroLab Software
+# Copyright 2019-2022 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,7 +79,7 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
 
     conf = SparkConf()
     confdic = {
-        "spark.jars.packages": 'org.apache.spark:spark-avro_2.11:2.4.7',
+        "spark.jars.packages": 'org.apache.spark:spark-avro_2.12:3.1.3',
         "spark.python.daemon.module": "coverage_daemon"}
     conf.setMaster("local[2]")
     conf.setAppName("fink_science_test")
