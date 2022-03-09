@@ -1,8 +1,22 @@
+# Copyright 2020-2022 AstroLab Software
+# Author: Igor Beschastnov
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import logging
 import os
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import DoubleType, DoubleType, ArrayType
+from pyspark.sql.types import DoubleType, ArrayType
 
 import pandas as pd
 import numpy as np
@@ -59,14 +73,14 @@ def create_extractor():
 column_names = create_extractor().names
 columns_count = len(column_names)
 
-@pandas_udf(ArrayType(DoubleType()), PandasUDFType.SCALAR)
-def extract_features_snad(
+
+def extract_features_snad_raw(
     arr_magpsf,
     arr_jd,
     arr_sigmapsf,
     arr_cfid,
     arr_oId
-) -> pd.DataFrame:
+) -> pd.Series:
     """ Returns many features, extracted from measurment's using light_curve package (https://github.com/light-curve/light-curve-python).
     Reference - https://arxiv.org/pdf/2012.01419.pdf#section.A1
 
@@ -108,7 +122,6 @@ def extract_features_snad(
 
     >>> df = df.drop(snad_base_col, *what_prefix)
 
-    # TODO: better assertions
     >>> df.filter(df['fid_1_mean'] < 1e-1).count()
     0
     """
@@ -116,25 +129,25 @@ def extract_features_snad(
     results = []
     extractor = create_extractor()
 
-    for magpsf, jd, sigmapsf, cfid, oId in zip(arr_magpsf, arr_jd, arr_sigmapsf, arr_cfid, arr_oId):
-        # Select only valid measurements (not upper limits)
-        maskNotNone = magpsf == magpsf
+    passbands = np.unique(np.concatenate(arr_cfid))
 
+    for magpsf, jd, sigmapsf, cfid, oId in zip(arr_magpsf, arr_jd, arr_sigmapsf, arr_cfid, arr_oId):
         magpsf = magpsf.astype("float64")
         jd = jd.astype("float64")
         sigmapsf = jd.astype("float64")
 
-        nans = np.isnan(magpsf) | np.isnan(sigmapsf)
-        magpsf = magpsf[~nans & maskNotNone]
-        sigmapsf = sigmapsf[~nans & maskNotNone]
-        jd = jd[~nans & maskNotNone]
-        cfid = cfid[~nans & maskNotNone]
+        # Select only valid measurements (not upper limits)
+        maskNotNone = magpsf == magpsf
+        mask = ~(np.isnan(magpsf) | np.isnan(sigmapsf)) & maskNotNone
 
-        passband_one = cfid == 1
-        passband_two = cfid == 2   
+        magpsf = magpsf[mask]
+        sigmapsf = sigmapsf[mask]
+        jd = jd[mask]
+        cfid = cfid[mask]
 
         full_result = []
-        for passband in (passband_one, passband_two):
+        for passband_id in passbands:
+            passband = cfid == passband_id
             try:
                 result = extractor(jd[passband], magpsf[passband], sigmapsf[passband], fill_value=np.nan)
             except ValueError as err:
@@ -143,17 +156,20 @@ def extract_features_snad(
                 if err.args[0] == "t must be in ascending order":
                     logger.error(f"Unordered jd for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
                 else:
-                    logger.exception(f"Unknown exception in processor '{__file__}/{extract_features_snad.__name__}'")
+                    logger.exception(f"Unknown exception for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
                 break
             except Exception as err:
                 full_result = None
-                logger.exception(f"Unknown exception in processor '{__file__}/{extract_features_snad.__name__}'")
+                logger.exception(f"Unknown exception for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
                 break
-            full_result.extend(result)
+            full_result.append([passband_id, *result])
 
         results.append(full_result)
 
     return pd.Series(results)
+
+
+extract_features_snad = pandas_udf(ArrayType(ArrayType(DoubleType())), PandasUDFType.SCALAR)(extract_features_snad_raw)
 
 
 if __name__ == "__main__":
