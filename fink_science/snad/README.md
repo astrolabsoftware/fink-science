@@ -2,7 +2,7 @@
 
 ## Extraction of light curve features
 
-This module adds many new columns with different features for data analysis, ML, etc. Based on [light_curve](https://github.com/light-curve) library. Arxiv link - [paper](https://arxiv.org/pdf/2012.01419.pdf).
+This module adds new column **lc_features** with different features, calculated for each filter, data type of the column is `Map(int filter_id -> Struct(str feature1: double value, etc.))`. Based on [light_curve](https://github.com/light-curve) library. Arxiv link - [paper](https://arxiv.org/pdf/2012.01419.pdf).
 
 Current list of features:
 
