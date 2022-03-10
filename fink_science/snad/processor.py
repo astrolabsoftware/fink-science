@@ -15,8 +15,8 @@
 import logging
 import os
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import DoubleType, ArrayType
+from pyspark.sql.functions import udf
+from pyspark.sql.types import DoubleType, IntegerType, MapType, StructType, StructField
 
 import pandas as pd
 import numpy as np
@@ -59,8 +59,8 @@ def create_extractor():
         lc.MedianAbsoluteDeviation(),                  # A2.0.13  Median Absolute Deviation
         lc.MedianBufferRangePercentage(quantile=0.1),  # A2.0.14  Median Buffer Range Percentage
         lc.PercentAmplitude(),                         # A2.0.15  Percent Amplitude
-        lc.MeanVariance(),                             # 
-        lc.AndersonDarlingNormal(),                    # 
+        lc.MeanVariance(),                             #
+        lc.AndersonDarlingNormal(),                    #
         lc.ReducedChi2(),                              # A2.0.25  Reduced𝜒2
         lc.Skew(),                                     # A2.0.26  Skew
         lc.StetsonK(),                                 # A2.0.28  Stetson𝐾
@@ -75,11 +75,11 @@ columns_count = len(column_names)
 
 
 def extract_features_snad_raw(
-    arr_magpsf,
-    arr_jd,
-    arr_sigmapsf,
-    arr_cfid,
-    arr_oId
+    magpsf,
+    jd,
+    sigmapsf,
+    cfid,
+    oId
 ) -> pd.Series:
     """ Returns many features, extracted from measurment's using light_curve package (https://github.com/light-curve/light-curve-python).
     Reference - https://arxiv.org/pdf/2012.01419.pdf#section.A1
@@ -114,62 +114,60 @@ def extract_features_snad_raw(
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
-    >>> snad_base_col = 'lc_features'
-    >>> df = df.withColumn(snad_base_col, extract_features_snad(*what_prefix, 'objectId'))
-    >>> for index, name in enumerate(column_names):
-    ...     df = df.withColumn("fid_1_" + name, df[snad_base_col][index])
-    ...     df = df.withColumn("fid_2_" + name, df[snad_base_col][index + columns_count])
+    >>> df = df.withColumn('lc_features', extract_features_snad(*what_prefix, 'objectId'))
 
-    >>> df = df.drop(snad_base_col, *what_prefix)
-
-    >>> df.filter(df['fid_1_mean'] < 1e-1).count()
-    0
+    >>> for row in df.take(10):
+    ...    assert len(row['lc_features']) == len(np.unique(row['cfid']))
+    ...    assert len(row['lc_features'][1]) == 26
     """
 
-    results = []
+    cfid = np.asarray(cfid, "int32")
+    magpsf = np.asarray(magpsf, "float64")
+    jd = np.asarray(jd, "float64")
+    sigmapsf = np.asarray(sigmapsf, "float64")
+
     extractor = create_extractor()
 
-    passbands = np.unique(np.concatenate(arr_cfid))
+    passbands = np.unique(cfid)
 
-    for magpsf, jd, sigmapsf, cfid, oId in zip(arr_magpsf, arr_jd, arr_sigmapsf, arr_cfid, arr_oId):
-        magpsf = magpsf.astype("float64")
-        jd = jd.astype("float64")
-        sigmapsf = jd.astype("float64")
+    # Select only valid measurements (not upper limits)
+    maskNotNone = magpsf == magpsf
+    mask = ~(np.isnan(magpsf) | np.isnan(sigmapsf)) & maskNotNone
 
-        # Select only valid measurements (not upper limits)
-        maskNotNone = magpsf == magpsf
-        mask = ~(np.isnan(magpsf) | np.isnan(sigmapsf)) & maskNotNone
+    magpsf = magpsf[mask]
+    sigmapsf = sigmapsf[mask]
+    jd = jd[mask]
+    cfid = cfid[mask]
 
-        magpsf = magpsf[mask]
-        sigmapsf = sigmapsf[mask]
-        jd = jd[mask]
-        cfid = cfid[mask]
-
-        full_result = []
-        for passband_id in passbands:
-            passband = cfid == passband_id
-            try:
-                result = extractor(jd[passband], magpsf[passband], sigmapsf[passband], fill_value=np.nan)
-            except ValueError as err:
-                full_result = None
-                # log if known error, then skip
-                if err.args[0] == "t must be in ascending order":
-                    logger.error(f"Unordered jd for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
-                else:
-                    logger.exception(f"Unknown exception for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
-                break
-            except Exception as err:
-                full_result = None
+    full_result = {}
+    for passband_id in passbands:
+        passband = cfid == passband_id
+        try:
+            result = extractor(jd[passband], magpsf[passband], sigmapsf[passband], fill_value=np.nan)
+        except ValueError as err:
+            # log if known error, then skip
+            if err.args[0] == "t must be in ascending order":
+                logger.error(f"Unordered jd for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
+            else:
                 logger.exception(f"Unknown exception for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
-                break
-            full_result.append([passband_id, *result])
+            continue
+        except Exception:
+            logger.exception(f"Unknown exception for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
+            continue
+        full_result[int(passband_id)] = dict(zip(column_names, [float(v) for v in result]))
 
-        results.append(full_result)
-
-    return pd.Series(results)
+    return full_result
 
 
-extract_features_snad = pandas_udf(ArrayType(ArrayType(DoubleType())), PandasUDFType.SCALAR)(extract_features_snad_raw)
+extract_features_snad = udf(
+    f=extract_features_snad_raw,
+    returnType=MapType(
+        IntegerType(),  # passband_id
+        StructType([  # features name -> value
+            StructField(name, DoubleType(), True) for name in column_names
+        ])
+    ),
+)
 
 
 if __name__ == "__main__":
@@ -179,6 +177,7 @@ if __name__ == "__main__":
 
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
-    
+    del globs["extract_features_snad_raw"]
+
     # Run the test suite
     spark_unit_tests(globs)

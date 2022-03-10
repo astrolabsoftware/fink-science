@@ -30,7 +30,7 @@ for name in names:
     with open(f'tests/{name}.features') as features_file:
         lines = features_file.readlines()[::2]
         features.append({
-            split[0]: float(split[1][:-1]) for 
+            split[0]: float(split[1][:-1]) for
             split in map(lambda ln: ln.split(": "), lines)
         })
 
