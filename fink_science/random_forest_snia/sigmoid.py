@@ -16,6 +16,7 @@ import numpy as np
 
 from scipy.optimize import least_squares
 from scipy.stats import chisquare
+from sklearn.metrics import mean_squared_error
 
 
 def delta_t(time_index: np.array) -> np.array:
@@ -116,22 +117,20 @@ def fit_sigmoid(time: np.array, flux: np.array) -> list:
     return result.x
 
 
-def compute_chi_square(f_obs: np.array, f_exp: np.array) -> float:
-    """ Compute chisquare
-
+def compute_mse(f_obs: np.array, f_exp: np.array) -> float:
+    """ Compute mean squared error.
     Parameters
     ----------
     f_obs: np.array
         observed data points
     f_exp: np.array
         fitted (predicted) data points
-
     Returns
     -------
-    test_chi[0]: float
-        chi_square between fitted and observed
+    test_mse: float
+        mse between fitted and observed
     """
 
-    test_chi = chisquare(f_obs, f_exp,)
-
-    return test_chi[0]
+    test_mse = mean_squared_error(f_obs, f_exp)
+    
+    return test_mse
