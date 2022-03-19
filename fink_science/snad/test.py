@@ -15,14 +15,8 @@ names = (
     "633202300014898",
     "633211400005684",
 )
-test_datasets = [pd.read_csv(f"tests/{fl}.csv") for fl in names]
-test_params = {
-    'arr_magpsf': [dt.mag.to_numpy() for dt in test_datasets],
-    'arr_jd': [dt.mjd.to_numpy() for dt in test_datasets],
-    'arr_sigmapsf': [dt.magerr.to_numpy() for dt in test_datasets],
-    'arr_cfid': [np.ones(len(dt.mag)) for dt in test_datasets],
-    'arr_oId': [i for i, _ in enumerate(test_datasets)]
-}
+path = os.path.dirname(os.path.abspath(__file__))
+test_datasets = [pd.read_csv(f"{path}/tests/{fl}.csv") for fl in names]
 
 features = []
 
@@ -34,11 +28,11 @@ for name in names:
             split in map(lambda ln: ln.split(": "), lines)
         })
 
-result = processor.extract_features_snad_raw(**test_params)
 result_features = []
-for res in result:
+for index, dataset in enumerate(test_datasets):
+    result = processor.extract_features_snad_raw(dataset.mag, dataset.mjd, dataset.magerr, np.ones(len(dataset.mag)), index)
     result_features.append({
-        lc_columns[i]: res[0][i + 1] for i in range(len(lc_columns))
+        lc_columns[i]: result[1][lc_columns[i]] for i in range(len(lc_columns))
     })
 
 errors = defaultdict(dict)
@@ -57,14 +51,16 @@ for expected, actual, name in zip(features, result_features, names):
 
 if errors:
     pprint(errors)
-    last_run_path = 'tests/last_run.json'
+    last_run_path = f'{path}/tests/last_run.json'
     if os.path.exists(last_run_path):
-        with open('tests/last_run.json', 'r') as last_run:
+        with open(last_run_path, 'r') as last_run:
             last_run_errors = json.load(last_run)  # I've not come up with something to do with it yet
     else:
         last_run_errors = None
         print('NOTE: last run data was not found')
-    with open('tests/last_run.json', 'w') as last_run:
+    with open(last_run_path, 'w') as last_run:
         json.dump(errors, last_run, indent=4)
+    exit(1)
 else:
     print("Ok!")
+    exit(0)
