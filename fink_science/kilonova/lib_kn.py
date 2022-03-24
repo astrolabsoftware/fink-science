@@ -15,11 +15,14 @@
 
 def return_list_of_kn_host():
     """ Return potential KN host names
+
     This includes:
     - List of object names in SIMBAD that would correspond to extra-galactic object
     - Unknown objects
     - objects with failed crossmatch
+
     In practice, this exclude galactic objects from SIMBAD.
+
     """
     list_simbad_galaxies = [
         "galaxy",
