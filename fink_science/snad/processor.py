@@ -64,7 +64,6 @@ def create_extractor():
         lc.ReducedChi2(),                              # A2.0.25  Reduced𝜒2
         lc.Skew(),                                     # A2.0.26  Skew
         lc.StetsonK(),                                 # A2.0.28  Stetson𝐾
-
     )
 
 
@@ -81,7 +80,7 @@ def extract_features_snad_raw(
     cfid,
     oId
 ) -> pd.Series:
-    """ Returns many features, extracted from measurment's using light_curve package (https://github.com/light-curve/light-curve-python).
+    """ Returns many features, extracted from measurments using light_curve package (https://github.com/light-curve/light-curve-python).
     Reference - https://arxiv.org/pdf/2012.01419.pdf#section.A1
 
     Parameters
@@ -97,8 +96,8 @@ def extract_features_snad_raw(
 
     Returns
     ----------
-    out: list
-        Returns list of lists. Each "inner" list consists of many light curve features for each filter.
+    out: dict
+        Returns dict of dict. Keys of first dict - filters (fid), keys of inner dicts - names of features.
 
     Examples
     ---------
