@@ -93,6 +93,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     |rf_snia_vs_nonia|  pIa|
     +----------------+-----+
     |           0.839|0.597|
+    |           0.782| 0.62|
     |           0.887|0.629|
     |           0.785|0.596|
     |            0.88|0.641|
@@ -107,7 +108,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    5
+    6
 
     >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
     True
