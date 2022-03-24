@@ -141,7 +141,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.S
     # define filters
     filters = ['g', 'r']
 
-    # extract features (all filters) for each ID
+    # extract features (all filters) for each SNID
     features_df = extract_features_all_lightcurves(pdf, key="SNID", pcs=pcs, filters=filters)
 
     # make predictions
