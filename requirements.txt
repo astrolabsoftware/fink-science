@@ -29,4 +29,4 @@ seaborn
 scikit-image
 
 # KN
--e git+https://github.com/b-biswas/kndetect@sklearn-version#egg=kndetect
+-e git+https://github.com/b-biswas/kndetect@kndetect#egg=kndetect
