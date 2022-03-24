@@ -18,7 +18,7 @@ import random
 
 from fink_science.random_forest_snia.sigmoid import fit_sigmoid
 from fink_science.random_forest_snia.sigmoid import delta_t
-from fink_science.random_forest_snia.sigmoid import compute_chi_square
+from fink_science.random_forest_snia.sigmoid import compute_mse
 from fink_science.random_forest_snia.sigmoid import fsigmoid
 
 columns_to_keep = ['MJD', 'FLT', 'FLUXCAL', 'FLUXCALERR']
@@ -405,8 +405,8 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
                 # predicted flux with fit parameters
                 pred_flux = get_predicted_flux(dt, a[i], b[i], c[i])
 
-                # compute chi-square
-                chisq[i] = compute_chi_square(rising_flux, pred_flux)
+                # compute mse
+                chisq[i] = compute_mse(rising_flux, pred_flux)
 
             else:
                 # if rising flux has less than three
