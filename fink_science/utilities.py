@@ -119,7 +119,11 @@ def load_pcs(fn, npcs):
 
     Return
     ----------
-    clf: sklearn.ensemble.forest.RandomForestClassifier
+    pcs: pd.DataFrame
+        All principal components to be considered.
+        keys should be PCs names (1, 2, 3, ...),
+        values their amplitude at each epoch in the grid.
+        Order of PCs when calling pcs.keys() is important.
     """
     comp = pd.read_csv(fn)
     pcs = {}
