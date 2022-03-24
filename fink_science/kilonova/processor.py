@@ -68,7 +68,17 @@ def knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('candidate.jdstarthist'), F.col('cdsxmatch'), F.col('candidate.ndethist')]
     >>> df = df.withColumn('pKNe', knscore(*args))
+
+    >>> df.filter(df['pKNe'] > 0.5).count()
+    0
+    >>> df.filter(df['pKNe'] > 0.5).select(['rf_kn_vs_nonkn', 'pKNe']).show()
+    +--------------+----+
+    |rf_kn_vs_nonkn|pKNe|
+    +--------------+----+
+    +--------------+----+
+    <BLANKLINE>
 
     # Drop temp columns
     >>> df = df.drop(*what_prefix)
