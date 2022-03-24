@@ -39,9 +39,9 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.S
     Parameters
     ----------
     jd: Spark DataFrame Column
-        JD times (float)
+        JD times (vectors of floats)
     fid: Spark DataFrame Column
-        Filter IDs (int)
+        Filter IDs (vectors of ints)
     magpsf, sigmapsf: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error (vectors of floats)
     cdsxmatch: Spark DataFrame Column
@@ -95,14 +95,14 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.S
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
-    
+
     mask *= (ndethist.astype(int) <= 20)
 
     mask *= jd.apply(lambda x: float(x[-1])) - jdstarthist.astype(float) < 20
 
     list_of_kn_host = return_list_of_kn_host()
     mask *= cdsxmatch.apply(lambda x: x in list_of_kn_host)
-    
+
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
@@ -240,9 +240,6 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
     # extract features (all filters) for each ID
     features_df = extract_features_all_lightcurves(pdf, key="SNID", pcs=pcs, filters=filters)
     feature_col_names = get_feature_names()
-
-    # extract features (all filters) for each ID
-
 
     to_return_features = np.zeros(
         (len(jd), len(feature_col_names)),
