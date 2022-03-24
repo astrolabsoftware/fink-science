@@ -241,7 +241,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
     # define filters
     filters = ['g', 'r']
 
-    # extract features (all filters) for each ID
+    # extract features (all filters)
     features_df = extract_features_all_lightcurves(pdf, key="SNID", pcs=pcs, filters=filters)
     feature_col_names = get_feature_names()
 
