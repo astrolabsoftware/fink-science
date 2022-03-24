@@ -145,6 +145,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.S
     features_df = extract_features_all_lightcurves(pdf, key="SNID", pcs=pcs, filters=filters)
 
     # make predictions
+    # If coefficients in any band in zero, the event is predicted as non-KN by default
     probabilities_, _ = predict_kn_score(clf=model, features_df=features_df)
 
     # Take only probabilities to be KN
