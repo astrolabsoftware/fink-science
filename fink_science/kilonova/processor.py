@@ -178,7 +178,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
     >>> from pyspark.sql.functions import split
     >>> from pyspark.sql.types import FloatType
     >>> from fink_science.utilities import concat_col
-    >>> from kndetect.predict_features import get_feature_names
+    >>> from kndetect.features import get_feature_names
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
