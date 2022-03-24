@@ -1,4 +1,4 @@
-# Copyright 2021 AstroLab Software
+# Copyright 2021-2022 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,8 @@ from fink_science.tester import spark_unit_tests
 def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.Series:
     """ Return the probability of an alert to be a Kilonova using a Random
     Forest Classifier.
+
+    You need to run the SIMBAD crossmatch before.
 
     Parameters
     ----------
@@ -260,7 +262,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/alerts.parquet'.format(path)
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
