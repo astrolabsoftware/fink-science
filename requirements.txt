@@ -2,7 +2,7 @@
 numpy>=1.17
 pandas
 scipy
-scikit-learn==0.23
+scikit-learn
 
 # Coverage
 coveralls
@@ -29,4 +29,4 @@ seaborn
 scikit-image
 
 # KN
--e git+https://github.com/b-biswas/kndetect@main#egg=kndetect
+-e git+https://github.com/b-biswas/kndetect@sklearn-version#egg=kndetect
