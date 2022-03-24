@@ -21,6 +21,8 @@ import numpy as np
 import os
 
 from fink_science.conversion import mag2fluxcal_snana
+from fink_science.kilonova.lib_kn import return_list_of_kn_host
+
 from fink_science import __file__
 
 from kndetect.utils import load_pcs
@@ -30,7 +32,7 @@ from kndetect.features import extract_features_all_lightcurves, get_feature_name
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
+def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.Series:
     """ Return the probability of an alert to be a Kilonova using a Random
     Forest Classifier.
 
@@ -41,7 +43,13 @@ def knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
     fid: Spark DataFrame Column
         Filter IDs (int)
     magpsf, sigmapsf: Spark DataFrame Columns
-        Magnitude from PSF-fit photometry, and 1-sigma error
+        Magnitude from PSF-fit photometry, and 1-sigma error (vectors of floats)
+    cdsxmatch: Spark DataFrame Column
+        Type of object found in Simbad (string)
+    ndethist: Spark DataFrame Column
+        Column containing the number of detection by ZTF at 3 sigma (int)
+    jdstarthist: Spark DataFrame Column
+        Column containing first time variability has been seen
 
     Returns
     ----------
@@ -50,10 +58,14 @@ def knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
 
     Examples
     ----------
+    >>> from fink_science.xmatch.processor import cdsxmatch
     >>> from fink_science.utilities import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
+
+    >>> colnames = [df['objectId'], df['candidate.ra'], df['candidate.dec']]
+    >>> df = df.withColumn('cdsxmatch', cdsxmatch(*colnames))
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
@@ -73,24 +85,24 @@ def knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
 
     >>> df.filter(df['pKNe'] > 0.5).count()
     0
+
     >>> df.filter(df['pKNe'] > 0.5).select(['rf_kn_vs_nonkn', 'pKNe']).show()
     +--------------+----+
     |rf_kn_vs_nonkn|pKNe|
     +--------------+----+
     +--------------+----+
     <BLANKLINE>
-
-    # Drop temp columns
-    >>> df = df.drop(*what_prefix)
-
-    >>> df.agg({"pKNe": "min"}).collect()[0][0]
-    0.0
-
-    >>> df.agg({"pKNe": "max"}).collect()[0][0] < 1.0
-    True
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
+    
+    mask *= (ndethist.astype(int) <= 20)
+
+    mask *= jd.apply(lambda x: float(x[-1])) - jdstarthist.astype(float) < 20
+
+    list_of_kn_host = return_list_of_kn_host()
+    mask *= cdsxmatch.apply(lambda x: x in list_of_kn_host)
+    
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
