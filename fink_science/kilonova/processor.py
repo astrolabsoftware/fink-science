@@ -138,6 +138,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.S
     # Load pcs
     pcs = load_pcs()
 
+    # define filters
     filters = ['g', 'r']
 
     # extract features (all filters) for each ID
@@ -237,6 +238,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
     # Load pcs
     pcs = load_pcs()
 
+    # define filters
     filters = ['g', 'r']
 
     # extract features (all filters) for each ID
