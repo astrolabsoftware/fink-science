@@ -77,10 +77,25 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
     from pyspark.sql import SparkSession
     from pyspark import SparkConf
 
+    spark = SparkSession.builder.getOrCreate()
+
     conf = SparkConf()
     confdic = {
-        "spark.jars.packages": 'org.apache.spark:spark-avro_2.12:3.1.3',
-        "spark.python.daemon.module": "coverage_daemon"}
+        "spark.python.daemon.module": "coverage_daemon"
+    }
+
+    if spark.version.startswith('2'):
+        confdic.update(
+            {
+                "spark.jars.packages": 'org.apache.spark:spark-avro_2.11:{}'.format(spark.version)
+            }
+        )
+    elif spark.version.startswith('3'):
+        confdic.update(
+            {
+                "spark.jars.packages": 'org.apache.spark:spark-avro_2.12:{}'.format(spark.version)
+            }
+        )
     conf.setMaster("local[2]")
     conf.setAppName("fink_science_test")
     for k, v in confdic.items():
