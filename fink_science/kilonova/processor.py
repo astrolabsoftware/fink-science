@@ -245,6 +245,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
     features_df = extract_features_all_lightcurves(pdf, key="SNID", pcs=pcs, filters=filters)
     feature_col_names = get_feature_names()
 
+    # return features for all events
     to_return_features = np.zeros(
         (len(jd), len(feature_col_names)),
         dtype=float
