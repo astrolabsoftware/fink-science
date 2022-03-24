@@ -27,3 +27,6 @@ natsort
 colorama
 seaborn
 scikit-image
+
+# KN
+-e git+https://github.com/b-biswas/kndetect@main#egg=kndetect
