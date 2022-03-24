@@ -25,7 +25,7 @@ from fink_science import __file__
 
 from kndetect.utils import load_pcs
 from kndetect.predict import load_classifier, predict_kn_score
-from kndetect.predict_features import extract_features_all_lightcurves, get_feature_names
+from kndetect.features import extract_features_all_lightcurves, get_feature_names
 
 from fink_science.tester import spark_unit_tests
 
