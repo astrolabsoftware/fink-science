@@ -86,7 +86,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    5
+    6
 
     >>> df.filter(df['pIa'] > 0.5).select(['rf_snia_vs_nonia', 'pIa']).show()
     +----------------+-----+
