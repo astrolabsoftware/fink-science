@@ -143,10 +143,10 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.S
     # extract features (all filters) for each ID
     features_df = extract_features_all_lightcurves(pdf, key="SNID", pcs=pcs, filters=filters)
 
-    # Otherwise make predictions
+    # make predictions
     probabilities_, _ = predict_kn_score(clf=model, features_df=features_df)
 
-    # Take only probabilities to be Ia
+    # Take only probabilities to be KN
     to_return = np.zeros(len(jd), dtype=float)
     to_return[mask] = probabilities_.T[1]
 
