@@ -30,6 +30,20 @@ from fink_science.random_forest_snia.classifier_sigmoid import return_list_of_sn
 
 from fink_science.tester import spark_unit_tests
 
+def apply_selection_cuts_ztf(
+        magpsf: pd.Series, ndethist: pd.Series, cdsxmatch: pd.Series) -> pd.Series:
+    """
+    """
+    # Flag empty alerts
+    mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
+
+    mask *= (ndethist.astype(int) <= 20)
+
+    list_of_sn_host = return_list_of_sn_host()
+    mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
+
+    return mask
+
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
@@ -113,13 +127,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
     True
     """
-    # Flag empty alerts
-    mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
-
-    mask *= (ndethist.astype(int) <= 20)
-
-    list_of_sn_host = return_list_of_sn_host()
-    mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
+    mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
 
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
