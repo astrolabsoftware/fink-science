@@ -32,17 +32,124 @@ from fink_science.tester import spark_unit_tests
 
 def apply_selection_cuts_ztf(
         magpsf: pd.Series, ndethist: pd.Series, cdsxmatch: pd.Series) -> pd.Series:
+    """ Apply selection cuts to keep only alerts of interest
+    for early SN Ia analysis
+
+    Parameters
+    ----------
+    magpsf: pd.Series
+        Series containing data measurement (array of double). Each row contains
+        all measurement values for one alert.
+    ndethist: pd.Series
+        Series containing length of the history (array of int/float).
+        Each row contains all measurement values for one alert (sorted as magpsf).
+    cdsxmatch: pd.Series
+        Series containing crossmatch label with SIMBAD (str).
+        Each row contains one label.
+
+    Returns
+    ---------
+    mask: pd.Series
+        Series containing `True` if the alert is valid, `False` otherwise.
+        Each row contains one boolean.
     """
-    """
-    # Flag empty alerts
+    # Flag alerts with less than 3 points in total
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
 
+    # only alerts with less or equal than 20 measurements
     mask *= (ndethist.astype(int) <= 20)
 
+    # reject galactic objects
     list_of_sn_host = return_list_of_sn_host()
     mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
 
     return mask
+
+def format_data_as_snana(
+        jd, measurement, error, fid, mask,
+        filter_conversion_dic={1: 'g', 2: 'r'},
+        transform_to_flux=True):
+    """ Format data in SNANA units and format
+
+    The resulting DataFrame is a concatenation of all alert data, with one
+    measurement per row.
+
+    |    a   |   b   |
+    |--------|-------|
+    | [1, 2] | [3, 4]|
+
+    would become
+
+    |    a   |   b   |
+    |--------|-------|
+    |    1   |   3   |
+    |    2   |   4   |
+
+    Parameters
+    ----------
+    jd: pd.Series
+        Series containing Julian Dates (array of double). Each row contains
+        all jd values for one alert (sorted).
+    measurement: pd.Series
+        Series containing data measurement (array of double). Each row contains
+        all measurement values for one alert (sorted as jd).
+        Can be either difference magnitude (a la ZTF), and which case you would
+        set `transform_to_flux` to True to convert it into flux units,
+        or it can be flux directly.
+    error: pd.Series
+        Series containing data error measurement (array of double). Each row
+        contains all measurement values for one alert (sorted as jd).
+        Can be either difference magnitude error (a la ZTF), and which case you
+        would set `transform_to_flux` to True to convert it into flux units,
+        or it can be flux error directly.
+    fid: pd.Series
+        Series containing filter band code (array of int/str). Each row contains
+        all filter code values for one alert (sorted as jd).
+    mask: pd.Series
+        Series containing information on which alerts to keep (boolean).
+    filter_conversion_dic: dict
+        Mapping from telescope filter code (e.g. [1, 2] for ZTF) to
+        SNANA filter code (['g', 'r']). Default is {1: 'g', 2: 'r'}.
+    transform_to_flux: boolean
+        Set it to True if `measurement` is in Difference magnitude
+        units (default for ZTF), in which case we will convert to apparent
+        magnitude and then SNANA flux. Default is True.
+
+    Returns
+    ----------
+    pdf: pd.DataFrame
+        DataFrame a la SNANA with SNID, MJD, FLUXCAL, FLUXCALERR, FLT.
+
+    """
+    # add an exploded column with SNID
+    df_tmp = pd.DataFrame.from_dict(
+        {
+            'jd': jd[mask],
+            'SNID': range(len(jd[mask]))
+        }
+    )
+    df_tmp = df_tmp.explode('jd')
+
+    if transform_to_flux:
+        # compute flux and flux error
+        data = [mag2fluxcal_snana(*args) for args in zip(
+            measurement[mask].explode(),
+            error[mask].explode())]
+        flux, flux_error = np.transpose(data)
+    else:
+        flux = measurement[mask].explode()
+        flux_error = error[mask].explode()
+
+    # make a Pandas DataFrame with exploded series
+    pdf = pd.DataFrame.from_dict({
+        'SNID': df_tmp['SNID'],
+        'MJD': df_tmp['jd'],
+        'FLUXCAL': flux,
+        'FLUXCALERR': flux_error,
+        'FLT': fid[mask].explode().replace(filter_conversion_dic)
+    })
+
+    return pdf
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=None) -> pd.Series:
@@ -132,29 +239,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
-    # add an exploded column with SNID
-    df_tmp = pd.DataFrame.from_dict(
-        {
-            'jd': jd[mask],
-            'SNID': range(len(jd[mask]))
-        }
-    )
-    df_tmp = df_tmp.explode('jd')
-
-    # compute flux and flux error
-    data = [mag2fluxcal_snana(*args) for args in zip(
-        magpsf[mask].explode(),
-        sigmapsf[mask].explode())]
-    flux, error = np.transpose(data)
-
-    # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict({
-        'SNID': df_tmp['SNID'],
-        'MJD': df_tmp['jd'],
-        'FLUXCAL': flux,
-        'FLUXCALERR': error,
-        'FLT': fid[mask].explode().replace({1: 'g', 2: 'r'})
-    })
+    pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, mask)
 
     # Load pre-trained model `clf`
     if model is not None:
@@ -241,34 +326,12 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf) -> pd.Series:
     >>> df.agg({RF_FEATURE_NAMES[0]: "min"}).collect()[0][0]
     -84236.9296875
     """
-    # Flag empty alerts
-    mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
+    mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
+
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
-    # add an exploded column with SNID
-    df_tmp = pd.DataFrame.from_dict(
-        {
-            'jd': jd[mask],
-            'SNID': range(len(jd[mask]))
-        }
-    )
-    df_tmp = df_tmp.explode('jd')
-
-    # compute flux and flux error
-    data = [mag2fluxcal_snana(*args) for args in zip(
-        magpsf[mask].explode(),
-        sigmapsf[mask].explode())]
-    flux, error = np.transpose(data)
-
-    # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict({
-        'SNID': df_tmp['SNID'],
-        'MJD': df_tmp['jd'],
-        'FLUXCAL': flux,
-        'FLUXCALERR': error,
-        'FLT': fid[mask].explode().replace({1: 'g', 2: 'r'})
-    })
+    pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, mask)
 
     test_features = []
     for id in np.unique(pdf['SNID']):
