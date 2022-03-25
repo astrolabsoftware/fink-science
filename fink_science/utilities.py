@@ -20,7 +20,9 @@ import pickle
 
 from fink_science.tester import regular_unit_tests
 
-def concat_col(df, colname: str, prefix: str = 'c'):
+def concat_col(
+        df, colname: str, prefix: str = 'c',
+        current: str = 'candidate', history: str = 'prv_candidates'):
     """ Add new column to the DataFrame named `prefix`+`colname`, containing
     the concatenation of historical and current measurements.
 
@@ -32,6 +34,14 @@ def concat_col(df, colname: str, prefix: str = 'c'):
         Name of the column to add (without the prefix)
     prefix: str
         Additional prefix to add to the column name. Default is 'c'.
+    current: str
+        Name of the field containing current `colname` measurement, to extract
+        `current.colname`. Usually a struct type field. Default is `candidate`
+        from ZTF schema.
+    history: str
+        Name of the field containing history for `colname` measurements,
+        to extract `history.colname`. Usually a list of struct type field.
+        Default is `prv_candidates` from ZTF schema.
 
     Returns
     ----------
@@ -42,12 +52,12 @@ def concat_col(df, colname: str, prefix: str = 'c'):
     return df.withColumn(
         prefix + colname,
         F.when(
-            df['prv_candidates.{}'.format(colname)].isNotNull(),
+            df['{}.{}'.format(history, colname)].isNotNull(),
             F.concat(
-                df['prv_candidates.{}'.format(colname)],
-                F.array(df['candidate.{}'.format(colname)])
+                df['{}.{}'.format(history, colname)],
+                F.array(df['{}.{}'.format(current, colname)])
             )
-        ).otherwise(F.array(df['candidate.{}'.format(colname)]))
+        ).otherwise(F.array(df['{}.{}'.format(current, colname)]))
     )
 
 def extract_field(current: list, history: list) -> np.array:
