@@ -41,8 +41,8 @@ def apply_selection_cuts_ztf(
         Series containing data measurement (array of double). Each row contains
         all measurement values for one alert.
     ndethist: pd.Series
-        Series containing length of the history (array of int/float).
-        Each row contains all measurement values for one alert (sorted as magpsf).
+        Series containing length of the alert history (int).
+        Each row contains the (single) length of the alert.
     cdsxmatch: pd.Series
         Series containing crossmatch label with SIMBAD (str).
         Each row contains one label.
@@ -273,7 +273,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     return pd.Series(to_return)
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
-def extract_features_rf_snia(jd, fid, magpsf, sigmapsf) -> pd.Series:
+def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> pd.Series:
     """ Return the features used by the RF classifier.
 
     There are 12 features. Order is:
@@ -288,6 +288,10 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf) -> pd.Series:
         Filter IDs (int)
     magpsf, sigmapsf: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
+    cdsxmatch: Spark DataFrame Column
+        Type of object found in Simbad (string)
+    ndethist: Spark DataFrame Column
+        Column containing the number of detection by ZTF at 3 sigma (int)
 
     Returns
     ----------
@@ -316,6 +320,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf) -> pd.Series:
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('cdsxmatch'), F.col('candidate.ndethist')]
     >>> df = df.withColumn('features', extract_features_rf_snia(*args))
 
     >>> for name in RF_FEATURE_NAMES:
