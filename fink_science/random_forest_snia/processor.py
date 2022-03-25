@@ -329,7 +329,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
 
     # Trigger something
     >>> df.agg({RF_FEATURE_NAMES[0]: "min"}).collect()[0][0]
-    -84236.9296875
+    0.0
     """
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
 
