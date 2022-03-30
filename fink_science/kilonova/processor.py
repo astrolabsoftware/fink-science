@@ -205,7 +205,8 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
 
     # Trigger something
     >>> df.agg({KN_FEATURE_NAMES_3PC[0]: "min"}).collect()[0][0]
-    0.0
+    >>> np.isclose(val, 0.0)
+    True
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
