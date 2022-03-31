@@ -139,9 +139,9 @@ def format_data_as_snana(
     # make a Pandas DataFrame with exploded series
     pdf = pd.DataFrame.from_dict({
         'SNID': df_tmp['SNID'],
-        'MJD': df_tmp['jd'],
-        'FLUXCAL': flux,
-        'FLUXCALERR': flux_error,
+        'MJD': df_tmp['jd'].astype('float'),
+        'FLUXCAL': flux.astype('float'),
+        'FLUXCALERR': flux_error.astype('float'),
         'FLT': fid[mask].explode().replace(filter_conversion_dic)
     })
 
