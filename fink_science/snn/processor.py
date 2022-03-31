@@ -23,11 +23,54 @@ import numpy as np
 import os
 
 from fink_science import __file__
-from fink_science.conversion import mag2fluxcal_snana
 from fink_science.snn.utilities import reformat_to_df
 from fink_science.snn.utilities import return_list_of_sn_host
+from fink_science.utilities import format_data_as_snana
 
 from fink_science.tester import spark_unit_tests
+
+def apply_selection_cuts_ztf(
+        magpsf: pd.Series, cdsxmatch: pd.Series,
+        jd: pd.Series, jdstarthist: pd.Series, roid: pd.Series,
+        minpoints: int = 2, maxndethist: int = 90) -> pd.Series:
+    """ Apply selection cuts to keep only alerts of interest
+    for SNN analysis
+
+    Parameters
+    ----------
+    magpsf: pd.Series
+        Series containing data measurement (array of double). Each row contains
+        all measurement values for one alert.
+    cdsxmatch: pd.Series
+        Series containing crossmatch label with SIMBAD (str).
+        Each row contains one label.
+    jd: pd.Series
+        Series containing JD values (array of float). Each row contains
+        all measurement values for one alert.
+    jdstarthist: pd.Series
+        Series containing first JD for which the source varied (float).
+        Each row contains one label.
+    roid: pd.Series
+        Series containing SSO label (int).
+        Each row contains one label.
+
+    Returns
+    ---------
+    mask: pd.Series
+        Series containing `True` if the alert is valid, `False` otherwise.
+        Each row contains one boolean.
+    """
+    # Flag empty alerts
+    mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) >= minpoints
+
+    mask *= jd.apply(lambda x: float(x[-1])) - jdstarthist.astype(float) <= maxndethist
+
+    mask *= roid.astype(int) != 3
+
+    list_of_sn_host = return_list_of_sn_host()
+    mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
+
+    return mask
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name, model_ext=None) -> pd.Series:
@@ -104,18 +147,13 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> df.filter(df['pIa'] > 0.5).count()
     7
     """
-    # Flag empty alerts
-    mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
-
-    mask *= jd.apply(lambda x: float(x[-1])) - jdstarthist.astype(float) <= 90
-
-    mask *= roid.astype(int) != 3
-
-    list_of_sn_host = return_list_of_sn_host()
-    mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
+    mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
+
+    candid = candid.apply(lambda x: str(x))
+    pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     if model_ext is not None:
         # take the first element of the Series
@@ -124,31 +162,6 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
-
-    # add an exploded column with SNID
-    df_tmp = pd.DataFrame.from_dict(
-        {
-            'jd': jd[mask],
-            'SNID': [str(i) for i in candid[mask].values]
-        }
-    )
-
-    df_tmp = df_tmp.explode('jd')
-
-    # compute flux and flux error
-    data = [mag2fluxcal_snana(*args) for args in zip(
-        magpsf[mask].explode(),
-        sigmapsf[mask].explode())]
-    flux, error = np.transpose(data)
-
-    # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict({
-        'SNID': df_tmp['SNID'],
-        'MJD': df_tmp['jd'],
-        'FLUXCAL': flux,
-        'FLUXCALERR': error,
-        'FLT': fid[mask].explode().replace({1: 'g', 2: 'r'})
-    })
 
     # Compute predictions
     ids, pred_probs = classify_lcs(pdf, model, 'cpu')
@@ -165,6 +178,112 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     # return probabilities to be Ia
     return pd.Series(to_return)
 
+@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roid, cdsxmatch, jdstarthist, model_name, model_ext=None) -> pd.Series:
+    """ Compute probabilities of alerts to be SN Ia using SuperNNova
+
+    Parameters
+    ----------
+    diaSourceId: Spark DataFrame Column
+        Candidate IDs (int64)
+    midPointTai: Spark DataFrame Column
+        JD times (float)
+    filterName: Spark DataFrame Column
+        Filter IDs (str)
+    psFlux, psFluxErr: Spark DataFrame Columns
+        SNANA calibrated flux from LSST, and 1-sigma error
+    model_name: Spark DataFrame Column
+        SuperNNova pre-trained model. Currently available:
+            * snn_snia_vs_nonia
+            * snn_sn_vs_all
+    model_ext: Spark DataFrame Column, optional
+        Path to the trained model (overwrite `model`). Default is None
+
+    Returns
+    ----------
+    probabilities: 1D np.array of float
+        Probability between 0 (non-Ia) and 1 (Ia).
+
+    Examples
+    ----------
+    >>> from fink_science.utilities import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
+
+    # Assuming random positions
+    >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
+    >>> df = df.withColumn('roid', F.lit(0))
+
+    # Required alert columns
+    >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...     df = concat_col(
+    ...         df, colname, prefix=prefix,
+    ...         current='diaSource', history='prvDiaSources')
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col('diaSource.diaSourceId')]
+    >>> args += [F.col(i) for i in what_prefix]
+    >>> args += [F.col('roid'), F.col('cdsxmatch'), F.array_min('cmidPointTai')]
+    >>> args += [F.lit('snn_snia_vs_nonia')]
+    >>> df = df.withColumn('pIa', snn_ia_elasticc(*args))
+
+    >>> df.filter(df['pIa'] > 0.0).count()
+    19
+    """
+    mask = apply_selection_cuts_ztf(
+        psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=180)
+
+    mask *= filterName.apply(lambda array: np.sum([x in ['g', 'r'] for x in array]) > 1)
+
+    if len(midPointTai[mask]) == 0:
+        return pd.Series(np.zeros(len(midPointTai), dtype=float))
+
+    # change filter name for the moment to stick to ZTF definition
+    filter_conversion_dic = {'u': 0, 'g': 1, 'r': 2, 'i': 3, 'z': 4, 'Y': 5}
+    filterName = filterName.apply(lambda array: [filter_conversion_dic[x] for x in array])
+
+    diaSourceId = diaSourceId.apply(lambda x: str(x))
+    pdf = format_data_as_snana(
+        midPointTai, psFlux, psFluxErr,
+        filterName, diaSourceId, mask,
+        transform_to_flux=False
+    )
+
+    # Keep only g & r
+    filt_mask = pdf['FLT'].isin(['g', 'r'])
+    pdf = pdf[filt_mask]
+
+    if model_ext is not None:
+        # take the first element of the Series
+        model = model_ext.values[0]
+    else:
+        # Load pre-trained model
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
+
+    # Compute predictions
+    ids, pred_probs = classify_lcs(pdf, model, 'cpu')
+
+    # Reformat and re-index
+    preds_df = reformat_to_df(pred_probs, ids=ids)
+    preds_df.index = preds_df.SNID
+
+    # Take only probabilities to be Ia
+    to_return = np.zeros(len(midPointTai), dtype=float)
+    ia = preds_df.reindex([str(i) for i in diaSourceId[mask].values])
+    to_return[mask] = ia.prob_class0.values
+
+    # return probabilities to be Ia
+    return pd.Series(to_return)
+
 
 if __name__ == "__main__":
     """ Execute the test suite """
@@ -174,6 +293,9 @@ if __name__ == "__main__":
 
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
+
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_parquet'.format(path)
+    globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path = '{}/data/models/snn_models/snn_sn_vs_all/model.pt'.format(path)
     globs["model_path"] = model_path
