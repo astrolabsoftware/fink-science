@@ -85,23 +85,20 @@ def filter_data(data, filt):
 
 
 def mask_negative_data(data, low_bound):
-    """Mask data points whose FLUXCAL values are
-       lower than a chosen lower bound
+    """Mask data points whose FLUXCAL values are lower than a chosen lower bound
 
-       Prameteres
-       ----------
-       data: pandas DataFrame
-       light curve data for given filter
-       low_bound: float
-       minimum allowed value of flux
+    Parameters
+    ----------
+    data: pandas DataFrame
+        light curve data for given filter
+    low_bound: float
+        minimum allowed value of flux
 
-       Returns
-       -------
-       data: pandas DataFrame
-       light curve with masked flux
-
-        """
-
+    Returns
+    -------
+    data: pandas DataFrame
+        light curve with masked flux
+    """
     masked_data = data.mask(data['FLUXCAL'] < low_bound)\
         .set_index(data['MJD'])[fluxes].dropna()
     return masked_data
@@ -342,7 +339,7 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
 
     """
     # lower bound on flux
-    low_bound = -10
+    low_bound = 0
 
     # width of the ewma window
     ewma_window = 3
@@ -368,11 +365,15 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
         data_tmp = filter_data(data_all[columns_to_keep], i)
         # average over intraday data points
         data_tmp_avg = average_intraday_data(data_tmp)
+
         # mask negative flux below low bound
-        data_mjd = mask_negative_data(data_tmp_avg, low_bound)
+        if not data_tmp_avg.empty:
+            data_mjd = mask_negative_data(data_tmp_avg, low_bound)
+        else:
+            data_mjd = pd.DataFrame({'FLUXCAL': []})
 
         # check data have at least 5 points
-        if len(data_mjd['FLUXCAL'].values > min_data_points):
+        if len(data_mjd['FLUXCAL'].values) > min_data_points:
             # compute the derivative
             deriv_ewma = get_ewma_derivative(data_mjd['FLUXCAL'], ewma_window)
             # mask data with negative part
@@ -381,7 +382,7 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
             rising_data = data_masked.dropna()
 
             # at least three points (needed for the sigmoid fit)
-            if(len(rising_data) > min_rising_points):
+            if len(rising_data) > min_rising_points:
 
                 # focus on flux
                 rising_time = rising_data['FLUXCAL'].index.values
