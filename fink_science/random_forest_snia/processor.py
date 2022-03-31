@@ -278,16 +278,16 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
 
     Parameters
     ----------
-    jd: Spark DataFrame Column
+    midPointTai: Spark DataFrame Column
         JD times (vectors of floats)
-    fid: Spark DataFrame Column
-        Filter IDs (vectors of ints)
-    magpsf, sigmapsf: Spark DataFrame Columns
-        Magnitude from PSF-fit photometry, and 1-sigma error (vectors of floats)
+    filterName: Spark DataFrame Column
+        Filter IDs (vectors of str)
+    psFlux, psFluxErr: Spark DataFrame Columns
+        SNANA calibrated flux, and 1-sigma error (vectors of floats)
     cdsxmatch: Spark DataFrame Column
         Type of object found in Simbad (string)
-    ndethist: Spark DataFrame Column
-        Column containing the number of detection by ZTF at 3 sigma (int)
+    nobs: Spark DataFrame Column
+        Column containing the number of detections by LSST
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/default-model.obj` is loaded.
@@ -332,12 +332,12 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
 
     mask *= filterName.apply(lambda array: np.sum([x in ['g', 'r'] for x in array]) > 3)
 
+    if len(midPointTai[mask]) == 0:
+        return pd.Series(np.zeros(len(midPointTai), dtype=float))
+
     # change filter name for the moment to stick to ZTF definition
     filter_conversion_dic = {'u': 0, 'g': 1, 'r': 2, 'i': 3, 'z': 4, 'Y': 5}
     filterName = filterName.apply(lambda array: [filter_conversion_dic[x] for x in array])
-
-    if len(midPointTai[mask]) == 0:
-        return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
     candid = pd.Series(range(len(midPointTai)))
     pdf = format_data_as_snana(
@@ -373,7 +373,7 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     probabilities[~flag] = 0.0
 
     # Take only probabilities to be Ia
-    to_return = np.ones(len(midPointTai), dtype=float)
+    to_return = np.zeros(len(midPointTai), dtype=float)
     to_return[mask] = probabilities.T[1]
 
     return pd.Series(to_return)
