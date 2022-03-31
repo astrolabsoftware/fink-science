@@ -1,4 +1,4 @@
-# Copyright 2019-2021 AstroLab Software
+# Copyright 2019-2022 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,10 +20,9 @@ import numpy as np
 
 import os
 
-from fink_science.conversion import mag2fluxcal_snana
-
 from fink_science import __file__
 from fink_science.utilities import load_scikit_model
+from fink_science.utilities import format_data_as_snana
 from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_features_dev
 from fink_science.random_forest_snia.classifier_sigmoid import RF_FEATURE_NAMES
 from fink_science.random_forest_snia.classifier_sigmoid import return_list_of_sn_host
@@ -31,7 +30,8 @@ from fink_science.random_forest_snia.classifier_sigmoid import return_list_of_sn
 from fink_science.tester import spark_unit_tests
 
 def apply_selection_cuts_ztf(
-        magpsf: pd.Series, ndethist: pd.Series, cdsxmatch: pd.Series) -> pd.Series:
+        magpsf: pd.Series, ndethist: pd.Series, cdsxmatch: pd.Series,
+        minpoints: int = 4, maxndethist: int = 20) -> pd.Series:
     """ Apply selection cuts to keep only alerts of interest
     for early SN Ia analysis
 
@@ -54,102 +54,16 @@ def apply_selection_cuts_ztf(
         Each row contains one boolean.
     """
     # Flag alerts with less than 3 points in total
-    mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 3
+    mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) >= minpoints
 
     # only alerts with less or equal than 20 measurements
-    mask *= (ndethist.astype(int) <= 20)
+    mask *= (ndethist.astype(int) <= maxndethist)
 
     # reject galactic objects
     list_of_sn_host = return_list_of_sn_host()
     mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
 
     return mask
-
-def format_data_as_snana(
-        jd, measurement, error, fid, mask,
-        filter_conversion_dic={1: 'g', 2: 'r'},
-        transform_to_flux=True):
-    """ Format data in SNANA units and format
-
-    The resulting DataFrame is a concatenation of all alert data, with one
-    measurement per row.
-
-    |    a   |   b   |
-    |--------|-------|
-    | [1, 2] | [3, 4]|
-
-    would become
-
-    |    a   |   b   |
-    |--------|-------|
-    |    1   |   3   |
-    |    2   |   4   |
-
-    Parameters
-    ----------
-    jd: pd.Series
-        Series containing Julian Dates (array of double). Each row contains
-        all jd values for one alert (sorted).
-    measurement: pd.Series
-        Series containing data measurement (array of double). Each row contains
-        all measurement values for one alert (sorted as jd).
-        Can be either difference magnitude (a la ZTF), and which case you would
-        set `transform_to_flux` to True to convert it into flux units,
-        or it can be flux directly.
-    error: pd.Series
-        Series containing data error measurement (array of double). Each row
-        contains all measurement values for one alert (sorted as jd).
-        Can be either difference magnitude error (a la ZTF), and which case you
-        would set `transform_to_flux` to True to convert it into flux units,
-        or it can be flux error directly.
-    fid: pd.Series
-        Series containing filter band code (array of int/str). Each row contains
-        all filter code values for one alert (sorted as jd).
-    mask: pd.Series
-        Series containing information on which alerts to keep (boolean).
-    filter_conversion_dic: dict
-        Mapping from telescope filter code (e.g. [1, 2] for ZTF) to
-        SNANA filter code (['g', 'r']). Default is {1: 'g', 2: 'r'}.
-    transform_to_flux: boolean
-        Set it to True if `measurement` is in Difference magnitude
-        units (default for ZTF), in which case we will convert to apparent
-        magnitude and then SNANA flux. Default is True.
-
-    Returns
-    ----------
-    pdf: pd.DataFrame
-        DataFrame a la SNANA with SNID, MJD, FLUXCAL, FLUXCALERR, FLT.
-
-    """
-    # add an exploded column with SNID
-    df_tmp = pd.DataFrame.from_dict(
-        {
-            'jd': jd[mask],
-            'SNID': range(len(jd[mask]))
-        }
-    )
-    df_tmp = df_tmp.explode('jd')
-
-    if transform_to_flux:
-        # compute flux and flux error
-        data = [mag2fluxcal_snana(*args) for args in zip(
-            measurement[mask].explode(),
-            error[mask].explode())]
-        flux, flux_error = np.transpose(data)
-    else:
-        flux = measurement[mask].explode()
-        flux_error = error[mask].explode()
-
-    # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict({
-        'SNID': df_tmp['SNID'],
-        'MJD': df_tmp['jd'],
-        'FLUXCAL': flux,
-        'FLUXCALERR': flux_error,
-        'FLT': fid[mask].explode().replace(filter_conversion_dic)
-    })
-
-    return pdf
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=None) -> pd.Series:
@@ -239,7 +153,8 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
-    pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, mask)
+    candid = pd.Series(range(len(jd)))
+    pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     # Load pre-trained model `clf`
     if model is not None:
@@ -336,7 +251,8 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
-    pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, mask)
+    candid = pd.Series(range(len(jd)))
+    pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     test_features = []
     for id in np.unique(pdf['SNID']):
@@ -353,6 +269,115 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
 
     return pd.Series(concatenated_features)
 
+@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, model=None) -> pd.Series:
+    """ Return the probability of an alert to be a SNe Ia using a Random
+    Forest Classifier (sigmoid fit) on ELaSTICC alert data.
+
+    You need to run the SIMBAD crossmatch before.
+
+    Parameters
+    ----------
+    jd: Spark DataFrame Column
+        JD times (vectors of floats)
+    fid: Spark DataFrame Column
+        Filter IDs (vectors of ints)
+    magpsf, sigmapsf: Spark DataFrame Columns
+        Magnitude from PSF-fit photometry, and 1-sigma error (vectors of floats)
+    cdsxmatch: Spark DataFrame Column
+        Type of object found in Simbad (string)
+    ndethist: Spark DataFrame Column
+        Column containing the number of detection by ZTF at 3 sigma (int)
+    model: Spark DataFrame Column, optional
+        Path to the trained model. Default is None, in which case the default
+        model `data/models/default-model.obj` is loaded.
+
+    Returns
+    ----------
+    probabilities: 1D np.array of float
+        Probability between 0 (non-Ia) and 1 (Ia).
+
+    Examples
+    ----------
+    >>> from fink_science.utilities import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
+
+    # Assuming random positions
+    >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
+
+    # Required alert columns
+    >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...     df = concat_col(
+    ...         df, colname, prefix=prefix,
+    ...         current='diaSource', history='prvDiaSources')
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('cdsxmatch'), F.col('diaSource.nobs')]
+    >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
+
+    >>> df.filter(df['pIa'] > 0.0).count()
+    29
+    """
+    mask = apply_selection_cuts_ztf(psFlux, nobs, cdsxmatch, maxndethist=100)
+
+    mask *= filterName.apply(lambda array: np.sum([x in ['g', 'r'] for x in array]) > 3)
+
+    # change filter name for the moment to stick to ZTF definition
+    filter_conversion_dic = {'u': 0, 'g': 1, 'r': 2, 'i': 3, 'z': 4, 'Y': 5}
+    filterName = filterName.apply(lambda array: [filter_conversion_dic[x] for x in array])
+
+    if len(midPointTai[mask]) == 0:
+        return pd.Series(np.zeros(len(midPointTai), dtype=float))
+
+    candid = pd.Series(range(len(midPointTai)))
+    pdf = format_data_as_snana(
+        midPointTai, psFlux, psFluxErr,
+        filterName, candid, mask,
+        transform_to_flux=False
+    )
+
+    # Load pre-trained model `clf`
+    if model is not None:
+        clf = load_scikit_model(model.values[0])
+    else:
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        model = curdir + '/data/models/default-model_sigmoid.obj'
+        clf = load_scikit_model(model)
+
+    test_features = []
+    flag = []
+    for id in np.unique(pdf['SNID']):
+        f1 = pdf['SNID'] == id
+        pdf_sub = pdf[f1]
+        features = get_sigmoid_features_dev(pdf_sub)
+        if (features[0] == 0) or (features[6] == 0):
+            flag.append(False)
+        else:
+            flag.append(True)
+        test_features.append(features)
+
+    flag = np.array(flag, dtype=np.bool)
+
+    # Make predictions
+    probabilities = clf.predict_proba(test_features)
+    probabilities[~flag] = 0.0
+
+    # Take only probabilities to be Ia
+    to_return = np.ones(len(midPointTai), dtype=float)
+    to_return[mask] = probabilities.T[1]
+
+    return pd.Series(to_return)
+
 
 if __name__ == "__main__":
     """ Execute the test suite """
@@ -362,6 +387,9 @@ if __name__ == "__main__":
 
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
+
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_parquet'.format(path)
+    globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
     globs["model_path_sigmoid"] = model_path_sigmoid
