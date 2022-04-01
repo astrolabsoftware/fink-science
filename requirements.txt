@@ -28,6 +28,10 @@ colorama
 seaborn
 scikit-image
 
+# KN
+-e git+https://github.com/b-biswas/kndetect@kndetect#egg=kndetect
+
 # SNAD
 light-curve-python>=0.3.5
 light-curve>=0.4.0
+
