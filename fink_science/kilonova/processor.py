@@ -20,8 +20,9 @@ import numpy as np
 
 import os
 
-from fink_science.conversion import mag2fluxcal_snana
-from fink_science.kilonova.lib_kn import return_list_of_kn_host
+from fink_utils.photometry.conversion import mag2fluxcal_snana
+from fink_utils.data.utils import load_scikit_model, load_pcs
+from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from fink_science import __file__
 
@@ -106,7 +107,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
 
     mask *= jd.apply(lambda x: float(x[-1])) - jdstarthist.astype(float) < 20
 
-    list_of_kn_host = return_list_of_kn_host()
+    list_of_kn_host = return_list_of_eg_host()
     mask *= cdsxmatch.apply(lambda x: x in list_of_kn_host)
 
     if len(jd[mask]) == 0:

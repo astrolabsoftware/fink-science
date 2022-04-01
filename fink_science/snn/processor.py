@@ -25,7 +25,9 @@ import os
 from fink_science import __file__
 from fink_science.snn.utilities import reformat_to_df
 from fink_science.snn.utilities import return_list_of_sn_host
-from fink_science.utilities import format_data_as_snana
+
+from fink_utils.data.utils import format_data_as_snana
+from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from fink_science.tester import spark_unit_tests
 
