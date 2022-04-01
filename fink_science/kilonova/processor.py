@@ -32,7 +32,7 @@ from kndetect.features import extract_features_all_lightcurves, get_feature_name
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.Series:
+def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_name=None) -> pd.Series:
     """ Return the probability of an alert to be a Kilonova using a Random
     Forest Classifier.
 
@@ -52,6 +52,10 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.S
         Column containing the number of detection by ZTF at 3 sigma (int)
     jdstarthist: Spark DataFrame Column
         Column containing first time variability has been seen
+    model_name: str
+        Nome of the model to be fetched from the kndetect package.
+        supported options: "complete.pkl", "partial.pkl"
+        deault is "complete.pkl"
 
     Returns
     ----------
@@ -133,7 +137,10 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist) -> pd.S
     })
 
     # Load pre-trained model
-    model = load_classifier("complete.pkl")
+    if model_name is None:
+        model = load_classifier("complete.pkl")
+    else:
+        model = load_classifier(model_name)
 
     # Load pcs
     pcs = load_pcs()
@@ -266,6 +273,9 @@ if __name__ == "__main__":
 
     globs = globals()
     path = os.path.dirname(__file__)
+
+    model_name = 'complete.pkl'.format(path)
+    globs["model_name"] = model_name
 
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
