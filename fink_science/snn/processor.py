@@ -24,7 +24,6 @@ import os
 
 from fink_science import __file__
 from fink_science.snn.utilities import reformat_to_df
-from fink_science.snn.utilities import return_list_of_sn_host
 
 from fink_utils.data.utils import format_data_as_snana
 from fink_utils.xmatch.simbad import return_list_of_eg_host
@@ -69,7 +68,7 @@ def apply_selection_cuts_ztf(
 
     mask *= roid.astype(int) != 3
 
-    list_of_sn_host = return_list_of_sn_host()
+    list_of_sn_host = return_list_of_eg_host()
     mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
 
     return mask

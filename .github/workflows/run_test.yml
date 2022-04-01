@@ -42,5 +42,6 @@ jobs:
 
     - name: Run test suites
       run: |
+        pip install fink-utils
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash

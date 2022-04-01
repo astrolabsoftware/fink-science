@@ -21,7 +21,6 @@ import numpy as np
 import os
 
 from fink_utils.photometry.conversion import mag2fluxcal_snana
-from fink_utils.data.utils import load_scikit_model, load_pcs
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from fink_science import __file__

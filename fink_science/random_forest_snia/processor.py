@@ -62,7 +62,7 @@ def apply_selection_cuts_ztf(
     mask *= (ndethist.astype(int) <= maxndethist)
 
     # reject galactic objects
-    list_of_sn_host = return_list_of_sn_host()
+    list_of_sn_host = return_list_of_eg_host()
     mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
 
     return mask
