@@ -55,7 +55,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     model_name: str
         Nome of the model to be fetched from the kndetect package.
         supported options: "complete.pkl", "partial.pkl"
-        deault is "complete.pkl"
+        deault is "complete.pkl" (model trained for complete light curves)
 
     Returns
     ----------
