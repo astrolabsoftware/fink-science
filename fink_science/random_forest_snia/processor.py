@@ -21,11 +21,13 @@ import numpy as np
 import os
 
 from fink_science import __file__
-from fink_science.utilities import load_scikit_model
-from fink_science.utilities import format_data_as_snana
+
+from fink_utils.data.utils import format_data_as_snana
+from fink_utils.data.utils import load_scikit_model
+from fink_utils.xmatch.simbad import return_list_of_eg_host
+
 from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_features_dev
 from fink_science.random_forest_snia.classifier_sigmoid import RF_FEATURE_NAMES
-from fink_science.random_forest_snia.classifier_sigmoid import return_list_of_sn_host
 
 from fink_science.tester import spark_unit_tests
 
@@ -60,7 +62,7 @@ def apply_selection_cuts_ztf(
     mask *= (ndethist.astype(int) <= maxndethist)
 
     # reject galactic objects
-    list_of_sn_host = return_list_of_sn_host()
+    list_of_sn_host = return_list_of_eg_host()
     mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
 
     return mask

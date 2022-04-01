@@ -26,7 +26,7 @@ from fink_science.microlensing.classifier import _extract
 from fink_science.microlensing.classifier import LIA_FEATURE_NAMES
 from fink_science.microlensing.classifier import load_external_model
 
-from fink_science.conversion import dc_mag
+from fink_utils.photometry.conversion import dc_mag
 
 from LIA import microlensing_classifier
 
