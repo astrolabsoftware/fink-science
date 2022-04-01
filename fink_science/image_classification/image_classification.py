@@ -124,7 +124,7 @@ def img_labelisation(stamp, noise_threshold=3.5):
     'safe_clear_extend'
     """
     with gzip.open(io.BytesIO(stamp), 'rb') as fits_file:
-        with fits.open(io.BytesIO(fits_file.read())) as hdul:
+        with fits.open(io.BytesIO(fits_file.read()), ignore_missing_simple=True) as hdul:
             img = hdul[0].data[::-1]
 
             label_img = ""
