@@ -65,7 +65,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     Examples
     ----------
     >>> from fink_science.xmatch.processor import cdsxmatch
-    >>> from fink_science.utilities import concat_col
+    >>> from fink_utils.data.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
@@ -184,7 +184,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
     ----------
     >>> from pyspark.sql.functions import split
     >>> from pyspark.sql.types import FloatType
-    >>> from fink_science.utilities import concat_col
+    >>> from fink_utils.data.utils import concat_col
     >>> from kndetect.features import get_feature_names
     >>> from pyspark.sql import functions as F
 
