@@ -98,7 +98,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     Examples
     ----------
     >>> from fink_science.xmatch.processor import cdsxmatch
-    >>> from fink_science.utilities import concat_col
+    >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
@@ -219,7 +219,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
     ----------
     >>> from pyspark.sql.functions import split
     >>> from pyspark.sql.types import FloatType
-    >>> from fink_science.utilities import concat_col
+    >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
@@ -301,7 +301,7 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
 
     Examples
     ----------
-    >>> from fink_science.utilities import concat_col
+    >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
