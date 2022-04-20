@@ -42,7 +42,7 @@ def nalerthist(magpsf) -> pd.Series:
 
     Examples
     ----------
-    >>> from fink_utils.data.utils import concat_col
+    >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)

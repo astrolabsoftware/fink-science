@@ -103,7 +103,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     ----------
     >>> from fink_science.xmatch.processor import cdsxmatch
     >>> from fink_science.asteroids.processor import roid_catcher
-    >>> from fink_utils.data.utils import concat_col
+    >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
@@ -207,7 +207,7 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
 
     Examples
     ----------
-    >>> from fink_utils.data.utils import concat_col
+    >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)

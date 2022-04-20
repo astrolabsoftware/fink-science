@@ -63,7 +63,7 @@ def mulens(
 
     Examples
     ---------
-    >>> from fink_utils.data.utils import concat_col
+    >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
@@ -185,7 +185,7 @@ def extract_features_mulens(
     ----------
     >>> from pyspark.sql.functions import split
     >>> from pyspark.sql.types import FloatType
-    >>> from fink_utils.data.utils import concat_col
+    >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
