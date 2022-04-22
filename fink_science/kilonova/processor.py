@@ -98,6 +98,15 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     +--------------+----+
     +--------------+----+
     <BLANKLINE>
+
+    # Perform the fit + classification (another model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('candidate.jdstarthist'), F.col('cdsxmatch'), F.col('candidate.ndethist')]
+    >>> args += [F.lit('partial.pkl')]
+    >>> df = df.withColumn('pKNe', knscore(*args))
+
+    >>> df.filter(df['pKNe'] > 0.5).count()
+    0
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
@@ -140,7 +149,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     if model_name is None:
         model = load_classifier("complete.pkl")
     else:
-        model = load_classifier(model_name)
+        model = load_classifier(model_name.values[0])
 
     # Load pcs
     pcs = load_pcs()
