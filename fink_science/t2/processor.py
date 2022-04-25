@@ -12,8 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import DoubleType, StringType
+from pyspark.sql.types import StringType
 
 import pandas as pd
 import numpy as np
@@ -24,6 +26,8 @@ from astronet.preprocess import robust_scale
 from fink_utils.data.utils import format_data_as_snana
 
 from fink_science.t2.utilities import get_model, apply_selection_cuts_ztf
+
+from fink_science.tester import spark_unit_tests
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name=None, model_id=None) -> pd.Series:
