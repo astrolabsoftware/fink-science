@@ -283,7 +283,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    model_name = 'complete.pkl'
+    model_name = 'partial.pkl'
     globs["model_name"] = model_name
 
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
