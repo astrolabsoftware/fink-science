@@ -30,7 +30,7 @@ for name in names:
 
 result_features = []
 for index, dataset in enumerate(test_datasets):
-    result = processor.extract_features_snad_raw(dataset.mag, dataset.mjd, dataset.magerr, np.ones(len(dataset.mag)), index)
+    result = processor.extract_features_ad_raw(dataset.mag, dataset.mjd, dataset.magerr, np.ones(len(dataset.mag)), index)
     result_features.append({
         lc_columns[i]: result[1][lc_columns[i]] for i in range(len(lc_columns))
     })

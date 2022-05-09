@@ -2,6 +2,5 @@ sample.parquet/
 samples/
 output.csv
 input.csv
-snad.ipynb
 snippets.ipynb
 fink.conf.shell

@@ -73,7 +73,7 @@ column_names = create_extractor().names
 columns_count = len(column_names)
 
 
-def extract_features_snad_raw(
+def extract_features_ad_raw(
     magpsf,
     jd,
     sigmapsf,
@@ -113,7 +113,7 @@ def extract_features_snad_raw(
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
-    >>> df = df.withColumn('lc_features', extract_features_snad(*what_prefix, 'objectId'))
+    >>> df = df.withColumn('lc_features', extract_features_ad(*what_prefix, 'objectId'))
 
     >>> for row in df.take(10):
     ...    assert len(row['lc_features']) == len(np.unique(row['cfid']))
@@ -146,20 +146,20 @@ def extract_features_snad_raw(
         except ValueError as err:
             # log if known error, then skip
             if err.args[0] == "t must be in ascending order":
-                logger.error(f"Unordered jd for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
+                logger.error(f"Unordered jd for {oId} in processor '{__file__}/{extract_features_ad.__name__}'")
             else:
-                logger.exception(f"Unknown exception for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
+                logger.exception(f"Unknown exception for {oId} in processor '{__file__}/{extract_features_ad.__name__}'")
             continue
         except Exception:
-            logger.exception(f"Unknown exception for {oId} in processor '{__file__}/{extract_features_snad.__name__}'")
+            logger.exception(f"Unknown exception for {oId} in processor '{__file__}/{extract_features_ad.__name__}'")
             continue
         full_result[int(passband_id)] = dict(zip(column_names, [float(v) for v in result]))
 
     return full_result
 
 
-extract_features_snad = udf(
-    f=extract_features_snad_raw,
+extract_features_ad = udf(
+    f=extract_features_ad_raw,
     returnType=MapType(
         IntegerType(),  # passband_id
         StructType([  # features name -> value
@@ -176,7 +176,7 @@ if __name__ == "__main__":
 
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
-    del globs["extract_features_snad_raw"]
+    del globs["extract_features_ad_raw"]
 
     # Run the test suite
     spark_unit_tests(globs)

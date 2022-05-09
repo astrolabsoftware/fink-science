@@ -1,4 +1,4 @@
-# SNAD
+# Features for anomaly detection
 
 ## Extraction of light curve features
 
