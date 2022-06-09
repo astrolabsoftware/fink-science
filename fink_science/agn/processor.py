@@ -2,6 +2,9 @@ from classifier import agn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 import pandas as pd
+import os
+from fink_science import __file__
+from fink_science.tester import spark_unit_tests
 
 
 @pandas_udf(DoubleType())
