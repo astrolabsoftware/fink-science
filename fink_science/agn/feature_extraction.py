@@ -1,7 +1,7 @@
 import pandas as pd
 from iminuit import Minuit
 from iminuit.cost import LeastSquares
-import models as mod
+import fink_science.agn.models as mod
 import numpy as np
 
 

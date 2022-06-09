@@ -1,7 +1,6 @@
 import pickle
-import kernel as k
-import classifier as rfc
-import feature_extraction as fe
+import fink_science.agn.kernel as k
+import fink_science.agn.feature_extraction as fe
 
 
 def load_classifier():
@@ -46,7 +45,7 @@ def agn_classifier(data):
 
     features, valid = fe.merge_features(features_1, features_2)
 
-    clf = rfc.load_classifier()
+    clf = load_classifier()
 
     proba = fe.get_probabilities(clf, features, valid)
 

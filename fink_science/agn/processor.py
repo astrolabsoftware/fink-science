@@ -1,4 +1,4 @@
-from classifier import agn_classifier
+from fink_science.agn.classifier import agn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 import pandas as pd
@@ -16,6 +16,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid):
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
     >>> df_agn = df.withColumn('proba', agn_spark(df.objectId, df.cjd, df.cmagpsf, df.csigmapsf, df.cfid))
     >>> df_agn.show()
+    >>> df_agn.filter(df_agn['proba'] >= 0.5).count()
 
     """
 
