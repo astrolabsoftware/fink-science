@@ -14,7 +14,8 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid):
     Examples
     --------
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
-    >>> df.show()
+    >>> df_agn = df.withColumn('proba', agn_spark(df.objectId, df.cjd, df.cmagpsf, df.csigmapsf, df.cfid))
+    >>> df_agn.show()
 
     """
 
