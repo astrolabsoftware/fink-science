@@ -18,7 +18,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid):
     >>> df_agn.filter(df_agn['proba'] >= 0.5).count()
     2
     >>> df_agn.filter(df_agn['proba'] < 0.5).count()
-    2
+    4
     >>> df_agn.filter(df_agn['proba'] == -1.0).count()
     2
     """
