@@ -15,9 +15,12 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid):
     --------
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
     >>> df_agn = df.withColumn('proba', agn_spark(df.objectId, df.cjd, df.cmagpsf, df.csigmapsf, df.cfid))
-    >>> df_agn.show()
     >>> df_agn.filter(df_agn['proba'] >= 0.5).count()
-
+    2
+    >>> df_agn.filter(df_agn['proba'] < 0.5).count()
+    4
+    >>> df_agn.filter(df_agn['proba'] == -1.0).count()
+    2
     """
 
     data = pd.DataFrame(
