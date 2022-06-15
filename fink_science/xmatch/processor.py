@@ -12,38 +12,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import StringType
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
+import io
 import os
+import requests
 import pandas as pd
 import numpy as np
 
-from fink_science.xmatch.classification import cross_match_alerts_raw
-from fink_science.xmatch.classification import extract_vsx, extract_gcvs
+from fink_science.xmatch.utils import generate_csv
+from fink_science.xmatch.utils import extract_vsx, extract_gcvs
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
 from typing import Any
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
-def cdsxmatch(objectId: Any, ra: Any, dec: Any) -> pd.Series:
+def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog: str, cols: str) -> pd.Series:
     """ Query the CDSXmatch service to find identified objects
     in alerts. The catalog queried is the SIMBAD bibliographical database.
 
     I/O specifically designed for use as `pandas_udf` in `select` or
     `withColumn` dataframe methods
-
-    The user will create a new processing function with his/her needs the
-    following way:
-
-    1) Define the input entry column. These must be `candidate` entries.
-    2) Update the logic inside the function. The idea is to
-        apply conditions based on the values of the columns.
-    3) Return a column with added value after processing
 
     Parameters
     ----------
@@ -53,11 +48,18 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any) -> pd.Series:
         List containing object ra coordinates
     dec: list of float or Spark DataFrame Column of float
         List containing object dec coordinates
+    distmaxarcsec: list of float or Spark DataFrame Column of float
+        Cross-match radius in arcsecond
+    extcatalog: list of str or Spark DataFrame Column of str
+        Name of the external catalog in Vizier, or directly simbad.
+    cols: list of str or Spark DataFrame Column of str
+        Comma-separated column names to get from the external catalog
 
     Returns
     ----------
     out: pandas.Series of string
-        Return a Pandas DataFrame with the type of object found in Simbad.
+        Return Pandas DataFrame with a new single column
+        containing comma-separated values of extra-columns.
         If the object is not found in Simbad, the type is
         marked as Unknown. In the case several objects match
         the centroid of the alert, only the closest is returned.
@@ -84,7 +86,10 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any) -> pd.Series:
 
     Test the processor by adding a new column with the result of the xmatch
     >>> df = df.withColumn(
-    ...     'cdsxmatch', cdsxmatch(df['id'], df['ra'], df['dec']))
+    ...     'cdsxmatch',
+    ...     cdsxmatch(
+    ...         df['id'], df['ra'], df['dec'],
+    ...         F.lit(1.0), F.lit('simbad'), F.lit('main_type')))
     >>> df.show() # doctest: +NORMALIZE_WHITESPACE
     +---+----------+-----------+---------+
     | id|        ra|        dec|cdsxmatch|
@@ -94,22 +99,139 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any) -> pd.Series:
     +---+----------+-----------+---------+
     <BLANKLINE>
     """
-    # your logic goes here
-    matches = cross_match_alerts_raw(
-        objectId.values, ra.values, dec.values)
+    # If nothing
+    if len(ra) == 0:
+        return pd.Series([])
 
-    # For regular alerts, the number of matches is always non-zero as
-    # alerts with no counterpart will be labeled as Unknown.
-    # If cross_match_alerts_raw returns a zero-length list of matches, it is
-    # a sign of a problem (logged).
-    if len(matches) > 0:
-        # (objectId, ra, dec, name, type)
-        # return only the type.
-        names = np.transpose(matches)[-1]
-    else:
-        # Tag as Fail if the request failed.
-        names = ["Fail"] * len(objectId)
-    return pd.Series(names)
+    # Catch TimeoutError and ConnectionError
+    try:
+        # Build a catalog of alert in a CSV-like string
+        table_header = """ra_in,dec_in,objectId\n"""
+        table = generate_csv(table_header, [ra, dec, objectId])
+
+        # Send the request!
+        r = requests.post(
+            'http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync',
+            data={
+                'request': 'xmatch',
+                'distMaxArcsec': distmaxarcsec.values[0],
+                'selection': 'all',
+                'RESPONSEFORMAT': 'csv',
+                'cat2': extcatalog.values[0],
+                'cols2': cols.values[0],
+                'colRA1': 'ra_in',
+                'colDec1': 'dec_in'},
+            files={'cat1': table}
+        )
+
+        if r.status_code != 200:
+            names = ["Fail {}".format(r.status_code)] * len(objectId)
+            return pd.Series(names)
+        else:
+            cols = cols.values[0].split(',')
+            pdf = pd.read_csv(io.BytesIO(r.content))
+
+            if pdf.empty:
+                name = ','.join(["Unknown"] * len(cols))
+                names = [name] * len(objectId)
+                return pd.Series(names)
+
+            # join
+            pdf_in = pd.DataFrame({'objectId_in': objectId})
+            pdf_in.index = pdf_in['objectId_in']
+
+            # Remove duplicates (keep the one with minimum distance)
+            pdf_nodedup = pdf.loc[pdf.groupby('objectId').angDist.idxmin()]
+            pdf_nodedup.index = pdf_nodedup['objectId']
+
+            pdf_out = pdf_in.join(pdf_nodedup)
+
+            # only for SIMBAD as we use `main_type` for our classification
+            if 'main_type' in pdf_out.columns:
+                pdf_out['main_type'] = pdf_out['main_type'].replace(np.nan, 'Unknown')
+
+            if len(cols) > 1:
+                # Concatenate all columns in one
+                # use comma-separated values
+                cols = [i.strip() for i in cols]
+                pdf_out = pdf_out[cols]
+                pdf_out['concat_cols'] = pdf_out.apply(lambda x: ','.join(x.astype(str).values.tolist()), axis=1)
+                return pdf_out['concat_cols']
+            elif len(cols) == 1:
+                # single column to return
+                return pdf_out[cols[0]].astype(str)
+
+    except (ConnectionError, TimeoutError, ValueError) as ce:
+        logging.warning("XMATCH failed " + repr(ce))
+        ncols = len(cols.values[0].split(','))
+        name = ','.join(["Fail"] * ncols)
+        names = [name] * len(objectId)
+        return pd.Series(names)
+
+def xmatch_cds(
+        df, catalogname='simbad', distmaxarcsec=1.0,
+        cols=['main_type'], types=['string']):
+    """ Cross-match Fink data from a Spark DataFrame with a catalog in CDS
+
+    Parameters
+    ----------
+    df: Spark DataFrame
+        Spark Dataframe containing at least
+        `candidate.candid`, `candidate.ra`, `candidate.dec`
+    catalogname: str
+        Name of the catalog in Vizier, or directly simbad (default)
+    distmaxarcsec: float
+        Cross-match radius
+    cols: list of str
+        Column names to get from the catalog
+    types: list of str
+        Types of columns from the catalog.
+        Should be SQL syntax (str=string, etc.)
+
+    Returns
+    ---------
+    df_out: Spark DataFrame
+        Spark DataFrame with new columns from the xmatch added
+
+    Examples
+    ---------
+    # Simbad
+    >>> df_simbad = xmatch_cds(df)
+    >>> 'main_type' in df_simbad.columns
+    True
+
+    # Gaia
+    >>> df_gaia = xmatch_cds(
+    ...     df,
+    ...     distmaxarcsec=1,
+    ...     catalogname='vizier:I/355/gaiadr3',
+    ...     cols=['DR3Name', 'Plx', 'e_Plx'],
+    ...     types=['string', 'float', 'float'])
+    >>> 'Plx' in df_gaia.columns
+    True
+    """
+    df_out = df.withColumn(
+        'xmatch',
+        cdsxmatch_v2(
+            df['candidate.candid'],
+            df['candidate.ra'],
+            df['candidate.dec'],
+            F.lit(distmaxarcsec),
+            F.lit(catalogname),
+            F.lit(','.join(cols))
+        )
+    ).withColumn('xmatch_split', F.split('xmatch', ','))
+
+    for index, col_, type_ in zip(range(len(cols)), cols, types):
+        df_out = df_out.withColumn(
+            col_,
+            F.col('xmatch_split').getItem(index).astype(type_)
+        )
+
+    df_out = df_out.drop('xmatch', 'xmatch_split')
+
+    return df_out
+
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def crossmatch_other_catalog(candid, ra, dec, catalog_name):
