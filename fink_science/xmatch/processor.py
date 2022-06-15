@@ -41,6 +41,9 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog
     I/O specifically designed for use as `pandas_udf` in `select` or
     `withColumn` dataframe methods
 
+    Limitations known:
+    - objectId should not be small integers.
+
     Parameters
     ----------
     objectId: list of str or Spark DataFrame Column of str
@@ -71,7 +74,7 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog
     Simulate fake data
     >>> ra = [26.8566983, 26.24497]
     >>> dec = [-26.9677112, -26.7569436]
-    >>> id = ["1", "2"]
+    >>> id = ["a", "b"]
 
     Wrap data into a Spark DataFrame
     >>> rdd = spark.sparkContext.parallelize(zip(id, ra, dec))
@@ -196,6 +199,8 @@ def xmatch_cds(
 
     Examples
     ---------
+    >>> df = spark.read.load(ztf_alert_sample)
+
     # Simbad
     >>> df_simbad = xmatch_cds(df)
     >>> 'cdsxmatch' in df_simbad.columns
@@ -376,5 +381,11 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
 if __name__ == "__main__":
     """ Execute the test suite """
 
+    globs = globals()
+    path = os.path.dirname(__file__)
+
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    globs["ztf_alert_sample"] = ztf_alert_sample
+
     # Run the test suite
-    spark_unit_tests(globals())
+    spark_unit_tests(globs)
