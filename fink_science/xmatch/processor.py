@@ -21,6 +21,7 @@ from astropy import units as u
 
 import io
 import os
+import logging
 import requests
 import pandas as pd
 import numpy as np
@@ -212,7 +213,7 @@ def xmatch_cds(
     """
     df_out = df.withColumn(
         'xmatch',
-        cdsxmatch_v2(
+        cdsxmatch(
             df['candidate.candid'],
             df['candidate.ra'],
             df['candidate.dec'],
