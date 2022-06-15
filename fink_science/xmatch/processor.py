@@ -197,7 +197,7 @@ def xmatch_cds(
     ---------
     # Simbad
     >>> df_simbad = xmatch_cds(df)
-    >>> 'main_type' in df_simbad.columns
+    >>> 'cdsxmatch' in df_simbad.columns
     True
 
     # Gaia
@@ -229,6 +229,10 @@ def xmatch_cds(
         )
 
     df_out = df_out.drop('xmatch', 'xmatch_split')
+
+    # Keep compatibility with previous definitions
+    if 'main_type' in df_out.columns:
+        df_out = df_out.withColumnRenamed('main_type', 'cdsxmatch')
 
     return df_out
 
