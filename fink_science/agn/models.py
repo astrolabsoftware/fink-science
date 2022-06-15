@@ -11,7 +11,8 @@ def protected_exponent(x1):
     >>> np.round_(protected_exponent(1), 5)
     2.71828
     """
-    return np.where(np.abs(x1) < 10, np.exp(x1), np.exp(10))
+    with np.errstate(over='ignore'):
+        return np.where(np.abs(x1) < 10, np.exp(x1), np.exp(10))
 
 
 def sig(x):

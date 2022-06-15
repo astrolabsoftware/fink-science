@@ -2,12 +2,14 @@ import pandas as pd
 from iminuit import Minuit
 from iminuit.cost import LeastSquares
 import fink_science.agn.models as mod
+from pandas.testing import assert_frame_equal
 import numpy as np
+from classifier import load_classifier
 
 
 def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
     """Conversion from magnitude to Fluxcal from SNANA manual
-    Parameters
+    Parameterspip install --upgrade pip
     ----------
     magpsf: float
         PSF-fit magnitude from ZTF.
@@ -20,6 +22,12 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
         Flux cal as used by SNANA
     fluxcal_err: float
         Absolute error on fluxcal (the derivative has a minus sign)
+        
+    Examples
+    --------
+    >>> flux = mag2fluxcal_snana(18.9, 0.07)
+    >>> round(flux[0], 5), round(flux[1], 5)
+    (2754.2287, 177.5718)
     """
 
     if magpsf is None:
@@ -31,13 +39,13 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
     return fluxcal, fluxcal_err
 
 
-def remove_nan(x):
+def remove_nan(ps):
     """
     funtion that remove nan values from list contains in columns
 
     Paramters
     ---------
-    x : pd.Series
+    ps : pd.Series
         each rows of the dataframe. each entries must be numeric list
 
     Return
@@ -45,20 +53,27 @@ def remove_nan(x):
     list_without_nan : list
         list of the same size as x, each entries is the original list from the
         current rows without the nan values and the associated values from the other columns.
+        
+    Examples
+    --------    
+    >>> serie_example = pd.Series(data = {'cmagpsf':[0,1,np.nan],'cjd':[3, 4, np.nan], 'anything':[1,5,8]})
+    >>> remove_nan(serie_example)
+    [array([0, 1]), array([3, 4]), array([1, 5])]
+    
     """
 
-    mask = np.equal(x["cmagpsf"], x["cmagpsf"])
+    mask = np.equal(ps["cmagpsf"], ps["cmagpsf"])
 
-    return [np.array(_col)[mask].astype(type(_col[0])) for _col in x]
+    return [np.array(_col)[mask].astype(type(_col[0])) for _col in ps]
 
 
-def keep_filter(x, band):
+def keep_filter(ps, band):
     """
-    funtion that removes points fron other bands than the one specified
+    funtion that removes points from other bands than the one specified
 
     Parameters
     ---------
-    x : pd.Series
+    ps : pd.Series
         each rows of the dataframe. each entries must be numeric list
 
     Return
@@ -66,11 +81,23 @@ def keep_filter(x, band):
     list_with_oneband : list
         list of the same size as x, each entries is the original list from the
         current rows with only the wanted filter and the associated values from the other columns.
+        
+    Example
+    -------
+    >>> example = pd.Series(data = {'cfid':np.array([1, 1, 2, 1, 2]), 'anything':np.array([-2, 86.9, 58.1, 24, 42])})
+    >>> filtered = keep_filter(example, 2)
+    >>> (np.array_equal(filtered[0], np.array([2, 2]))) & (np.array_equal(filtered[1], np.array([58.1, 42])))
+    True
+    >>> example2 = pd.Series(data = {'cfid':np.array([2, 2]), 'anything':np.array([24, 42])})
+    >>> filtered2 = keep_filter(example2, 1)
+    >>> (np.array_equal(filtered2[0], np.array([]))) & (np.array_equal(filtered2[1], np.array([])))
+    True
+
     """
+    
+    mask = ps["cfid"] == band
 
-    mask = x["cfid"] == band
-
-    return [np.array(_col)[mask].astype(type(_col[0])) for _col in x]
+    return [np.array(_col)[mask].astype(type(_col[0])) for _col in ps]
 
 
 def clean_data(pdf: pd.DataFrame):
@@ -87,6 +114,7 @@ def clean_data(pdf: pd.DataFrame):
     ------
     pdf_without_nan : pd.DataFrame
          DataFrame with nan and corresponding measurement removed
+    
     """
 
     pdf = pdf.reset_index(drop=True)
@@ -113,6 +141,14 @@ def convert_full_dataset(clean: pd.DataFrame):
     pd.DataFrame
          DataFrame with column cmagpsf replaced with cflux
          and column csigmagpsf replaced with csigflux
+         
+    Example 
+    -------
+    >>> example = pd.DataFrame(data = {'cmagpsf':[20, 10.5],'csigmapsf':[1, 1.5], 'anything':['toto', 86]})
+    >>> converted = convert_full_dataset(example)
+    >>> converted.round(1).equals(pd.DataFrame(data = {'cflux':[1000.0, 6309573.4],'csigflux':[921.0, 8717000.9], 'anything':['toto', 86]}))
+    True
+    
     """
 
     flux = clean[["cmagpsf", "csigmapsf"]].apply(
@@ -124,52 +160,75 @@ def convert_full_dataset(clean: pd.DataFrame):
     return clean
 
 
-def translate(pdf):
+def translate(ps):
 
     """Translate a cjd list by substracting maxflux point
 
     Parameters
     ----------
-    pdf: pd.DataFrame
+    ps: pd.Series
         Must contain ['cjd', 'cflux']
 
     Returns
     -------
     np.array
         Translated array. Returns empty array if input was empty
+        
+    Example
+    -------
+    >>> example = pd.Series(data = {'cjd':np.array([1,2,3]), 'cflux':np.array([-2, 42, 23]), 'anything':np.array(['toto', 82, -8])})
+    >>> np.array_equal(translate(example), np.array([-1,  0,  1]))
+    True
+    >>> example2 = pd.Series(data = {'cjd':np.array([]), 'cflux':np.array([]), 'anything':np.array(['toto', 82, -8])})
+    >>> np.array_equal(translate(example2), np.array([]))
+    True
+    
     """
 
-    if len(pdf["cjd"]) == 0:
+    if len(ps["cjd"]) == 0:
         return []
 
     else:
-        return pdf["cjd"] - pdf["cjd"][np.argmax(pdf["cflux"])]
+        return ps["cjd"] - ps["cjd"][np.argmax(ps["cflux"])]
 
 
-def normalize(x, maxdf):
+def normalize(ps):
 
     """Normalize by dividing by a data frame of maximum
 
     Parameters
     ----------
-    x: np.array
-        Values to be divided
-    max_value: float
-        maximum value used for the normalisation
+    ps: pd.Series
+        Must contain 'cflux', 'csigflux' and 'peak'
+    maxi: np.array
+        array of all maximum values. -1 if alert has no points 
 
     Returns
     -------
-    np.array
-        Normalized array. Returns empty array if input was empty
+    pd.Series
+        Dataframe with columns 'cflux' and 'csigflux' normalized
+        
+    Example
+    -------
+    >>> example = pd.Series(data = {'cflux':np.array([17, 35.7, -3]), 'csigflux':np.array([0.7, 1, 0]), 'peak':35.7})
+    >>> out = normalize(example)
+    >>> np.array_equal(np.round(out[0], 3), np.array([ 0.476,  1.   , -0.084]))
+    True
+    >>> np.array_equal(np.round(out[1], 3), np.array([0.02 , 0.028, 0.   ]))
+    True
+    >>> example2 = pd.Series(data = {'cflux':np.array([]), 'csigflux':np.array([]), 'peak':-1})
+    >>> out2 = normalize(example2)
+    >>> (np.array_equal(out2[0], np.array([]))) & (np.array_equal(out2[1], np.array([])))
+    True
     """
 
-    max_value = maxdf[x.index]
-
-    if len(x) == 0:
-        return []
+    if len(ps['cflux']) == 0:
+        return ps[["cflux", "csigflux"]]
 
     else:
-        return x / max_value
+        ps["cflux"] = ps["cflux"]/ps["peak"]
+        ps["csigflux"] = ps["csigflux"]/ps["peak"]
+        return ps[["cflux", "csigflux"]]
 
 
 def get_max(x):
@@ -184,6 +243,14 @@ def get_max(x):
     -------
     float
         Maximum of the array or -1 if array is empty
+        
+    Example
+    -------
+    >>> get_max(np.array([1, 78, -6])) == 78
+    True
+    >>> get_max(np.array([])) == -1
+    True
+    
     """
 
     if len(x) == 0:
@@ -191,24 +258,6 @@ def get_max(x):
 
     else:
         return x.max()
-
-
-def compute_snr(pdf):
-
-    """Compute signal to noise ratio
-
-    Parameters
-    ----------
-    pdf: pd.DataFrame
-        Dataframe of alerts from Fink with nan removed and converted to flux
-        Must contain columns ['cflux', 'csigflux']
-
-    Returns
-    -------
-    pd.Series
-        Signal to noise ratio
-    """
-    return pdf["cflux"] / pdf["csigflux"]
 
 
 def transform_data(converted):
@@ -232,6 +281,33 @@ def transform_data(converted):
 
     transformed_2 : pd.DataFrame
         Transformed DataFrame that only contains passband r
+        
+        Examples
+    --------
+    >>> example = pd.DataFrame(data = {"cfid": [np.array([1, 2, 2]), np.array([2])],\
+                                    "cjd" : [np.array([3, 3.5, 5]), np.array([7])],\
+                                    "cflux" : [np.array([10, 20, 25]), np.array([10.5])],\
+                                    "csigflux" : [np.array([1, 2, 2.5]), np.array([-10.5])],\
+                                    "anything" : [np.array([0.1, 2]), np.array(['toto'])]})
+
+    >>> expect_2 = pd.DataFrame(data = {"cfid": [np.array([2, 2]), np.array([2])],\
+                                    "cjd" : [np.array([-1.5, 0]), np.array([0])],\
+                                    "cflux" : [np.array([0.8, 1]), np.array([1])],\
+                                    "csigflux" : [np.array([0.08, 0.1]), np.array([-1])],\
+                                    "anything" : [np.array([0.1, 2]), np.array(['toto'])],\
+                                    "peak" : [25, 10.5],\
+                                    "snr" : [np.array([10, 10]), np.array([-1])]})
+
+    >>> expect_1 = pd.DataFrame(data = {"cfid": [np.array([1]), np.array([])],\
+                                    "cjd" : [np.array([0.]), np.array([])],\
+                                    "cflux" : [np.array([1.]), np.array([])],\
+                                    "csigflux" : [np.array([0.1]), np.array([])],\
+                                    "anything" : [np.array([0.1, 2]), np.array(['toto'])],\
+                                    "peak" : [10, -1],\
+                                    "snr" : [np.array([10.]), np.array([])]})
+
+    >>> pd.testing.assert_frame_equal((transform_data(example)[0]).round(2), expect_1)
+    >>> pd.testing.assert_frame_equal((transform_data(example)[1]).round(2), expect_2)
 
     """
 
@@ -252,35 +328,51 @@ def transform_data(converted):
 
         df["cjd"] = df.apply(translate, axis=1)
 
-        maxdf = df["cflux"].apply(get_max)
+        df["peak"] = df["cflux"].apply(get_max)
+        df[["cflux", "csigflux"]] = df.apply(normalize, axis=1)
+        df["snr"] = df[["cflux", "csigflux"]].apply(lambda pdf : pdf["cflux"] / pdf["csigflux"], axis=1)
 
-        df[["cflux"]] = df[["cflux"]].apply(normalize, args=(maxdf,))
-        df[["csigflux"]] = df[["csigflux"]].apply(normalize, args=(maxdf,))
-        df["snr"] = df[["cflux", "csigflux"]].apply(compute_snr, axis=1)
-
-        df["peak"] = maxdf
-
+        
     return transformed_1, transformed_2
 
 
-def parametric_bump(pdf):
+def parametric_bump(ps):
 
     """Fit the lightcurves using the bump function. Extract the parameters
     Parameters
     ----------
-    pdf : pd.DataFrame
-        Dataframe of alerts from Fink with nan removed and converted to flux.
+    ps : pd.Series
+        pd Series of alerts from Fink with nan removed and converted to flux.
         Flux must be normalised
         Lightcurves's max flux must be centered on 40
     Returns
     -------
     parameters : list
         List of best fitting parameter values [p1, p2, p3, p4]
+        
+    Examples
+    --------
+    
+    >>> example = pd.Series(data = {"cjd" : np.array([-1, 0]),\
+                            "cflux" : np.array([20, 300]),\
+                            "csigflux" : np.array([1, 3]),\
+                            "anything" : np.array(['toto'])})
+
+    >>> np.array_equal(np.round(parametric_bump(example), 3), np.array([-10.596,  10.999,   0.067,  47.9  ]))
+    True
+    
+    >>> example2 = pd.Series(data = {"cjd" : np.array([]),\
+                            "cflux" : np.array([]),\
+                            "csigflux" : np.array([]),\
+                            "anything" : np.array(['toto'])})
+
+    >>> np.array_equal(np.round(parametric_bump(example2), 3), np.array([ 0.225, -2.5  ,  0.038,  0.   ]))
+    True
     """
 
     parameters_dict = {"p1": 0.225, "p2": -2.5, "p3": 0.038, "p4": 0}
 
-    least_squares = LeastSquares(pdf["cjd"], pdf["cflux"], pdf["csigflux"], mod.bump)
+    least_squares = LeastSquares(ps["cjd"], ps["cflux"], ps["csigflux"], mod.bump)
     fit = Minuit(least_squares, **parameters_dict)
 
     fit.migrad()
@@ -292,14 +384,14 @@ def parametric_bump(pdf):
     return parameters
 
 
-def compute_color(pdf):
+def compute_color(ps):
 
     """Compute the color of an alert by computing g-r (before normalisation)
     Proceed by virtually filling missing points of each band using the bump fit
 
     Parameters
     ----------
-    pdf : pd.DataFrame
+    ps : pd.Series
         Dataframe of alerts from Fink with nan removed and converted to flux.
         Flux must be normalised with normalization factor inside column ['peak']
         Lightcurves's max flux must be centered on 40
@@ -308,19 +400,30 @@ def compute_color(pdf):
     -------
     np.array
         Array of color g-r at each point
+        
+    Examples
+    --------
+    
+    >>> example = pd.Series(data = {'cjd_1':np.array([1, 2]), 'cjd_2':np.array([3]),\
+                            "cflux_1":np.array([0.3, 1]), "cflux_2":np.array([1]),\
+                            'peak_1':np.array([500]), 'peak_2':np.array([321]),\
+                            'bump_1':np.array([-10.596,  10.999,   0.067,  47.9  ]), 'bump_2':np.array([ 0.225, -2.5  ,  0.038,  0.   ])})
+
+    >>> np.array_equal(np.round(compute_color(example), 1), np.array([  138.7,   486.5, 23629. ]))
+    True
 
     """
 
     # Compute fitted values at cjd from the other band
-    add_from_2 = mod.bump(pdf["cjd_2"], *pdf["bump_1"])
-    add_from_1 = mod.bump(pdf["cjd_1"], *pdf["bump_2"])
+    add_from_2 = mod.bump(ps["cjd_2"], *ps["bump_1"])
+    add_from_1 = mod.bump(ps["cjd_1"], *ps["bump_2"])
 
     # Add to the flux list : maintain the same order : cjd from 1 then cjd from 2
-    new_cflux_1 = np.append(pdf["cflux_1"], add_from_2)
-    new_cflux_2 = np.append(add_from_1, pdf["cflux_2"])
+    new_cflux_1 = np.append(ps["cflux_1"], add_from_2)
+    new_cflux_2 = np.append(add_from_1, ps["cflux_2"])
 
-    unnorm_cflux_1 = new_cflux_1 * pdf["peak_1"]
-    unnorm_cflux_2 = new_cflux_2 * pdf["peak_2"]
+    unnorm_cflux_1 = new_cflux_1 * ps["peak_1"]
+    unnorm_cflux_2 = new_cflux_2 * ps["peak_2"]
 
     # Return g-r
     return unnorm_cflux_1 - unnorm_cflux_2
@@ -356,6 +459,29 @@ def parametrise(transformed, minimum_points, band, target_col=""):
     df_parameters : pd.DataFrame
         DataFrame of parameters.
         Contains additionnal columns which will be used to compute color parameters
+        
+    Example
+    -------
+    >>> example = pd.DataFrame(data = {"objectId": [np.array(5485), np.array(2000)],\
+                                    "cjd" : [np.array([-1.5, 0]), np.array([0])],\
+                                    "cflux" : [np.array([0.8, 1]), np.array([1])],\
+                                    "csigflux" : [np.array([0.08, 0.1]), np.array([-1])],\
+                                    "peak" : [25, 10.5],\
+                                    "snr" : [np.array([10, 10]), np.array([-1])]})
+
+    >>> param = parametrise(example, 2, 1)
+    >>> valid = param['valid_1']
+    >>> (valid[0] == True) & (valid[1] == False)
+    True
+    
+    >>> bump = param['bump_1']
+    >>> (len(bump[0]) & len(bump[0])) == 4
+    True
+
+    >>> (param.keys() == ['object_id', 'std_1', 'peak_1', 'mean_snr_1', 'nb_points_1', 'valid_1',\
+           'bump_1', 'cflux_1', 'cjd_1']).sum() == 9
+    True
+
     """
 
     nb_points = transformed["cflux"].apply(lambda x: len(x))
@@ -420,6 +546,35 @@ def merge_features(features_1, features_2, target_col=""):
 
     valid : np.array
         Boolean array, indicates if both passband respect the minimum number of points
+        
+    Examples
+    --------
+    >>> band1 = pd.DataFrame(data = {'object_id':42, 'valid_1':True,\
+                             'std_1':4.1, 'peak_1':2563,\
+                             'mean_snr_1':0.8, 'nb_points_1':4,\
+                             'bump_1':[np.array([0.225, -2.5, 0.038, 0.])],\
+                             'cjd_1':[np.array([1, 20, 40, 45])],\
+                             'cflux_1':[np.array([0.1, 0.5, 1, 0.7])]})
+
+    >>> band2 = pd.DataFrame(data = {'object_id':42, 'valid_2':False,\
+                             'std_2':3.1, 'peak_2':263,\
+                             'mean_snr_2':0.2, 'nb_points_2':2,\
+                             'bump_2':[np.array([0.285, -2.3, 0.048, 0.2])],\
+                             'cjd_2':[np.array([13, 40])],\
+                             'cflux_2':[np.array([0.3, 1])]})
+                             
+    >>> result = merge_features(band1, band2)
+    >>> len(result)
+    2
+    >>> result[1][0]
+    False
+    >>> expected = pd.DataFrame(data = {'object_id':42, 'std_1':4.1,\
+                                 'std_2':3.1, 'peak_1':2563, 'peak_2':263,\
+                                 'mean_snr_1':0.8, 'mean_snr_2':0.2,\
+                                 'nb_points_1':4, 'nb_points_2':2, 'std_color':747.15, 'max_color':2271.83}, index=[0])
+
+
+    >>> pd.testing.assert_frame_equal(expected, result[0].round(2))
     """
 
     # Avoid having twice the same column
@@ -479,7 +634,20 @@ def get_probabilities(clf, features, valid):
     -------
     final_proba : np.array
         ordered probabilities of being an AGN
+        
+    Examples
+    --------
+    >>> example = pd.DataFrame(data = {'object_id':[42, 24, 60], 'std_1':[4.1, 0.8, 0.07],\
+                                 'std_2':[0.7, 0.3, 0.07], 'peak_1':[2563, 10000, 1500], 'peak_2':[263, 10000, 1500],\
+                                 'mean_snr_1':[0.8, 3, 6], 'mean_snr_2':[0.2, 4, 6],\
+                                 'nb_points_1':[4,18, 5], 'nb_points_2':[2,12, 5],\
+                                 'std_color':[74.15, 3, 0], 'max_color':[2271.83, 500, 0]})
 
+    >>> valid = np.array([False, True, True])
+    >>> clf = load_classifier()
+    >>> proba = get_probabilities(clf, example, valid)
+    >>> len(proba)
+    3
     """
 
     final_proba = np.array([-1] * len(features["object_id"])).astype(np.float64)
@@ -488,6 +656,14 @@ def get_probabilities(clf, features, valid):
 
     index_to_replace = features.loc[valid].iloc[:, 1:].index
 
-    final_proba[index_to_replace.values] = agn_or_not[:, 0]
+    final_proba[index_to_replace.values] = agn_or_not[:, 1]
 
     return final_proba
+
+
+if __name__ == "__main__":
+    
+    import sys
+    import doctest
+    
+    sys.exit(doctest.testmod()[0])
