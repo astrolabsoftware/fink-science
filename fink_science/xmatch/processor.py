@@ -233,6 +233,8 @@ def xmatch_cds(
 
     # Keep compatibility with previous definitions
     if 'main_type' in df_out.columns:
+        # remove previous declaration if any
+        df_out = df_out.drop('cdsxmatch')
         df_out = df_out.withColumnRenamed('main_type', 'cdsxmatch')
 
     return df_out
