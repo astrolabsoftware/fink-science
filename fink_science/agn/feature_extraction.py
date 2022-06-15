@@ -3,8 +3,10 @@ from iminuit import Minuit
 from iminuit.cost import LeastSquares
 import fink_science.agn.models as mod
 from pandas.testing import assert_frame_equal
+import fink_science.agn.kernel as k
 import numpy as np
-from classifier import load_classifier
+import pickle
+
 
 
 def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
@@ -114,7 +116,18 @@ def clean_data(pdf: pd.DataFrame):
     ------
     pdf_without_nan : pd.DataFrame
          DataFrame with nan and corresponding measurement removed
-    
+         
+    Examples
+    --------
+    >>> example = pd.DataFrame(data = {"cfid":[[1, 2, 2]], "cjd":[[20, np.nan, 10.5]],\
+                     'cmagpsf':[[20.,np.nan, 10.5]],'csigmapsf':[[1.,np.nan, 1.6]],\
+                     'anything':'toto'})
+                     
+    >>> expected = pd.DataFrame(data = {"cfid":[[1, 2]], "cjd":[[20, 10]],\
+                         'cmagpsf':[[20., 10.5]],'csigmapsf':[[1., 1.6]],\
+                         'anything':'toto'})
+
+    >>> pd.testing.assert_frame_equal(expected, clean_data(example))
     """
 
     pdf = pdf.reset_index(drop=True)
@@ -644,10 +657,16 @@ def get_probabilities(clf, features, valid):
                                  'std_color':[74.15, 3, 0], 'max_color':[2271.83, 500, 0]})
 
     >>> valid = np.array([False, True, True])
-    >>> clf = load_classifier()
+    >>> clf = pickle.load(open(k.CLASSIFIER, "rb"))
     >>> proba = get_probabilities(clf, example, valid)
     >>> len(proba)
     3
+    >>> proba[2]>0.5
+    True
+    >>> proba[1]<0.5
+    True
+    >>> proba[0]==-1
+    True
     """
 
     final_proba = np.array([-1] * len(features["object_id"])).astype(np.float64)

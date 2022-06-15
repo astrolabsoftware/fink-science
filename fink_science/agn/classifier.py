@@ -1,6 +1,11 @@
 import pickle
 import fink_science.agn.kernel as k
 import fink_science.agn.feature_extraction as fe
+import os
+from fink_science import __file__
+from fink_science.tester import spark_unit_tests
+import pandas as pd
+import numpy as np
 
 
 def load_classifier():
@@ -9,10 +14,16 @@ def load_classifier():
     on binary cases : AGNs vs non-AGNs  (pickle format).
 
     Returns
-    ----------
+    -------
     RandomForestClassifier
-
-
+    
+    Examples
+    --------
+    >>> rf = load_classifier()
+    >>> rf.n_classes_
+    2
+    >>> rf.n_features_
+    10
     """
     with open(k.CLASSIFIER, "rb") as f:
         clf = pickle.load(f)
@@ -30,10 +41,23 @@ def agn_classifier(data):
         alerts from fink with aggregated lightcurves
 
     Returns
-    ----------
+    -------
     np.array
         ordered probabilities of being an AGN
         Return -1 if the minimum number of point per passband is not respected
+        
+    Examples
+    --------
+    >>> df = pd.read_parquet(ztf_alert_sample)
+    >>> proba = agn_classifier(df)
+    >>> len(proba[proba>0.5])
+    2
+    >>> len(proba[proba<=0.5])
+    4
+    >>> len(proba[proba==-1])
+    2
+    >>> proba[3]>0.5
+    True
     """
 
     clean = fe.clean_data(data)
@@ -50,3 +74,14 @@ def agn_classifier(data):
     proba = fe.get_probabilities(clf, features, valid)
 
     return proba
+
+if __name__ == "__main__":
+
+    globs = globals()
+    path = os.path.dirname(__file__)
+
+    ztf_alert_sample = "{}/data/alerts/agn_example.parquet".format(path)
+    globs["ztf_alert_sample"] = ztf_alert_sample
+
+    # Run the test suite
+    spark_unit_tests(globs)
