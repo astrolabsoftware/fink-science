@@ -4,8 +4,8 @@ import fink_science.agn.feature_extraction as fe
 import os
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
-import pandas as pd
-import numpy as np
+import pandas as pd  # noqa: F401
+import numpy as np  # noqa: F401
 
 
 def load_classifier():
@@ -16,7 +16,7 @@ def load_classifier():
     Returns
     -------
     RandomForestClassifier
-    
+
     Examples
     --------
     >>> rf = load_classifier()
@@ -45,7 +45,7 @@ def agn_classifier(data):
     np.array
         ordered probabilities of being an AGN
         Return -1 if the minimum number of point per passband is not respected
-        
+
     Examples
     --------
     >>> df = pd.read_parquet(ztf_alert_sample)
@@ -74,6 +74,7 @@ def agn_classifier(data):
     proba = fe.get_probabilities(clf, features, valid)
 
     return proba
+
 
 if __name__ == "__main__":
 
