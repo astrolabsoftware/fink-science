@@ -29,6 +29,8 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
     >>> flux = mag2fluxcal_snana(18.9, 0.07)
     >>> round(flux[0], 5), round(flux[1], 5)
     (2754.2287, 177.5718)
+    >>> mag2fluxcal_snana(None, None)
+    (None, None)
     """
 
     if magpsf is None:
@@ -480,9 +482,10 @@ def parametrise(transformed, minimum_points, band, target_col=""):
                                     "cflux" : [np.array([0.8, 1]), np.array([1])],\
                                     "csigflux" : [np.array([0.08, 0.1]), np.array([-1])],\
                                     "peak" : [25, 10.5],\
-                                    "snr" : [np.array([10, 10]), np.array([-1])]})
+                                    "snr" : [np.array([10, 10]), np.array([-1])],\
+                                    "target" : ['AGN', 'other']})
 
-    >>> param = parametrise(example, 2, 1)
+    >>> param = parametrise(example, 2, 1, target_col='target')
     >>> valid = param['valid_1']
     >>> (valid[0] == True) & (valid[1] == False)
     True
@@ -492,7 +495,7 @@ def parametrise(transformed, minimum_points, band, target_col=""):
     True
 
     >>> (param.keys() == ['object_id', 'std_1', 'peak_1', 'mean_snr_1', 'nb_points_1', 'valid_1',\
-           'bump_1', 'cflux_1', 'cjd_1']).sum() == 9
+           'target', 'bump_1', 'cflux_1', 'cjd_1']).sum()==10
     True
 
     """
