@@ -174,22 +174,27 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog
 
 def xmatch_cds(
         df, catalogname='simbad', distmaxarcsec=1.0,
-        cols=['main_type'], types=['string']):
+        cols_in=['candidate.candid', 'candidate.ra', 'candidate.dec'],
+        cols_out=['main_type'],
+        types=['string']):
     """ Cross-match Fink data from a Spark DataFrame with a catalog in CDS
 
     Parameters
     ----------
     df: Spark DataFrame
-        Spark Dataframe containing at least
-        `candidate.candid`, `candidate.ra`, `candidate.dec`
+        Spark Dataframe
     catalogname: str
-        Name of the catalog in Vizier, or directly simbad (default)
+        Name of the catalog in Vizier, or directly simbad (default).
+        Default is simbad.
     distmaxarcsec: float
-        Cross-match radius
-    cols: list of str
-        Column names to get from the catalog
+        Cross-match radius in arcsecond. Default is 1.0 arcsecond.
+    cols_in: list of str
+        Three column names from the input DataFrame to use (oid, ra, dec).
+        Default is [`candidate.candid`, `candidate.ra`, `candidate.dec`]
+    cols_out: list of str
+        N column names to get from the external catalog.
     types: list of str
-        Types of columns from the catalog.
+        N types of columns from the external catalog.
         Should be SQL syntax (str=string, etc.)
 
     Returns
@@ -211,7 +216,7 @@ def xmatch_cds(
     ...     df,
     ...     distmaxarcsec=1,
     ...     catalogname='vizier:I/355/gaiadr3',
-    ...     cols=['DR3Name', 'Plx', 'e_Plx'],
+    ...     cols_out=['DR3Name', 'Plx', 'e_Plx'],
     ...     types=['string', 'float', 'float'])
     >>> 'Plx' in df_gaia.columns
     True
@@ -219,16 +224,16 @@ def xmatch_cds(
     df_out = df.withColumn(
         'xmatch',
         cdsxmatch(
-            df['candidate.candid'],
-            df['candidate.ra'],
-            df['candidate.dec'],
+            df[cols_in[0]],
+            df[cols_in[1]],
+            df[cols_in[2]],
             F.lit(distmaxarcsec),
             F.lit(catalogname),
-            F.lit(','.join(cols))
+            F.lit(','.join(cols_out))
         )
     ).withColumn('xmatch_split', F.split('xmatch', ','))
 
-    for index, col_, type_ in zip(range(len(cols)), cols, types):
+    for index, col_, type_ in zip(range(len(cols_out)), cols_out, types):
         df_out = df_out.withColumn(
             col_,
             F.col('xmatch_split').getItem(index).astype(type_)
