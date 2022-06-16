@@ -589,8 +589,25 @@ def merge_features(features_1, features_2, target_col=""):
                                  'mean_snr_1':0.8, 'mean_snr_2':0.2,\
                                  'nb_points_1':4, 'nb_points_2':2, 'std_color':747.15, 'max_color':2271.83}, index=[0])
 
-
     >>> pd.testing.assert_frame_equal(expected, result[0].round(2))
+
+    >>> band1_target = pd.DataFrame(data = {'object_id':42, 'valid_1':True,\
+                             'std_1':4.1, 'peak_1':2563,\
+                             'mean_snr_1':0.8, 'nb_points_1':4,\
+                             'bump_1':[np.array([0.225, -2.5, 0.038, 0.])],\
+                             'cjd_1':[np.array([1, 20, 40, 45])],\
+                             'cflux_1':[np.array([0.1, 0.5, 1, 0.7])], \
+                             'target':['AGN']})
+
+    >>> band2_target = pd.DataFrame(data = {'object_id':42, 'valid_2':False,\
+                             'std_2':3.1, 'peak_2':263,\
+                             'mean_snr_2':0.2, 'nb_points_2':2,\
+                             'bump_2':[np.array([0.285, -2.3, 0.048, 0.2])],\
+                             'cjd_2':[np.array([13, 40])],\
+                             'cflux_2':[np.array([0.3, 1])],\
+                             'target':['AGN']})
+
+    >>> result_target = merge_features(band1_target, band2_target, target_col="target")
     """
 
     # Avoid having twice the same column
