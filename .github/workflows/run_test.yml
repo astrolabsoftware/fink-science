@@ -43,5 +43,7 @@ jobs:
     - name: Run test suites
       run: |
         pip install fink-utils --upgrade
+        pip install scikit-learn==1.0.2
+        pip install git+https://github.com/b-biswas/kndetect --upgrade
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
