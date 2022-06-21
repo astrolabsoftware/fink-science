@@ -132,6 +132,6 @@ def compute_mse(f_obs: np.array, f_exp: np.array) -> float:
         mse between fitted and observed
     """
 
-    test_mse = mean_squared_error(f_obs, f_exp,)
+    test_mse = mean_squared_error(f_obs, f_exp, squared=False)
 
     return test_mse
