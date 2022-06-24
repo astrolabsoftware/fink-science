@@ -245,13 +245,17 @@ def normalize(ps):
         return ps[["cflux", "csigflux"]]
 
 
-def get_max(x):
+def get_max(x, absolute=False):
 
     """Returns maximum of an array. Returns -1 if array is empty
 
     Parameters
     ----------
     x: np.array
+
+    absolute: bool
+        If true returns absolute maximum
+        Default is False
 
     Returns
     -------
@@ -264,11 +268,16 @@ def get_max(x):
     True
     >>> get_max(np.array([])) == -1
     True
+    >>> get_max(np.array([1, 8, -62]), absolute=True) == -62
+    True
 
     """
 
     if len(x) == 0:
         return -1
+
+    elif absolute:
+        return max(np.min(x), np.max(x), key=abs)
 
     else:
         return x.max()
@@ -637,9 +646,7 @@ def merge_features(features_1, features_2, target_col=""):
     # Add color features
     color = features.apply(compute_color, axis=1)
     ordered_features["std_color"] = color.apply(np.std)
-    ordered_features["max_color"] = color.apply(
-        lambda x: max(np.min(x), np.max(x), key=abs)
-    )
+    ordered_features["max_color"] = color.apply(get_max, args=(True,))
 
     if target_col != "":
         ordered_features[target_col] = features[target_col]
