@@ -487,6 +487,8 @@ def parametrise(transformed, minimum_points, band, target_col=""):
     Example
     -------
     >>> example = pd.DataFrame(data = {"objectId": [np.array(5485), np.array(2000)],\
+                                    "ra" : [np.array([-1.5, 85]), np.array([0])],\
+                                    "dec" : [np.array([75, 0]), np.array([-8.5])],\
                                     "cjd" : [np.array([-1.5, 0]), np.array([0])],\
                                     "cflux" : [np.array([0.8, 1]), np.array([1])],\
                                     "csigflux" : [np.array([0.08, 0.1]), np.array([-1])],\
@@ -503,8 +505,8 @@ def parametrise(transformed, minimum_points, band, target_col=""):
     >>> (len(bump[0]) & len(bump[0])) == 4
     True
 
-    >>> (param.keys() == ['object_id', 'std_1', 'peak_1', 'mean_snr_1', 'nb_points_1', 'valid_1',\
-           'target', 'bump_1', 'cflux_1', 'cjd_1']).sum()==10
+    >>> (param.keys() == ['object_id', 'ra', 'dec', 'std_1', 'peak_1', 'mean_snr_1', 'nb_points_1', 'valid_1',\
+           'target', 'bump_1', 'cflux_1', 'cjd_1']).sum()==12
     True
 
     """
@@ -514,12 +516,16 @@ def parametrise(transformed, minimum_points, band, target_col=""):
     std = transformed["cflux"].apply(np.std)
     mean_snr = transformed["snr"].apply(np.mean)
     ids = transformed["objectId"]
+    ra = transformed['ra']
+    dec = transformed['dec']
 
     valid = nb_points >= minimum_points
 
     df_parameters = pd.DataFrame(
         data={
             "object_id": ids,
+            "ra": ra,
+            "dec": dec,
             f"std_{band}": std,
             f"peak_{band}": peak,
             f"mean_snr_{band}": mean_snr,
@@ -575,6 +581,7 @@ def merge_features(features_1, features_2, target_col=""):
     Examples
     --------
     >>> band1 = pd.DataFrame(data = {'object_id':42, 'valid_1':True,\
+                             'ra':90, 'dec':90,\
                              'std_1':4.1, 'peak_1':2563,\
                              'mean_snr_1':0.8, 'nb_points_1':4,\
                              'bump_1':[np.array([0.225, -2.5, 0.038, 0.])],\
@@ -582,6 +589,7 @@ def merge_features(features_1, features_2, target_col=""):
                              'cflux_1':[np.array([0.1, 0.5, 1, 0.7])]})
 
     >>> band2 = pd.DataFrame(data = {'object_id':42, 'valid_2':False,\
+                             'ra':90, 'dec':90,\
                              'std_2':3.1, 'peak_2':263,\
                              'mean_snr_2':0.2, 'nb_points_2':2,\
                              'bump_2':[np.array([0.285, -2.3, 0.048, 0.2])],\
@@ -593,14 +601,15 @@ def merge_features(features_1, features_2, target_col=""):
     2
     >>> result[1][0]
     False
-    >>> expected = pd.DataFrame(data = {'object_id':42, 'std_1':4.1,\
-                                 'std_2':3.1, 'peak_1':2563, 'peak_2':263,\
+    >>> expected = pd.DataFrame(data = {'object_id':42, 'ra':90, 'dec':90,\
+                                 'std_1':4.1, 'std_2':3.1, 'peak_1':2563, 'peak_2':263,\
                                  'mean_snr_1':0.8, 'mean_snr_2':0.2,\
                                  'nb_points_1':4, 'nb_points_2':2, 'std_color':747.15, 'max_color':2271.83}, index=[0])
 
     >>> pd.testing.assert_frame_equal(expected, result[0].round(2))
 
     >>> band1_target = pd.DataFrame(data = {'object_id':42, 'valid_1':True,\
+                             'ra':90, 'dec':90,\
                              'std_1':4.1, 'peak_1':2563,\
                              'mean_snr_1':0.8, 'nb_points_1':4,\
                              'bump_1':[np.array([0.225, -2.5, 0.038, 0.])],\
@@ -609,6 +618,7 @@ def merge_features(features_1, features_2, target_col=""):
                              'target':['AGN']})
 
     >>> band2_target = pd.DataFrame(data = {'object_id':42, 'valid_2':False,\
+                             'ra':90, 'dec':90,\
                              'std_2':3.1, 'peak_2':263,\
                              'mean_snr_2':0.2, 'nb_points_2':2,\
                              'bump_2':[np.array([0.285, -2.3, 0.048, 0.2])],\
@@ -621,9 +631,9 @@ def merge_features(features_1, features_2, target_col=""):
 
     # Avoid having twice the same column
     if target_col == "":
-        features_2 = features_2.drop(columns={"object_id"})
+        features_2 = features_2.drop(columns={"object_id", "ra", "dec"})
     else:
-        features_2 = features_2.drop(columns={"object_id", target_col})
+        features_2 = features_2.drop(columns={"object_id", "ra", "dec", target_col})
 
     features = features_1.join(features_2)
     valid = features["valid_1"] & features["valid_2"]
@@ -632,6 +642,8 @@ def merge_features(features_1, features_2, target_col=""):
     ordered_features = features[
         [
             "object_id",
+            "ra",
+            "dec",
             "std_1",
             "std_2",
             "peak_1",
@@ -639,7 +651,7 @@ def merge_features(features_1, features_2, target_col=""):
             "mean_snr_1",
             "mean_snr_2",
             "nb_points_1",
-            "nb_points_2",
+            "nb_points_2"
         ]
     ].copy()
 
