@@ -2,7 +2,7 @@
 numpy>=1.17
 pandas
 scipy==1.4.1
-scikit-learn==0.23
+scikit-learn==1.0.2
 
 # Coverage
 coveralls
