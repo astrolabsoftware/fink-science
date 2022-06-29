@@ -142,10 +142,10 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']]
     >>> args += [F.col('roid'), F.col('cdsxmatch'), F.col('candidate.jdstarthist')]
     >>> args += [F.lit(''), F.lit(model_path)]
-    >>> df = df.withColumn('pIa', snn_ia(*args))
+    >>> df = df.withColumn('pIa2', snn_ia(*args))
 
-    >>> df.filter(df['pIa'] > 0.5).count()
-    6
+    >>> df.filter(df['pIa2'] > 0.5).count()
+    7
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 

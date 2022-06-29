@@ -372,7 +372,10 @@ def get_sigmoid_features_dev(data_all: pd.DataFrame):
                 pred_flux = get_predicted_flux(dt, a[i], b[i], c[i])
 
                 # compute mse
-                chisq[i] = compute_mse(rising_flux, pred_flux)
+                chisq[i] = compute_mse(
+                    rising_flux / sum(rising_flux),
+                    pred_flux / sum(pred_flux)
+                )
 
             else:
                 # if rising flux has less than three
