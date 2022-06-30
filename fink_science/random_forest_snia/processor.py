@@ -26,8 +26,8 @@ from fink_utils.data.utils import format_data_as_snana
 from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
-from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_features_dev
-from fink_science.random_forest_snia.classifier_sigmoid import RF_FEATURE_NAMES
+from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
+from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
 from fink_science.tester import spark_unit_tests
 
