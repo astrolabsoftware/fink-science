@@ -7,7 +7,7 @@ def protected_exponent(x1):
     Examples
     --------
     >>> np.round_(protected_exponent(420))
-    26881171418161356094253400435962903554686976
+    2.6881171418161356e+43
     >>> np.round_(protected_exponent(1), 5)
     2.71828
     """
