@@ -6,13 +6,14 @@ def protected_exponent(x1):
 
     Examples
     --------
-    >>> np.round_(protected_exponent(42), 5)
-    22026.46579
+    >>> np.round_(protected_exponent(420))
+    26881171418161356094253400435962903554686976
     >>> np.round_(protected_exponent(1), 5)
     2.71828
     """
+    maxi = 100
     with np.errstate(over="ignore"):
-        return np.where(np.abs(x1) < 10, np.exp(x1), np.exp(10))
+        return np.where(x1 < 100, np.exp(x1), np.exp(100))
 
 
 def sig(x):
