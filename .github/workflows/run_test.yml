@@ -45,6 +45,7 @@ jobs:
         pip install fink-utils --upgrade
         pip install scikit-learn==1.0.2
         pip install git+https://github.com/b-biswas/kndetect --upgrade
+        pip install git+https://github.com/emilleishida/fink_sn_activelearning.git@e713fad465986ee6b53a16d62856ca2ab156672c#egg=actsnfink
+        pip install git+https://github.com/COINtoolbox/ActSNClass.git@2c61da91a9d13834d39804fc35aeb3245ba20755#egg=actsnclass
         ./run_tests.sh
-        pip install git+https://github.com/emilleishida/fink_sn_activelearning.git@56b45646c92bb8194f0ab0694bb442d03b23a0fc#egg=fink_sn_activelearning
         curl -s https://codecov.io/bash | bash
