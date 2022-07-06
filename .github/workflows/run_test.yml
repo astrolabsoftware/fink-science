@@ -46,5 +46,6 @@ jobs:
         pip install scikit-learn==1.0.2
         pip install git+https://github.com/b-biswas/kndetect --upgrade
         pip install git+https://github.com/emilleishida/fink_sn_activelearning.git@e713fad465986ee6b53a16d62856ca2ab156672c#egg=actsnfink
+        pip install git+https://github.com/COINtoolbox/ActSNClass.git@2c61da91a9d13834d39804fc35aeb3245ba20755#egg=actsnclass
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
