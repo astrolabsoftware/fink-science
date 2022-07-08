@@ -331,6 +331,7 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     """
     mask = apply_selection_cuts_ztf(psFlux, nobs, cdsxmatch, maxndethist=100)
 
+    # ML: not sure if this line still relevant
     mask *= filterName.apply(lambda array: np.sum([x in ['g', 'r'] for x in array]) > 3)
 
     if len(midPointTai[mask]) == 0:
