@@ -59,10 +59,9 @@ def remove_nan(ps):
 
     Examples
     --------
-    >>> serie_example = pd.Series(data = {'cmagpsf':[0,1,np.nan],'cjd':[3, 4, np.nan], 'anything':[1,5,8]})
+    >>> serie_example = pd.Series(data = {'cmagpsf':[0,1,np.nan],'cjd':[3, 4, np.nan],'cra':[95, -4, np.nan],'cdec':[58, 43, np.nan],'anything':[1,5,8]})
     >>> remove_nan(serie_example)
-    [array([0, 1]), array([3, 4]), array([1, 5])]
-
+    [array([0, 1]), array([3, 4]), array([95, -4]), array([58, 43]), array([1, 5])]
     """
 
     mask = np.equal(ps["cmagpsf"], ps["cmagpsf"])
@@ -106,7 +105,8 @@ def keep_filter(ps, band):
 def clean_data(pdf: pd.DataFrame):
     """
     Remove all nan values from 'cmagpsf' along with the corresponding values
-    inside "cfid", "cjd", 'csigmapsf'.
+    inside "cfid", "cjd", 'csigmapsf', 'cra', 'cdec'.
+    Keeps only one value for cra and cdec
 
     Paramters
     ---------
@@ -116,16 +116,19 @@ def clean_data(pdf: pd.DataFrame):
     Return
     ------
     pdf_without_nan : pd.DataFrame
-         DataFrame with nan and corresponding measurement removed
+         DataFrame with nan and corresponding measurement removed.
+         Replaced cols 'cra' and 'cdec' to 'ra' and 'dec'
 
     Examples
     --------
     >>> example = pd.DataFrame(data = {"cfid":[[1, 2, 2]], "cjd":[[20, np.nan, 10.5]],\
                      'cmagpsf':[[20.,np.nan, 10.5]],'csigmapsf':[[1.,np.nan, 1.6]],\
+                     'cra':[[-7.,np.nan, -7]],'cdec':[[18.2, np.nan, 18.2]],\
                      'anything':'toto'})
 
     >>> expected = pd.DataFrame(data = {"cfid":[[1, 2]], "cjd":[[20, 10]],\
                          'cmagpsf':[[20., 10.5]],'csigmapsf':[[1., 1.6]],\
+                         'ra':-7., 'dec':18.2,\
                          'anything':'toto'})
 
     >>> pd.testing.assert_frame_equal(expected, clean_data(example))
@@ -134,9 +137,13 @@ def clean_data(pdf: pd.DataFrame):
     pdf = pdf.reset_index(drop=True)
 
     # Remove NaNs
-    pdf[["cfid", "cjd", "cmagpsf", "csigmapsf"]] = pdf[
-        ["cfid", "cjd", "cmagpsf", "csigmapsf"]
+    pdf[["cfid", "cjd", "cmagpsf", "csigmapsf", "cra", "cdec"]] = pdf[
+        ["cfid", "cjd", "cmagpsf", "csigmapsf", "cra", "cdec"]
     ].apply(remove_nan, axis=1, result_type="expand")
+
+    pdf['cra'] = pdf['cra'].apply(lambda x: x[0])
+    pdf['cdec'] = pdf['cdec'].apply(lambda x: x[0])
+    pdf = pdf.rename(columns={'cra': 'ra', 'cdec': 'dec'})
 
     return pdf
 
@@ -277,10 +284,47 @@ def get_max(x, absolute=False):
         return -1
 
     elif absolute:
-        return max(np.min(x), np.max(x), key=abs)
+        return max(x, key=abs)
 
     else:
         return x.max()
+
+def get_min(x, absolute=False):
+
+    """Returns minimum of an array. Returns -1 if array is empty
+
+    Parameters
+    ----------
+    x: np.array
+
+    absolute: bool
+        If true returns absolute minimum
+        Default is False
+
+    Returns
+    -------
+    float
+        Minimum of the array or -1 if array is empty
+
+    Example
+    -------
+    >>> get_min(np.array([1, 78, -6])) == -6
+    True
+    >>> get_min(np.array([])) == -1
+    True
+    >>> get_min(np.array([1, 8, -62]), absolute=True) == 1
+    True
+
+    """
+
+    if len(x) == 0:
+        return -1
+
+    elif absolute:
+        return min(x, key=abs)
+
+    else:
+        return x.min()
 
 
 def transform_data(converted):
@@ -368,7 +412,8 @@ def parametric_bump(ps):
     ps : pd.Series
         pd Series of alerts from Fink with nan removed and converted to flux.
         Flux must be normalised
-        Lightcurves's max flux must be centered on 40
+        Lightcurves's max flux must be centered on 40.
+        p4 guess is set to the minimum flux value
     Returns
     -------
     parameters : list
@@ -382,7 +427,7 @@ def parametric_bump(ps):
                             "csigflux" : np.array([1, 3]),\
                             "anything" : np.array(['toto'])})
 
-    >>> np.array_equal(np.round(parametric_bump(example), 3), np.array([-10.596,  10.999,   0.067,  47.9  ]))
+    >>> np.array_equal(np.round(parametric_bump(example), 3), np.array([ 13.465, 119.56 , -14.035,  47.9  ]))
     True
 
     >>> example2 = pd.Series(data = {"cjd" : np.array([]),\
@@ -390,11 +435,11 @@ def parametric_bump(ps):
                             "csigflux" : np.array([]),\
                             "anything" : np.array(['toto'])})
 
-    >>> np.array_equal(np.round(parametric_bump(example2), 3), np.array([ 0.225, -2.5  ,  0.038,  0.   ]))
+    >>> np.array_equal(np.round(parametric_bump(example2), 3), np.array([ 0.225, -2.5  ,  0.038, -1.   ]))
     True
     """
 
-    parameters_dict = {"p1": 0.225, "p2": -2.5, "p3": 0.038, "p4": 0}
+    parameters_dict = {"p1": 0.225, "p2": -2.5, "p3": 0.038, "p4": get_min(ps["cflux"])}
 
     least_squares = LeastSquares(ps["cjd"], ps["cflux"], ps["csigflux"], mod.bump)
     fit = Minuit(least_squares, **parameters_dict)
@@ -487,8 +532,8 @@ def parametrise(transformed, minimum_points, band, target_col=""):
     Example
     -------
     >>> example = pd.DataFrame(data = {"objectId": [np.array(5485), np.array(2000)],\
-                                    "ra" : [np.array([-1.5, 85]), np.array([0])],\
-                                    "dec" : [np.array([75, 0]), np.array([-8.5])],\
+                                    "ra" : [np.array(90), np.array(-42)],\
+                                    "dec" : [np.array(70), np.array(-2)],\
                                     "cjd" : [np.array([-1.5, 0]), np.array([0])],\
                                     "cflux" : [np.array([0.8, 1]), np.array([1])],\
                                     "csigflux" : [np.array([0.08, 0.1]), np.array([-1])],\
@@ -690,6 +735,7 @@ def get_probabilities(clf, features, valid):
     Examples
     --------
     >>> example = pd.DataFrame(data = {'object_id':[42, 24, 60], 'std_1':[4.1, 0.8, 0.07],\
+                                 'ra':[50,300,200], 'dec':[-5.2, -10, 30],\
                                  'std_2':[0.7, 0.3, 0.07], 'peak_1':[2563, 10000, 1500], 'peak_2':[263, 10000, 1500],\
                                  'mean_snr_1':[0.8, 3, 6], 'mean_snr_2':[0.2, 4, 6],\
                                  'nb_points_1':[4,18, 5], 'nb_points_2':[2,12, 5],\
@@ -700,9 +746,9 @@ def get_probabilities(clf, features, valid):
     >>> proba = get_probabilities(clf, example, valid)
     >>> len(proba)
     3
-    >>> proba[2]>0.5
+    >>> proba[2]!=-1
     True
-    >>> proba[1]<0.5
+    >>> proba[1]!=-1
     True
     >>> proba[0]==-1
     True

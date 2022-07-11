@@ -23,7 +23,7 @@ def load_classifier():
     >>> rf.n_classes_
     2
     >>> rf.n_features_
-    10
+    12
     """
     with open(k.CLASSIFIER, "rb") as f:
         clf = pickle.load(f)
@@ -50,14 +50,12 @@ def agn_classifier(data):
     --------
     >>> df = pd.read_parquet(ztf_alert_sample)
     >>> proba = agn_classifier(df)
-    >>> len(proba[proba>0.5])
+    >>> len(proba)
     2
-    >>> len(proba[proba<=0.5])
-    4
+    >>> len(proba[proba!=-1])
+    1
     >>> len(proba[proba==-1])
-    2
-    >>> proba[3]>0.5
-    True
+    1
     """
 
     clean = fe.clean_data(data)

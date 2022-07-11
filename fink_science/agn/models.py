@@ -13,7 +13,7 @@ def protected_exponent(x1):
     """
     maxi = 100
     with np.errstate(over="ignore"):
-        return np.where(x1 < 100, np.exp(x1), np.exp(100))
+        return np.where(x1 < maxi, np.exp(x1), np.exp(maxi))
 
 
 def sig(x):
