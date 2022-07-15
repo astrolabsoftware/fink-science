@@ -752,15 +752,27 @@ def get_probabilities(clf, features, valid):
     True
     >>> proba[0]==-1
     True
+
+    >>> valid2 = np.array([False, False, False])
+    >>> proba = get_probabilities(clf, example, valid2)
+    >>> len(proba)
+    3
+    >>> proba[2]==-1
+    True
+    >>> proba[1]==-1
+    True
+    >>> proba[0]==-1
+    True
     """
 
     final_proba = np.array([-1] * len(features["object_id"])).astype(np.float64)
 
-    agn_or_not = clf.predict_proba(features.loc[valid].iloc[:, 1:])
+    valid_alerts = features.loc[valid]
 
-    index_to_replace = features.loc[valid].iloc[:, 1:].index
-
-    final_proba[index_to_replace.values] = agn_or_not[:, 1]
+    if len(valid_alerts) > 0:
+        agn_or_not = clf.predict_proba(valid_alerts.iloc[:, 1:])
+        index_to_replace = valid_alerts.iloc[:, 1:].index
+        final_proba[index_to_replace.values] = agn_or_not[:, 1]
 
     return final_proba
 
