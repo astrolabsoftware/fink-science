@@ -64,14 +64,13 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
 
     Examples
     ----------
-    >>> from fink_science.xmatch.processor import cdsxmatch
+    >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
 
-    >>> colnames = [df['objectId'], df['candidate.ra'], df['candidate.dec']]
-    >>> df = df.withColumn('cdsxmatch', cdsxmatch(*colnames))
+    >>> df = xmatch_cds(df)
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']

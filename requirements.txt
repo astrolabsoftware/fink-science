@@ -2,7 +2,7 @@
 numpy>=1.17
 pandas
 scipy==1.4.1
-scikit-learn==0.23
+scikit-learn==1.0.2
 
 # Coverage
 coveralls
@@ -27,6 +27,9 @@ natsort
 colorama
 seaborn
 scikit-image
+
+# Random Forest AL
+-e git+https://github.com/emilleishida/fink_sn_activelearning.git@56b45646c92bb8194f0ab0694bb442d03b23a0fc#egg=fink_sn_activelearning
 
 # KN
 -e git+https://github.com/b-biswas/kndetect@kndetect#egg=kndetect
