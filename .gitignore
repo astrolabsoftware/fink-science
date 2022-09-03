@@ -8,3 +8,5 @@ htmlcov
 fink_science.egg-info/
 *.crc
 default.profraw
+.vscode
+.github
