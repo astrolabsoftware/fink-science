@@ -1,59 +1,68 @@
+from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.types import DoubleType
+
 import tensorflow as tf
 import numpy as np
-from utilities import normalize_lc
 import pandas as pd
-from sklearn.metrics import confusion_matrix
 
+from utilities import normalize_lc
+
+@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def predict_nn(
-    mid_point_tai,
-    ps_flux,
-    ps_flux_err,
-    filter_name,
-    mwebv,
-    z_final,
-    z_final_err,
-    hostgal_zphot,
-    hostgal_zphot_err,
-    model
-    ) -> pd.Series:
+        midPointTai,
+        psFlux,
+        psFluxErr,
+        filterName,
+        mwebv,
+        z_final,
+        z_final_err,
+        hostgal_zphot,
+        hostgal_zphot_err,
+        model
+        ) -> pd.Series:
     """
-    Return predctions from a model given inputs
+    Return predctions from a model given inputs as pd.Series
 
-    Parameters
-    ----------
-    mid_point_tai:
-    
-    ps_flux:
-
-    ps_flux_err:
-
-    filter_name:
-
+    Parameters:
+    -----------
+    midPointTai: spark DataFrame Column
+        SNID JD Time (float)
+    psFlux: spark DataFrame Column
+        flux from LSST (float)
+    psFluxErr: spark DataFrame Column
+        flux error from LSST (float)
+    filterName:
+        (string)
     mwebv:
+        (float)
+    z_final: spark DataFrame Column
+        redshift of a given event (float)
+    z_final_err: spark DataFrame Column
+        redshift error of a given event (float)       
+    hostgal_zphot: spark DataFrame Column
+        photometric redshift of host galaxy (float)
+    hostgal_zphot_err: spark DataFrame Column
+        error in photometric redshift of host galaxy (float)
+    model: spark DataFrame Column
+        path to pre-trained Hierarchical Classifier model. (string)
 
-    z_final:
-
-    z_final_err:
-
-    hostgal_zphot:
-
-    hostgal_zphot_err:
-
-    model: str
-
-    Returns
-    -------
-    out: tf.keras.Model
-        Returns an instance of tf.keras.Model class.
+    Returns:
+    --------
+    preds: pd.Series
+        predictions of a broad class in an pd.Series format (pd.Series[float])
     """
+
     filter_dict = {'u':1, 'g':2, 'r':3, 'i':4, 'z':5, 'Y':6}
     bands = []
     lcs = []
     meta = []
-    for i, mjds in enumerate(mid_point_tai):
-        bands.append(np.array([filter_dict[f] for f in filter_name[i]]).astype(np.int16))
+
+    for i, mjds in enumerate(midPointTai):
+        bands.append(np.array(
+            [filter_dict[f] for f in filterName[i]]
+        ).astype(np.int16))        
         lc = np.concatenate(
-            [mjds[:,None], ps_flux[i][:,None], ps_flux_err[:,None]], axis=-1
+            [mjds[:,None], psFlux[i][:,None], psFluxErr[:,None]], axis=-1
             )
         lcs.append(normalize_lc(lc).astype(np.float32))
         meta.append(
@@ -64,8 +73,15 @@ def predict_nn(
 
     X = {
         'meta': np.array(meta),
-        'band': tf.RaggedTensor.from_row_lengths(values=tf.concat(bands, axis=0), row_lengths=[a.shape[0] for a in bands]),
-        'lc': tf.RaggedTensor.from_row_lengths(values=tf.concat(lcs, axis=0), row_lengths=[a.shape[0] for a in lcs])
+        'band': tf.RaggedTensor.from_row_lengths(
+            values=tf.concat(bands, axis=0),
+            row_lengths=[a.shape[0] for a in bands]
+        ),
+
+        'lc': tf.RaggedTensor.from_row_lengths(
+            values=tf.concat(lcs, axis=0),
+            row_lengths=[a.shape[0] for a in lcs]
+        )
     }
     for i, x in enumerate(X['meta'][:,3]):
         if x < 0:
@@ -73,6 +89,7 @@ def predict_nn(
         else:
             X['meta'][i,1:] = x
 
-    nn = tf.keras.models.load_model(model)
-    preds = nn.predict(X)
+    NN = tf.keras.models.load_model(model)
+    preds = NN.predict(X)
+    
     return pd.Series(preds)

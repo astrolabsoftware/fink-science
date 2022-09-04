@@ -1,18 +1,18 @@
 import numpy as np
-import pandas as pd
 
 def normalize_lc(lc_array: np.array) -> np.array:
     """
-    Normalize an array light curves.
+    Normalize a given array light curves.
 
     Parameters:
     ----------
-    lc_array: np.array
-
-    Returns
-    -------
-    out: np.array
-        normalized light curve
+    lc_array: np.array[float]
+        Input light curve of an alert
+        
+    Returns:
+    --------
+    result: np.array[float]
+        normalized light curve of an alert.
     """
 
     result = np.zeros((lc_array.shape[0], 3))
