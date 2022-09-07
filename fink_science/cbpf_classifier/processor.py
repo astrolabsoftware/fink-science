@@ -9,15 +9,10 @@ from utilities import normalize_lc
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def predict_nn(
-        midPointTai,
-        psFlux,
-        psFluxErr,
-        filterName,
-        mwebv,
-        z_final,
-        z_final_err,
-        hostgal_zphot,
-        hostgal_zphot_err,
+        midpointTai: pd.Series, psFlux: pd.Series, psFluxErr: pd.Series,
+        filterName: pd.Series, mwebv: pd.Series, z_final: pd.Series,
+        z_final_err: pd.Series, hostgal_zphot: pd.Series,
+        hostgal_zphot_err: pd.Series,
         model
         ) -> pd.Series:
     """
@@ -25,7 +20,7 @@ def predict_nn(
 
     Parameters:
     -----------
-    midPointTai: spark DataFrame Column
+    midpointTai: spark DataFrame Column
         SNID JD Time (float)
     psFlux: spark DataFrame Column
         flux from LSST (float)
@@ -57,7 +52,7 @@ def predict_nn(
     lcs = []
     meta = []
 
-    for i, mjds in enumerate(midPointTai):
+    for i, mjds in enumerate(midpointTai):
         bands.append(np.array(
             [filter_dict[f] for f in filterName[i]]
         ).astype(np.int16))        
