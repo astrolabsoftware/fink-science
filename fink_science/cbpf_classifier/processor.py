@@ -50,23 +50,53 @@ def predict_nn(
     """
 
     filter_dict = {'u':1, 'g':2, 'r':3, 'i':4, 'z':5, 'Y':6}
+    
+    class_dict = {
+        0: 111,
+        1: 112,
+        2: 113,
+        3: 114,
+        4: 115,
+        5: 121,
+        6: 122,
+        7: 123,
+        8: 124,
+        9: 131,
+        10: 132,
+        11: 133,
+        12: 134,
+        13: 135,
+        14: 211,
+        15: 212,
+        16: 213,
+        17: 214,
+        18: 221
+    }
+    
     bands = []
     lcs = []
     meta = []
 
     for i, mjds in enumerate(midpointTai):
-        bands.append(np.array(
-            [filter_dict[f] for f in filterName[i]]
-        ).astype(np.int16))        
-        lc = np.concatenate(
-            [mjds[:,None], psFlux[i][:,None], psFluxErr[:,None]], axis=-1
-            )
-        lcs.append(normalize_lc(lc).astype(np.float32))
-        meta.append(
-            np.concatenate(
-                [mwebv[i], z_final[i], z_final_err[i], hostgal_zphot[i], hostgal_zphot_err[i]]
-            )
-        )
+        
+        if len(mjds) > 0:
+            
+            bands.append(np.array(
+                [filter_dict[f] for f in filterName[i]]
+            ).astype(np.int16))        
+            lc = np.concatenate(
+                [mjds[:,None], psFlux[i][:,None], psFluxErr[:,None]], axis=-1
+                )
+        
+            if not np.isnan(mwebv.values[i]):
+
+                lcs.append(normalize_lc(lc).astype(np.float32))
+
+                meta.append(
+                    np.concatenate(
+                        [mwebv[i], z_final[i], z_final_err[i], hostgal_zphot[i], hostgal_zphot_err[i]]
+                    )
+                )
 
     X = {
         'meta': np.array(meta),
@@ -89,4 +119,4 @@ def predict_nn(
     NN = tf.keras.models.load_model(model)
     preds = NN.predict(X)
     
-    return pd.Series(preds)
+    return pd.Series([class_dict[p.argmax() for p in preds]])
