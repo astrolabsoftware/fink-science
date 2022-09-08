@@ -4,8 +4,10 @@ from pyspark.sql.types import DoubleType
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-
+from tensorflow_addons import optimizers
 from utilities import normalize_lc
+
+tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def predict_nn(

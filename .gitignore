@@ -10,3 +10,5 @@ fink_science.egg-info/
 default.profraw
 .vscode
 .github
+fink_science/cbpf_clssifier/.ipynb_checkpoints
+fink_science/cbpf_clssifier/*.ipynb
