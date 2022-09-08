@@ -1,3 +1,18 @@
+# Copyright 2022 Fink Software
+# Author: Etienne Russeil
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import pandas as pd
 from iminuit import Minuit
 from iminuit.cost import LeastSquares
@@ -10,7 +25,7 @@ import pickle  # noqa: F401
 
 def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
     """Conversion from magnitude to Fluxcal from SNANA manual
-    Parameterspip install --upgrade pip
+    Parameters
     ----------
     magpsf: float
         PSF-fit magnitude from ZTF.
@@ -105,8 +120,7 @@ def keep_filter(ps, band):
 def clean_data(pdf: pd.DataFrame):
     """
     Remove all nan values from 'cmagpsf' along with the corresponding values
-    inside "cfid", "cjd", 'csigmapsf', 'cra', 'cdec'.
-    Keeps only one value for cra and cdec
+    inside "cfid", "cjd", 'csigmapsf'.
 
     Paramters
     ---------
@@ -117,7 +131,6 @@ def clean_data(pdf: pd.DataFrame):
     ------
     pdf_without_nan : pd.DataFrame
          DataFrame with nan and corresponding measurement removed.
-         Replaced cols 'cra' and 'cdec' to 'ra' and 'dec'
 
     Examples
     --------
@@ -137,13 +150,9 @@ def clean_data(pdf: pd.DataFrame):
     pdf = pdf.reset_index(drop=True)
 
     # Remove NaNs
-    pdf[["cfid", "cjd", "cmagpsf", "csigmapsf", "cra", "cdec"]] = pdf[
-        ["cfid", "cjd", "cmagpsf", "csigmapsf", "cra", "cdec"]
+    pdf[["cfid", "cjd", "cmagpsf", "csigmapsf"]] = pdf[
+        ["cfid", "cjd", "cmagpsf", "csigmapsf"]
     ].apply(remove_nan, axis=1, result_type="expand")
-
-    pdf['cra'] = pdf['cra'].apply(lambda x: x[0])
-    pdf['cdec'] = pdf['cdec'].apply(lambda x: x[0])
-    pdf = pdf.rename(columns={'cra': 'ra', 'cdec': 'dec'})
 
     return pdf
 
@@ -288,6 +297,7 @@ def get_max(x, absolute=False):
 
     else:
         return x.max()
+
 
 def get_min(x, absolute=False):
 
@@ -507,8 +517,9 @@ def parametrise(transformed, minimum_points, band, target_col=""):
                       - 'mean_snr' : mean signal over noise ratio
                       - 'valid' : is the number of point above the minimum (boolean)
 
-    Also compute a fit using the bump function on each lightcurve. Parameters
-    of the fit will later be used to compute color parameters
+    Also compute a fit using the bump function on each lightcurve. By construction this function
+    requieres the light curve to be centered on 40 jd.
+    Parameters of the fit will later be used to compute color parameters
 
     Parameters
     ----------
