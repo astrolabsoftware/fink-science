@@ -77,8 +77,8 @@ def agn_classifier(data):
     converted = fe.convert_full_dataset(clean)
     transformed_1, transformed_2, valid = fe.transform_data(converted, k.MINIMUM_POINTS)
 
-    features_1 = fe.parametrise(transformed_1, k.MINIMUM_POINTS, 1)
-    features_2 = fe.parametrise(transformed_2, k.MINIMUM_POINTS, 2)
+    features_1 = fe.parametrise(transformed_1, 1)
+    features_2 = fe.parametrise(transformed_2, 2)
 
     features = fe.merge_features(features_1, features_2)
 

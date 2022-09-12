@@ -484,14 +484,13 @@ def compute_color(ps):
     return unnorm_cflux_1 - unnorm_cflux_2
 
 
-def parametrise(transformed, minimum_points, band, target_col=""):
+def parametrise(transformed, band, target_col=""):
 
     """Extract parameters from a transformed dataset. Construct a new DataFrame
     Parameters are :  - 'nb_points' : number of points
                       - 'std' : standard deviation of the flux
                       - 'peak' : maximum before normalization
                       - 'mean_snr' : mean signal over noise ratio
-                      - 'valid' : is the number of point above the minimum (boolean)
 
     Also compute a fit using the bump function on each lightcurve. By construction this function
     requieres the light curve to be centered on 40 jd.
@@ -501,8 +500,6 @@ def parametrise(transformed, minimum_points, band, target_col=""):
     ----------
     transformed : pd.DataFrame
         Transformed DataFrame that only contains a single passband
-    minimum_points : int
-        Minimum number of points in that passband to be considered valid
     band : int
         Passband of the dataframe
     target_col: str
