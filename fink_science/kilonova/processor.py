@@ -89,13 +89,14 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     >>> df = df.withColumn('pKNe', knscore(*args))
 
     >>> df.filter(df['pKNe'] > 0.5).count()
-    0
+    1
 
     >>> df.filter(df['pKNe'] > 0.5).select(['rf_kn_vs_nonkn', 'pKNe']).show()
-    +--------------+----+
-    |rf_kn_vs_nonkn|pKNe|
-    +--------------+----+
-    +--------------+----+
+    +--------------+------------------+
+    |rf_kn_vs_nonkn|              pKNe|
+    +--------------+------------------+
+    |           0.0|0.6333333333333333|
+    +--------------+------------------+
     <BLANKLINE>
 
     # Perform the fit + classification (another model)
@@ -105,7 +106,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     >>> df = df.withColumn('pKNe', knscore(*args))
 
     >>> df.filter(df['pKNe'] > 0.5).count()
-    0
+    1
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
