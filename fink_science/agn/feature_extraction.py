@@ -136,7 +136,7 @@ def clean_data(pdf: pd.DataFrame):
     --------
     >>> example = pd.DataFrame(data = {"cfid":[[1, 2, 2]], "cjd":[[20, np.nan, 10.5]],\
                      'cmagpsf':[[20.,np.nan, 10.5]],'csigmapsf':[[1.,np.nan, 1.6]],\
-                     'cra':[[-7.,np.nan, -7]],'cdec':[[18.2, np.nan, 18.2]],\
+                     'ra':-7.,'dec':18.2,\
                      'anything':'toto'})
 
     >>> expected = pd.DataFrame(data = {"cfid":[[1, 2]], "cjd":[[20, 10]],\
