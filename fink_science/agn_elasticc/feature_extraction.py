@@ -24,30 +24,32 @@ import pickle  # noqa: F401
 
 
 def map_fid(ps):
-    band_dict = {'u':0, 'g':1, 'r':2, 'i':3, 'z':4, 'Y':5}
+    band_dict = {"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "Y": 5}
     return np.array(list(map(band_dict.get, ps)))
 
 
 def compute_hostgal_dist(df):
-    
-    if (df["hostgal_ra"]==-999) & (df["hostgal_dec"]==-999):
+
+    if (df["hostgal_ra"] == -999) & (df["hostgal_dec"] == -999):
         hostgal_dist = -9
     else:
-        hostgal_dist = np.sqrt((df["ra"] - df["hostgal_ra"])**2 + (df["dec"] - df["hostgal_dec"])**2) * 1e3
-    
+        hostgal_dist = (
+            np.sqrt((df["ra"] - df["hostgal_ra"]) ** 2 + (df["dec"] - df["hostgal_dec"]) ** 2) * 1e3
+        )
+
     return hostgal_dist
 
 
 def format_data(df):
-    
-    #Compute distance from host
-    df['hostgal_dist'] = df.apply(compute_hostgal_dist, axis=1)
+
+    # Compute distance from host
+    df["hostgal_dist"] = df.apply(compute_hostgal_dist, axis=1)
     df = df.drop(columns={"hostgal_ra", "hostgal_dec"})
-    
-    #Transform band str to int
-    formated['cfid'] = formated['cfid'].apply(map_fid)
-    
-    return formated
+
+    # Transform band str to int
+    df["cfid"] = df["cfid"].apply(map_fid)
+
+    return df
 
 
 def keep_filter(ps, band):
@@ -81,32 +83,6 @@ def keep_filter(ps, band):
     mask = ps["cfid"] == band
 
     return [np.array(_col)[mask].astype(type(_col[0])) for _col in ps]
-
-
-def convert_full_dataset(clean: pd.DataFrame):
-    """
-    Convert all mag and mag err to flux and flux err
-
-    Paramters
-    ---------
-    clean : pd.DataFrame
-        Dataframe of alerts from Fink with nan removed
-
-    Return
-    ------
-    pd.DataFrame
-         DataFrame with column cmagpsf replaced with cflux
-         and column csigmagpsf replaced with csigflux
-
-    """
-
-    flux = clean[["cmagpsf", "csigmapsf"]].apply(
-        lambda x: mag2fluxcal_snana(x[0], x[1]), axis=1
-    )
-    clean[["cmagpsf", "csigmapsf"]] = pd.DataFrame(flux.to_list())
-    clean = clean.rename(columns={"cmagpsf": "cflux", "csigmapsf": "csigflux"})
-
-    return clean
 
 
 def translate(ps):
@@ -217,6 +193,7 @@ def get_max(x, absolute=False):
     else:
         return x.max()
 
+
 def get_min(x, absolute=False):
 
     """Returns minimum of an array. Returns -1 if array is empty
@@ -280,15 +257,15 @@ def transform_data(converted):
     """
 
     all_transformed = []
-    
+
     for band in range(6):
         transformed = converted.copy()
         transformed[["cfid", "cjd", "cflux", "csigflux"]] = transformed[
-        ["cfid", "cjd", "cflux", "csigflux"]
-    ].apply(keep_filter, args=(band,), axis=1, result_type="expand")
-        
+            ["cfid", "cjd", "cflux", "csigflux"]
+        ].apply(keep_filter, args=(band,), axis=1, result_type="expand")
+
         all_transformed.append(transformed)
-        
+
     for df in all_transformed:
 
         df["cjd"] = df.apply(translate, axis=1)
@@ -369,13 +346,15 @@ def compute_color(ps, minimum=4):
         Array of color g-r at each point
 
     """
-    
+
     all_colors = []
-    
-    for pair in [[0,1], [1,2], [2,3], [3,4], [4,5]]:
-        
-        if (len(ps[f"cjd_{pair[1]}"])>= minimum) & (len(ps[f"cjd_{pair[1]}"]) >= minimum):
-        
+
+    for pair in [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]:
+
+        if (len(ps[f"cjd_{pair[1]}"]) >= minimum) & (
+            len(ps[f"cjd_{pair[1]}"]) >= minimum
+        ):
+
             # Compute fitted values at cjd from the other band
             add_from_1 = mod.bump(ps[f"cjd_{pair[1]}"], *ps[f"bump_{pair[0]}"])
             add_from_0 = mod.bump(ps[f"cjd_{pair[0]}"], *ps[f"bump_{pair[1]}"])
@@ -388,20 +367,22 @@ def compute_color(ps, minimum=4):
             unnorm_cflux_1 = new_cflux_1 * ps[f"peak_{pair[1]}"]
 
             all_colors.append(unnorm_cflux_0 - unnorm_cflux_1)
-            
+
         else:
             all_colors.append([0])
 
     return all_colors
 
+
 def compute_std(x):
-    if len(x)==0:
+    if len(x) == 0:
         return -1
     else:
         return np.std(x)
-    
+
+
 def compute_mean(x):
-    if len(x)==0:
+    if len(x) == 0:
         return -1
     else:
         return np.mean(x)
@@ -439,23 +420,22 @@ def parametrise(all_transformed, minimum_points, target_col=""):
     """
 
     all_features = []
-    
+
     for band in range(6):
-        
+
         transformed = all_transformed[band]
-        
+
         nb_points = transformed["cflux"].apply(lambda x: len(x))
         peak = transformed["peak"]
         std = transformed["cflux"].apply(compute_std)
         mean_snr = transformed["snr"].apply(compute_mean)
         ids = transformed["objectId"]
-        ra = transformed['ra']
-        dec = transformed['dec']
-        hostgal_dist = transformed['hostgal_dist']
+        ra = transformed["ra"]
+        dec = transformed["dec"]
+        hostgal_dist = transformed["hostgal_dist"]
         hostgal_zphot = transformed["hostgal_zphot"]
         hostgal_zphot_err = transformed["hostgal_zphot_err"]
-        
-        
+
         valid = nb_points >= minimum_points
 
         df_parameters = pd.DataFrame(
@@ -463,9 +443,9 @@ def parametrise(all_transformed, minimum_points, target_col=""):
                 "object_id": ids,
                 "ra": ra,
                 "dec": dec,
-                "hostgal_dist":hostgal_dist,
-                "hostgal_zphot":hostgal_zphot,
-                "hostgal_zphot_err":hostgal_zphot_err,
+                "hostgal_dist": hostgal_dist,
+                "hostgal_zphot": hostgal_zphot,
+                "hostgal_zphot_err": hostgal_zphot_err,
                 f"std_{band}": std,
                 f"peak_{band}": peak,
                 f"mean_snr_{band}": mean_snr,
@@ -486,7 +466,7 @@ def parametrise(all_transformed, minimum_points, target_col=""):
 
         df_parameters[f"cflux_{band}"] = transformed["cflux"]
         df_parameters[f"cjd_{band}"] = transformed["cjd"]
-        
+
         all_features.append(df_parameters)
 
     return all_features
@@ -523,40 +503,85 @@ def merge_features(all_features, minimum_points, target_col=""):
 
     # Avoid having twice the same column
     if target_col == "":
-        for band in [1,2,3,4,5]:
-            all_features[band] = all_features[band].drop(columns={"object_id", "ra", "dec", "hostgal_dist", "hostgal_zphot", "hostgal_zphot_err"})
+        for band in [1, 2, 3, 4, 5]:
+            all_features[band] = all_features[band].drop(
+                columns={
+                    "object_id",
+                    "ra",
+                    "dec",
+                    "hostgal_dist",
+                    "hostgal_zphot",
+                    "hostgal_zphot_err",
+                }
+            )
     else:
-        for band in [1,2,3,4,5]:
-            all_features[band] = all_features[band].drop(columns={"object_id", "ra", "dec", "hostgal_dist", "hostgal_zphot", "hostgal_zphot_err", target_col})
+        for band in [1, 2, 3, 4, 5]:
+            all_features[band] = all_features[band].drop(
+                columns={
+                    "object_id",
+                    "ra",
+                    "dec",
+                    "hostgal_dist",
+                    "hostgal_zphot",
+                    "hostgal_zphot_err",
+                    target_col,
+                }
+            )
 
     features = all_features[0]
-    for band in [1,2,3,4,5]:
+    for band in [1, 2, 3, 4, 5]:
         features = features.join(all_features[band])
-        
+
     # We need at least two adjacent bands to have minimum number of points
-    valid = (features["valid_0"] & features["valid_1"]) | (features["valid_1"] & features["valid_2"]) | (features["valid_2"] & features["valid_3"]) | (features["valid_3"] & features["valid_4"]) | (features["valid_4"] & features["valid_5"])
-    
-    features = features.drop(columns=["valid_0", "valid_1", "valid_2", "valid_3", "valid_4", "valid_5"])
+    valid = (
+        (features["valid_0"] & features["valid_1"]) | (features["valid_1"] & features["valid_2"]) | (features["valid_2"] & features["valid_3"]) | (features["valid_3"] & features["valid_4"]) | (features["valid_4"] & features["valid_5"])
+    )
+
+    features = features.drop(
+        columns=["valid_0", "valid_1", "valid_2", "valid_3", "valid_4", "valid_5"]
+    )
 
     ordered_features = features[
         [
             "object_id",
-            "ra","dec",
+            "ra",
+            "dec",
             "hostgal_dist",
-            "hostgal_zphot", "hostgal_zphot_err",
-            "std_0","std_1","std_2","std_3","std_4","std_5",
-            "peak_0","peak_1","peak_2","peak_3","peak_4","peak_5",
-            "mean_snr_0","mean_snr_1","mean_snr_2","mean_snr_3","mean_snr_4","mean_snr_5",
-            "nb_points_0","nb_points_1","nb_points_2","nb_points_3","nb_points_4","nb_points_5"
+            "hostgal_zphot",
+            "hostgal_zphot_err",
+            "std_0",
+            "std_1",
+            "std_2",
+            "std_3",
+            "std_4",
+            "std_5",
+            "peak_0",
+            "peak_1",
+            "peak_2",
+            "peak_3",
+            "peak_4",
+            "peak_5",
+            "mean_snr_0",
+            "mean_snr_1",
+            "mean_snr_2",
+            "mean_snr_3",
+            "mean_snr_4",
+            "mean_snr_5",
+            "nb_points_0",
+            "nb_points_1",
+            "nb_points_2",
+            "nb_points_3",
+            "nb_points_4",
+            "nb_points_5",
         ]
     ].copy()
 
     # Add color features
     color = features.apply(compute_color, axis=1, args=(minimum_points,))
     color = color.apply(pd.Series)
-    
-    for idx, i in enumerate(['u-g', 'g-r', 'r-i', 'i-z', 'z-Y']):
-        
+
+    for idx, i in enumerate(["u-g", "g-r", "r-i", "i-z", "z-Y"]):
+
         ordered_features[f"std_{i}"] = color[idx].apply(compute_std)
         ordered_features[f"max_{i}"] = color[idx].apply(get_max, args=(True,))
 
@@ -564,7 +589,6 @@ def merge_features(all_features, minimum_points, target_col=""):
         ordered_features[target_col] = features[target_col]
 
     return ordered_features, valid
-
 
 
 def get_probabilities(clf, features, valid):

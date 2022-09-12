@@ -23,7 +23,6 @@ import pandas as pd  # noqa: F401
 import numpy as np  # noqa: F401
 
 
-
 def load_classifier():
     """
     load the random forest classifier trained to recognize the AGN
@@ -62,11 +61,11 @@ def agn_classifier(data):
         ordered probabilities of being an AGN
         Return -1 if the minimum number of point per passband is not respected
     """
-    
+
     formated = fe.format_data(data)
 
     all_transformed = fe.transform_data(formated)
-    
+
     all_features = fe.parametrise(all_transformed, k.MINIMUM_POINTS)
 
     features, valid = fe.merge_features(all_features, k.MINIMUM_POINTS)

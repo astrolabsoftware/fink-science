@@ -24,7 +24,7 @@ from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType())
 def agn_spark(diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec):
-    
+
     """High level spark wrapper for the AGN classifier on ELASTiCC data
 
     Parameters
@@ -58,7 +58,7 @@ def agn_spark(diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, de
         ordered probabilities of being an AGN
         Return -1 if the minimum points number is not respected.
     """
-    
+
     data = pd.DataFrame(
         {
             "objectId": diaObjectId,
@@ -68,7 +68,7 @@ def agn_spark(diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, de
             "cfid": cfilterName,
             "ra": ra,
             "dec": decl,
-            "hostgal_zphot": hostgal_zphot, 
+            "hostgal_zphot": hostgal_zphot,
             "hostgal_zphot_err": hostgal_zphot_err,
             "hostgal_ra": hostgal_ra,
             "hostgal_dec": hostgal_dec
