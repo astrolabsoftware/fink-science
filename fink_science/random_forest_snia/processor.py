@@ -356,7 +356,7 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     for id in np.unique(pdf['SNID']):
         f1 = pdf['SNID'] == id
         pdf_sub = pdf[f1]
-        features = get_sigmoid_features_elastic(pdf_sub)
+        features = get_sigmoid_features_elasticc(pdf_sub)
         test_features.append(features)
 
     flag = np.array(flag, dtype=np.bool)
