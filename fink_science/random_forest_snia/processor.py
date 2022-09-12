@@ -27,7 +27,7 @@ from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
-from actsnfink.classifier_sigmoid import get_sigmoid_features_elastic
+from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc
 
 from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
@@ -333,15 +333,8 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     """
     mask = apply_selection_cuts_ztf(psFlux, nobs, cdsxmatch, maxndethist=100)
 
-    # ML: not sure if this line still relevant
-    mask *= filterName.apply(lambda array: np.sum([x in ['g', 'r'] for x in array]) > 3)
-
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
-
-    # change filter name for the moment to stick to ZTF definition
-    filter_conversion_dic = {'u': 0, 'g': 1, 'r': 2, 'i': 3, 'z': 4, 'Y': 5}
-    filterName = filterName.apply(lambda array: [filter_conversion_dic[x] for x in array])
 
     candid = pd.Series(range(len(midPointTai)))
     pdf = format_data_as_snana(
@@ -355,7 +348,7 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/model_elastic_marco20220708.obj'
+        model = curdir + '/data/models/default-model_sigmoid_elasticc.obj'
         clf = load_scikit_model(model)
 
     test_features = []
@@ -364,10 +357,6 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         f1 = pdf['SNID'] == id
         pdf_sub = pdf[f1]
         features = get_sigmoid_features_elastic(pdf_sub)
-        if (features[0] == 0) or (features[6] == 0):
-            flag.append(False)
-        else:
-            flag.append(True)
         test_features.append(features)
 
     flag = np.array(flag, dtype=np.bool)
