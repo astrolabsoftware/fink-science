@@ -61,17 +61,6 @@ def agn_classifier(data):
     np.array
         ordered probabilities of being an AGN
         Return -1 if the minimum number of point per passband is not respected
-
-    Examples
-    --------
-    >>> df = pd.read_parquet(ztf_alert_sample)
-    >>> proba = agn_classifier(df)
-    >>> len(proba)
-    100
-    >>> len(proba[proba!=-1])
-    70
-    >>> len(proba[proba==-1])
-    30
     """
     
     formated = fe.format_data(data)

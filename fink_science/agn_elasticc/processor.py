@@ -57,7 +57,6 @@ def agn_spark(diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, de
     np.array
         ordered probabilities of being an AGN
         Return -1 if the minimum points number is not respected.
-
     """
     
     data = pd.DataFrame(
@@ -84,9 +83,6 @@ if __name__ == "__main__":
 
     globs = globals()
     path = os.path.dirname(__file__)
-
-    ztf_alert_sample = "file://{}/data/alerts/agn_elasticc_alerts.parquet".format(path)
-    globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
     spark_unit_tests(globs)
