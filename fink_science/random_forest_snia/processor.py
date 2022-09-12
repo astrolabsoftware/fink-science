@@ -26,8 +26,8 @@ from fink_utils.data.utils import format_data_as_snana
 from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
-from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_features_dev
-from fink_science.random_forest_snia.classifier_sigmoid import RF_FEATURE_NAMES
+from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
+from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
 from fink_science.tester import spark_unit_tests
 
@@ -97,14 +97,13 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
 
     Examples
     ----------
-    >>> from fink_science.xmatch.processor import cdsxmatch
+    >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
 
-    >>> colnames = [df['objectId'], df['candidate.ra'], df['candidate.dec']]
-    >>> df = df.withColumn('cdsxmatch', cdsxmatch(*colnames))
+    >>> df = xmatch_cds(df)
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
@@ -129,12 +128,12 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     +----------------+-----+
     |rf_snia_vs_nonia|  pIa|
     +----------------+-----+
-    |           0.839|0.597|
-    |           0.782| 0.62|
-    |           0.887|0.629|
-    |           0.785|0.596|
-    |            0.88|0.641|
-    |           0.777|0.611|
+    |           0.839|0.689|
+    |           0.782|0.649|
+    |           0.887|0.803|
+    |           0.785|0.674|
+    |            0.88|0.816|
+    |           0.777|0.693|
     +----------------+-----+
     <BLANKLINE>
 
