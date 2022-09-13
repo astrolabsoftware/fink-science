@@ -273,7 +273,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
     return pd.Series(concatenated_features)
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, model=None) -> pd.Series:
+def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, maxduration=None, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
@@ -291,6 +291,9 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         Type of object found in Simbad (string)
     nobs: Spark DataFrame Column
         Column containing the number of detections by LSST
+    maxduration: Spark DataFrame Column
+        Integer for the maximum duration (in days) of the lightcurve to be classified.
+        Default is None, i.e. no maximum duration
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/default-model.obj` is loaded.
@@ -332,6 +335,12 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     29
     """
     mask = apply_selection_cuts_ztf(psFlux, nobs, cdsxmatch, maxndethist=100)
+
+    dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
+
+    # Maximum days in the history
+    if maxduration is not None:
+        mask *= (dt <= maxduration.values[0])
 
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
