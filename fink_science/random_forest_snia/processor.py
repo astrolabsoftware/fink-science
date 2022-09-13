@@ -333,6 +333,11 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     """
     mask = apply_selection_cuts_ztf(psFlux, nobs, cdsxmatch, maxndethist=100)
 
+    dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
+
+    # Maximum 25 days in the history
+    mask *= (dt <= 25)
+
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
