@@ -232,7 +232,7 @@ def get_min(x, absolute=False):
         return x.min()
 
 
-def transform_data(converted):
+def transform_data(converted, minimum_points):
 
     """Apply transformations for each band on a flux converted dataset
             - Shift cjd so that the max flux point is at 0
@@ -244,6 +244,8 @@ def transform_data(converted):
     ----------
     converted : pd.DataFrame
         Dataframe of alerts from Fink with nan removed and converted to flux
+    minimum_points: minimum number of points for passband to be considered valid
+        The classifier requieres at least two consecutive valid passbands
 
     Returns
     -------
@@ -276,7 +278,16 @@ def transform_data(converted):
             lambda pdf: pdf["cflux"] / pdf["csigflux"], axis=1
         )
 
-    return all_transformed
+    condition = []
+
+    for pair in range(5):
+        condition.append((all_transformed[pair]['cjd'].apply(len) >= minimum_points) & (all_transformed[pair + 1]['cjd'].apply(len) >= minimum_points))
+
+    valid = np.array([False] * len(converted))
+    for cond in condition:
+        valid = valid | cond
+
+    return [x[valid] for x in all_transformed], valid
 
 
 def parametric_bump(ps):
@@ -388,14 +399,13 @@ def compute_mean(x):
         return np.mean(x)
 
 
-def parametrise(all_transformed, minimum_points, target_col=""):
+def parametrise(all_transformed, target_col=""):
 
     """Extract parameters from a transformed dataset. Construct a new DataFrame
     Parameters are :  - 'nb_points' : number of points
                       - 'std' : standard deviation of the flux
                       - 'peak' : maximum before normalization
                       - 'mean_snr' : mean signal over noise ratio
-                      - 'valid' : is the number of point above the minimum (boolean)
 
     Also compute a fit using the bump function on each lightcurve. Parameters
     of the fit will later be used to compute color parameters
@@ -404,8 +414,6 @@ def parametrise(all_transformed, minimum_points, target_col=""):
     ----------
     transformed : pd.DataFrame
         Transformed DataFrame that only contains a single passband
-    minimum_points : int
-        Minimum number of points in that passband to be considered valid
     target_col: str
         If inputed a non empty str, add the corresponding
         column as a target column to the final dataset
@@ -424,7 +432,6 @@ def parametrise(all_transformed, minimum_points, target_col=""):
     for band in range(6):
 
         transformed = all_transformed[band]
-
         nb_points = transformed["cflux"].apply(lambda x: len(x))
         peak = transformed["peak"]
         std = transformed["cflux"].apply(compute_std)
@@ -435,8 +442,6 @@ def parametrise(all_transformed, minimum_points, target_col=""):
         hostgal_dist = transformed["hostgal_dist"]
         hostgal_zphot = transformed["hostgal_zphot"]
         hostgal_zphot_err = transformed["hostgal_zphot_err"]
-
-        valid = nb_points >= minimum_points
 
         df_parameters = pd.DataFrame(
             data={
@@ -450,7 +455,6 @@ def parametrise(all_transformed, minimum_points, target_col=""):
                 f"peak_{band}": peak,
                 f"mean_snr_{band}": mean_snr,
                 f"nb_points_{band}": nb_points,
-                f"valid_{band}": valid,
             }
         )
 
@@ -475,7 +479,6 @@ def parametrise(all_transformed, minimum_points, target_col=""):
 def merge_features(all_features, minimum_points, target_col=""):
 
     """Merge feature tables of band g and r.
-    Also merge valid columns into one.
     Compute color parameters : - 'max_color' : absolute maximum of the color
                                - 'std_color' : standard deviation of the color
 
@@ -496,9 +499,6 @@ def merge_features(all_features, minimum_points, target_col=""):
         Final features dataset with ordered columns :
         ['object_id', 'std_1', 'std_2', 'peak_1', 'peak_2', 'mean_snr_1',
         'mean_snr_2', 'nb_points_1', 'nb_points_2', 'std_color', 'max_color']
-
-    valid : np.array
-        Boolean array, indicates if both passband respect the minimum number of points
     """
 
     # Avoid having twice the same column
@@ -531,15 +531,6 @@ def merge_features(all_features, minimum_points, target_col=""):
     features = all_features[0]
     for band in [1, 2, 3, 4, 5]:
         features = features.join(all_features[band])
-
-    # We need at least two adjacent bands to have minimum number of points
-    valid = (
-        (features["valid_0"] & features["valid_1"]) | (features["valid_1"] & features["valid_2"]) | (features["valid_2"] & features["valid_3"]) | (features["valid_3"] & features["valid_4"]) | (features["valid_4"] & features["valid_5"])
-    )
-
-    features = features.drop(
-        columns=["valid_0", "valid_1", "valid_2", "valid_3", "valid_4", "valid_5"]
-    )
 
     ordered_features = features[
         [
@@ -588,7 +579,7 @@ def merge_features(all_features, minimum_points, target_col=""):
     if target_col != "":
         ordered_features[target_col] = features[target_col]
 
-    return ordered_features, valid
+    return ordered_features
 
 
 def get_probabilities(clf, features, valid):
@@ -611,25 +602,13 @@ def get_probabilities(clf, features, valid):
     -------
     final_proba : np.array
         ordered probabilities of being an AGN
-
-    Examples
-    --------
-    >>> example = pd.DataFrame(data = {'object_id':[42, 24, 60], 'std_1':[4.1, 0.8, 0.07],\
-                                 'ra':[50,300,200], 'dec':[-5.2, -10, 30],\
-                                 'std_2':[0.7, 0.3, 0.07], 'peak_1':[2563, 10000, 1500], 'peak_2':[263, 10000, 1500],\
-                                 'mean_snr_1':[0.8, 3, 6], 'mean_snr_2':[0.2, 4, 6],\
-                                 'nb_points_1':[4,18, 5], 'nb_points_2':[2,12, 5],\
-                                 'std_color':[74.15, 3, 0], 'max_color':[2271.83, 500, 0]})
-
     """
 
-    final_proba = np.array([-1] * len(features["object_id"])).astype(np.float64)
+    final_proba = np.array([-1] * len(valid)).astype(np.float64)
 
-    valid_alerts = features.loc[valid]
-
-    if len(valid_alerts) > 0:
-        agn_or_not = clf.predict_proba(valid_alerts.iloc[:, 1:])
-        index_to_replace = valid_alerts.iloc[:, 1:].index
+    if len(features) > 0:
+        agn_or_not = clf.predict_proba(features.iloc[:, 1:])
+        index_to_replace = features.iloc[:, 1:].index
         final_proba[index_to_replace.values] = agn_or_not[:, 1]
 
     return final_proba
