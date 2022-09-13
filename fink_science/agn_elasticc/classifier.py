@@ -65,7 +65,7 @@ def agn_classifier(data):
     formated = fe.format_data(data)
 
     all_transformed, valid = fe.transform_data(formated, k.MINIMUM_POINTS)
-
+    
     all_features = fe.parametrise(all_transformed)
 
     features = fe.merge_features(all_features, k.MINIMUM_POINTS)

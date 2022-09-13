@@ -244,7 +244,6 @@ def transform_data(converted, minimum_points):
     ----------
     converted : pd.DataFrame
         Dataframe of alerts from Fink with nan removed and converted to flux
-
     minimum_points: minimum number of points for passband to be considered valid
         The classifier requieres at least two consecutive valid passbands
 
@@ -289,7 +288,7 @@ def transform_data(converted, minimum_points):
         valid = valid | cond
 
     return [x[valid] for x in all_transformed], valid
-
+    
 
 def parametric_bump(ps):
 
@@ -443,7 +442,7 @@ def parametrise(all_transformed, target_col=""):
         hostgal_dist = transformed["hostgal_dist"]
         hostgal_zphot = transformed["hostgal_zphot"]
         hostgal_zphot_err = transformed["hostgal_zphot_err"]
-
+        
         df_parameters = pd.DataFrame(
             data={
                 "object_id": ids,
@@ -532,7 +531,7 @@ def merge_features(all_features, minimum_points, target_col=""):
     features = all_features[0]
     for band in [1, 2, 3, 4, 5]:
         features = features.join(all_features[band])
-
+        
     ordered_features = features[
         [
             "object_id",
