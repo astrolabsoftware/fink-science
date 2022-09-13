@@ -521,7 +521,7 @@ def parametrise(transformed, band, target_col=""):
     ids = transformed["objectId"]
     ra = transformed['ra']
     dec = transformed['dec']
-
+    
     df_parameters = pd.DataFrame(
         data={
             "object_id": ids,
@@ -553,6 +553,7 @@ def parametrise(transformed, band, target_col=""):
 def merge_features(features_1, features_2, target_col=""):
 
     """Merge feature tables of band g and r.
+    
     Compute color parameters : - 'max_color' : absolute maximum of the color
                                - 'std_color' : standard deviation of the color
 
