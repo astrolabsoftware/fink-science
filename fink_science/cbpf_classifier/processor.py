@@ -79,24 +79,23 @@ def predict_nn(
 
     for i, mjds in enumerate(midpointTai):
         
-        if len(mjds) > 0:
-            
+        if len(mjds) > 0:            
             bands.append(np.array(
-                [filter_dict[f] for f in filterName[i]]
+                [filter_dict[f] for f in filterName.values[i]]
             ).astype(np.int16))        
             lc = np.concatenate(
-                [mjds[:,None], psFlux[i][:,None], psFluxErr[:,None]], axis=-1
+                [mjds[:,None], psFlux.values[i][:,None], psFluxErr.values[i][:,None]], axis=-1
                 )
         
             if not np.isnan(mwebv.values[i]):
 
                 lcs.append(normalize_lc(lc).astype(np.float32))
 
-                meta.append(
-                    np.concatenate(
-                        [mwebv[i], z_final[i], z_final_err[i], hostgal_zphot[i], hostgal_zphot_err[i]]
+                meta.append([
+                    mwebv.valaues[i], z_final.vaalues[i],
+                    z_final_err.values[i], hostgal_zphot.values[i],
+                    hostgal_zphot_err.values[i]]
                     )
-                )
 
     X = {
         'meta': np.array(meta),
@@ -119,4 +118,4 @@ def predict_nn(
     NN = tf.keras.models.load_model(model)
     preds = NN.predict(X)
     
-    return pd.Series([class_dict[p.argmax() for p in preds]])
+    return pd.Series([class_dict[p.argmax()] for p in preds])
