@@ -1,22 +1,23 @@
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import DoubleType
+from pyspark.sql.types import DoubleType,  IntegerType
 
 import tensorflow as tf
 import numpy as np
 import pandas as pd
 from tensorflow_addons import optimizers
-from utilities import normalize_lc
+from fink_science.cbpf_classifier.utilities import normalize_lc
 
 tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
 
-@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+
+@pandas_udf(IntegerType(), PandasUDFType.SCALAR)
 def predict_nn(
         midpointTai: pd.Series, psFlux: pd.Series, psFluxErr: pd.Series,
         filterName: pd.Series, mwebv: pd.Series, z_final: pd.Series,
         z_final_err: pd.Series, hostgal_zphot: pd.Series,
         hostgal_zphot_err: pd.Series,
         model
-        ) -> pd.Series:
+) -> pd.Series:
     """
     Return predctions from a model given inputs as pd.Series
 
@@ -28,10 +29,10 @@ def predict_nn(
         flux from LSST (float)
     psFluxErr: spark DataFrame Column
         flux error from LSST (float)
-    filterName:
-        (string)
-    mwebv:
-        (float)
+    filterName: spark DataFrame Column
+        observed filter (string)
+    mwebv: spark DataFrame Column
+        milk way extinction (float)
     z_final: spark DataFrame Column
         redshift of a given event (float)
     z_final_err: spark DataFrame Column
@@ -46,11 +47,11 @@ def predict_nn(
     Returns:
     --------
     preds: pd.Series
-        predictions of a broad class in an pd.Series format (pd.Series[float])
+        predictions of a broad class in an pd.Series format (pd.Series[int])
     """
 
-    filter_dict = {'u':1, 'g':2, 'r':3, 'i':4, 'z':5, 'Y':6}
-    
+    filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
+
     class_dict = {
         0: 111,
         1: 112,
@@ -72,21 +73,22 @@ def predict_nn(
         17: 214,
         18: 221
     }
-    
+
     bands = []
     lcs = []
     meta = []
 
     for i, mjds in enumerate(midpointTai):
-        
-        if len(mjds) > 0:            
+
+        if len(mjds) > 0:
             bands.append(np.array(
                 [filter_dict[f] for f in filterName.values[i]]
-            ).astype(np.int16))        
+            ).astype(np.int16))
             lc = np.concatenate(
-                [mjds[:,None], psFlux.values[i][:,None], psFluxErr.values[i][:,None]], axis=-1
-                )
-        
+                [mjds[:, None], psFlux.values[i][:, None],
+                    psFluxErr.values[i][:, None]], axis=-1
+            )
+
             if not np.isnan(mwebv.values[i]):
 
                 lcs.append(normalize_lc(lc).astype(np.float32))
@@ -109,13 +111,16 @@ def predict_nn(
             row_lengths=[a.shape[0] for a in lcs]
         )
     }
-    for i, x in enumerate(X['meta'][:,3]):
+    for i, x in enumerate(X['meta'][:, 3]):
         if x < 0:
-            X['meta'][i,1:] = -1
+            X['meta'][i, 1:] = -1
         else:
-            X['meta'][i,1:] = x
+            X['meta'][i, 1:] = x
 
-    NN = tf.keras.models.load_model(model)
+    NN = tf.keras.models.load_model(
+        model.values[0], custom_objects={
+            'RectifiedAdam': optimizers.RectifiedAdam
+        })
     preds = NN.predict(X)
-    
+
     return pd.Series([class_dict[p.argmax()] for p in preds])
