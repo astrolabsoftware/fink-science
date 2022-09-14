@@ -1,5 +1,5 @@
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import DoubleType,  IntegerType
+from pyspark.sql.types import IntegerType
 
 import tensorflow as tf
 import numpy as np
