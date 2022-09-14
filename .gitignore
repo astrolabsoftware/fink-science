@@ -12,3 +12,5 @@ default.profraw
 .github
 fink_science/cbpf_clssifier/.ipynb_checkpoints
 fink_science/cbpf_clssifier/*.ipynb
+src/*
+fink_science/cbpf_clssifier/data/*
