@@ -94,7 +94,7 @@ def predict_nn(
                 lcs.append(normalize_lc(lc).astype(np.float32))
 
                 meta.append([
-                    mwebv.valaues[i], z_final.vaalues[i],
+                    mwebv.valaues[i], z_final.values[i],
                     z_final_err.values[i], hostgal_zphot.values[i],
                     hostgal_zphot_err.values[i]
                 ])
