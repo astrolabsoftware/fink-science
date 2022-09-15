@@ -103,4 +103,4 @@ def predict_nn(
         })
     preds = NN.predict(X)
 
-    return pd.Series(np.array([p for p in preds]))
+    return pd.Series(preds)
