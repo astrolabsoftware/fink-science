@@ -1,5 +1,6 @@
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import IntegerType
+from pyspark.sql.types import ArrayType
+from pyspark.sql.types import FloatType
 
 import tensorflow as tf
 import numpy as np
@@ -10,7 +11,7 @@ from fink_science.cbpf_classifier.utilities import normalize_lc
 tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
 
 
-@pandas_udf(IntegerType(), PandasUDFType.SCALAR)
+@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 def predict_nn(
         midpointTai: pd.Series, psFlux: pd.Series, psFluxErr: pd.Series,
         filterName: pd.Series, mwebv: pd.Series, z_final: pd.Series,
@@ -36,7 +37,7 @@ def predict_nn(
     z_final: spark DataFrame Column
         redshift of a given event (float)
     z_final_err: spark DataFrame Column
-        redshift error of a given event (float)       
+        redshift error of a given event (float)
     hostgal_zphot: spark DataFrame Column
         photometric redshift of host galaxy (float)
     hostgal_zphot_err: spark DataFrame Column
@@ -47,32 +48,11 @@ def predict_nn(
     Returns:
     --------
     preds: pd.Series
-        predictions of a broad class in an pd.Series format (pd.Series[int])
+        predictions of a broad class in an pd.Series format
+        (pd.Series[np.ndarray[float]]).
     """
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
-
-    class_dict = {
-        0: 111,
-        1: 112,
-        2: 113,
-        3: 114,
-        4: 115,
-        5: 121,
-        6: 122,
-        7: 123,
-        8: 124,
-        9: 131,
-        10: 132,
-        11: 133,
-        12: 134,
-        13: 135,
-        14: 211,
-        15: 212,
-        16: 213,
-        17: 214,
-        18: 221
-    }
 
     bands = []
     lcs = []
@@ -123,4 +103,4 @@ def predict_nn(
         })
     preds = NN.predict(X)
 
-    return pd.Series([class_dict[p.argmax()] for p in preds])
+    return pd.Series(np.array([p for p in preds]))
