@@ -194,10 +194,9 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
         SNANA calibrated flux from LSST, and 1-sigma error
     model_name: Spark DataFrame Column
         SuperNNova pre-trained model. Currently available:
-            * snn_snia_vs_nonia
-            * snn_sn_vs_all
+            * elasticc
     model_ext: Spark DataFrame Column, optional
-        Path to the trained model (overwrite `model`). Default is None
+        Path to the trained model (overwrite `model_name`). Default is None
 
     Returns
     ----------
@@ -232,7 +231,7 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
     >>> args = [F.col('diaSource.diaSourceId')]
     >>> args += [F.col(i) for i in what_prefix]
     >>> args += [F.col('roid'), F.col('cdsxmatch'), F.array_min('cmidPointTai')]
-    >>> args += [F.lit('snn_snia_vs_nonia')]
+    >>> args += [F.lit('elasticc')]
     >>> df = df.withColumn('pIa', snn_ia_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.0).count()
@@ -240,8 +239,6 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
     """
     mask = apply_selection_cuts_ztf(
         psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=180)
-
-    mask *= filterName.apply(lambda array: np.sum([x in ['g', 'r'] for x in array]) > 1)
 
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
@@ -256,10 +253,6 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
         filterName, diaSourceId, mask,
         transform_to_flux=False
     )
-
-    # Keep only g & r
-    filt_mask = pdf['FLT'].isin(['g', 'r'])
-    pdf = pdf[filt_mask]
 
     if model_ext is not None:
         # take the first element of the Series
@@ -299,6 +292,9 @@ if __name__ == "__main__":
 
     model_path = '{}/data/models/snn_models/snn_sn_vs_all/model.pt'.format(path)
     globs["model_path"] = model_path
+
+    elasticc_model_path = '{}/data/models/snn_models/elasticc/model.pt'.format(path)
+    globs["elasticc_model_path"] = elasticc_model_path
 
     # Run the test suite
     spark_unit_tests(globs)
