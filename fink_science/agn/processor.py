@@ -108,7 +108,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
 
     proba = agn_classifier(data)
 
-    to_return = np.zeros(len(jd), dtype=float)
+    to_return = np.ones(len(jd), dtype=float) * -1
     to_return[mask] = proba
     return pd.Series(to_return)
 
