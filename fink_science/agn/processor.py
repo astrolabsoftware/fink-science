@@ -12,13 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
+import os
+import pandas as pd
+import numpy as np
 
-from fink_science.agn.classifier import agn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
-import pandas as pd
-import os
+
 from fink_science import __file__
+from fink_science.agn.classifier import agn_classifier
 from fink_science.tester import spark_unit_tests
 
 
