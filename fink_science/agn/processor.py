@@ -95,7 +95,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     mask = (nbands == 2) & (ng >= 4) & (nr >= 4)
 
     if len(objectId[mask]) == 0:
-        return np.ones(len(objectId), dtype=float) * -1
+        return pd.Series(np.ones(len(objectId), dtype=float) * -1)
 
     data = pd.DataFrame(
         {
