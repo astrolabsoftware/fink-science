@@ -84,21 +84,31 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     >>> df_agn.filter(df_agn['proba'] > 0.5).count()
     26
     """
+    # we want at least 2 bands and 4 points per band
+    nbands = fid.apply(lambda x: len(np.unique(x)))
+
+    ng = fid.apply(lambda x: np.sum(np.array(x) == 1))
+    nr = fid.apply(lambda x: np.sum(np.array(x) == 2))
+
+    mask = (nbands == 2) & (ng >= 4) & (nr >= 4)
 
     data = pd.DataFrame(
         {
-            "objectId": objectId,
-            "cjd": jd,
-            "cmagpsf": magpsf,
-            "csigmapsf": sigmapsf,
-            "cfid": fid,
-            "ra": ra,
-            "dec": dec,
+            "objectId": objectId[mask],
+            "cjd": jd[mask],
+            "cmagpsf": magpsf[mask],
+            "csigmapsf": sigmapsf[mask],
+            "cfid": fid[mask],
+            "ra": ra[mask],
+            "dec": dec[mask],
         }
     )
 
     proba = agn_classifier(data)
-    return pd.Series(proba)
+
+    to_return = np.zeros(len(jd), dtype=float)
+    to_return[mask] = proba
+    return pd.Series(to_return)
 
 
 if __name__ == "__main__":
