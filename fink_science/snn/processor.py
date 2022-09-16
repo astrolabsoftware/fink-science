@@ -243,10 +243,6 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
-    # change filter name for the moment to stick to ZTF definition
-    filter_conversion_dic = {'u': 0, 'g': 1, 'r': 2, 'i': 3, 'z': 4, 'Y': 5}
-    filterName = filterName.apply(lambda array: [filter_conversion_dic[x] for x in array])
-
     diaSourceId = diaSourceId.apply(lambda x: str(x))
     pdf = format_data_as_snana(
         midPointTai, psFlux, psFluxErr,
