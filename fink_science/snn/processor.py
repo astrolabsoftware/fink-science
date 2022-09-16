@@ -179,7 +179,11 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     return pd.Series(to_return)
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roid, cdsxmatch, jdstarthist, model_name, model_ext=None) -> pd.Series:
+def snn_ia_elasticc(
+        diaSourceId, midPointTai, filterName, psFlux, psFluxErr,
+        roid, cdsxmatch, jdstarthist,
+        mwebv, redshift, redshift_err,
+        model_name, model_ext=None) -> pd.Series:
     """ Compute probabilities of alerts to be SN Ia using SuperNNova
 
     Parameters
@@ -227,10 +231,15 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
     ...         df, colname, prefix=prefix,
     ...         current='diaSource', history='prvDiaSources')
 
+    # add redshift
+    >>> df.withColumn('redshift', when(df['diaObjectId.hostgal_zspec'] == 'E', df['diaObjectId.hostgal_zphot'])
+    >>> df.withColumn('redshift_err', when(df['diaObjectId.hostgal_zspec_err'] == 'E', df['diaObjectId.hostgal_zphot_err'])
+
     # Perform the fit + classification (default model)
     >>> args = [F.col('diaSource.diaSourceId')]
     >>> args += [F.col(i) for i in what_prefix]
     >>> args += [F.col('roid'), F.col('cdsxmatch'), F.array_min('cmidPointTai')]
+    >>> args += [F.col('diaObject.mwebv'), F.col('redshift'), F.col('redshift_err')]
     >>> args += [F.lit('elasticc')]
     >>> df = df.withColumn('pIa', snn_ia_elasticc(*args))
 
