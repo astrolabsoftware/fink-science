@@ -82,7 +82,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     175
 
     >>> df_agn.filter(df_agn['proba'] > 0.5).count()
-    1
+    26
     """
 
     data = pd.DataFrame(
