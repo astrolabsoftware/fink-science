@@ -54,13 +54,26 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
 
     Examples
     --------
-    >>> df = spark.read.format('parquet').load(ztf_alert_sample)
-    >>> df_agn = df.withColumn('proba', agn_spark(df.objectId,\
-                                                df.cjd,\
-                                                df.cmagpsf,\
-                                                df.csigmapsf,\
-                                                df.cfid,\
-                                                df.ra, df.dec))
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns
+    >>> what = ['jd', 'magpsf', 'sigmapsf', 'fid']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = ['objectId'] + [F.col(i) for i in what_prefix]
+    >>> args += ['candidate.ra', 'candidate.dec']
+    >>> df_agn = df.withColumn('proba', agn_spark(*args))
 
     >>> df_agn.filter(df_agn['proba'] != -1).count()
     1
@@ -89,7 +102,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = "file://{}/data/alerts/agn_example.parquet".format(path)
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
