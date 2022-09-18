@@ -265,7 +265,9 @@ def snn_ia_elasticc(
             'jd': midPointTai[mask],
             'MWEBV': mwebv[mask],
             'HOSTGAL_SPECZ': redshift[mask],
+            'HOSTGAL_PHOTOZ': redshift[mask],
             'HOSTGAL_SPECZ_ERR': redshift_err[mask],
+            'HOSTGAL_PHOTOZ_ERR': redshift_err[mask],
         }
     )
     pdf_tmp = pdf_tmp.explode('jd')
@@ -273,6 +275,8 @@ def snn_ia_elasticc(
     pdf['MWEBV'] = pdf_tmp['MWEBV']
     pdf['HOSTGAL_SPECZ'] = pdf_tmp['HOSTGAL_SPECZ']
     pdf['HOSTGAL_SPECZ_ERR'] = pdf_tmp['HOSTGAL_SPECZ_ERR']
+    pdf['HOSTGAL_PHOTOZ'] = pdf_tmp['HOSTGAL_PHOTOZ']
+    pdf['HOSTGAL_PHOTOZ_ERR'] = pdf_tmp['HOSTGAL_PHOTOZ_ERR']
 
     if model_ext is not None:
         # take the first element of the Series
