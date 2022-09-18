@@ -292,7 +292,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_parquet'.format(path)
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_sample_seed0.parquet'.format(path)
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path = '{}/data/models/snn_models/snn_sn_vs_all/model.pt'.format(path)
