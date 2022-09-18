@@ -262,13 +262,13 @@ def snn_ia_elasticc(
     # Add extinction & redshift
     pdf_tmp = pd.DataFrame.from_dict(
         {
-            'jd': jd[mask],
+            'jd': midPointTai[mask],
             'MWEBV': mwebv[mask],
             'HOSTGAL_SPECZ': redshift[mask],
             'HOSTGAL_SPECZ_ERR': redshift_err[mask],
         }
     )
-    pdf_tmp = df_tmp.explode('jd')
+    pdf_tmp = pdf_tmp.explode('jd')
 
     pdf['MWEBV'] = pdf_tmp['MWEBV']
     pdf['HOSTGAL_SPECZ'] = pdf_tmp['HOSTGAL_SPECZ']
