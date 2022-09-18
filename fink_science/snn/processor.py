@@ -259,6 +259,21 @@ def snn_ia_elasticc(
         transform_to_flux=False
     )
 
+    # Add extinction & redshift
+    pdf_tmp = pd.DataFrame.from_dict(
+        {
+            'jd': jd[mask],
+            'MWEBV': mwebv[mask],
+            'HOSTGAL_SPECZ': redshift[mask],
+            'HOSTGAL_SPECZ_ERR': redshift_err[mask],
+        }
+    )
+    pdf_tmp = df_tmp.explode('jd')
+
+    pdf['MWEBV'] = pdf_tmp['MWEBV']
+    pdf['HOSTGAL_SPECZ'] = pdf_tmp['HOSTGAL_SPECZ']
+    pdf['HOSTGAL_SPECZ_ERR'] = pdf_tmp['HOSTGAL_SPECZ_ERR']
+
     if model_ext is not None:
         # take the first element of the Series
         model = model_ext.values[0]
