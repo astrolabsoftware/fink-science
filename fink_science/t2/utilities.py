@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import numpy as np
 import pandas as pd
 
@@ -36,8 +37,9 @@ def get_model(model_name: str = 't2', model_id: str = "23057-1642540624-0.1.dev9
     ----------
     out: keras model
     """
+    path = os.path.dirname(__file__)
     model_path = (
-        f"{__file__}/data/models/{model_name}/model-{model_id}"
+        f"{path}/data/models/{model_name}/model-{model_id}"
     )
 
     model = keras.models.load_model(
