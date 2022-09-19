@@ -94,7 +94,7 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 
     if len(jd[mask]) == 0:
-        return pd.Series(np.zeros(len(jd), dtype=float))
+        return pd.Series(np.array(['None'] * len(jd), dtype=np.str))
 
     ZTF_FILTER_MAP = {1: "ztfg", 2: "ztfr", 3: "ztfi"}
 
@@ -177,9 +177,8 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
         values = y_preds.tolist()
         predictions = dict(zip(keys, values[0]))
 
-        # snia_val = predictions['SNIa']
-        preds = np.array(list(predictions.values()))
-        idx = np.where(preds == np.max(preds))[0][0]
+        #snia_val = predictions['SNIa']
+        idx = np.where(np.array(list(predictions.values())) == np.max(list(predictions.values())))[0][0]
         snia_val = list(predictions.keys())[idx]
         vals.append(str(snia_val))
 
