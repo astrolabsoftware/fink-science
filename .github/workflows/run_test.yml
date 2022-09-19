@@ -43,5 +43,11 @@ jobs:
     - name: Run test suites
       run: |
         pip install fink-utils --upgrade
+        pip install iminuit==2.11.2
+        pip install scikit-learn==1.0.2
+        pip install git+https://github.com/b-biswas/kndetect --upgrade
+        pip install git+https://github.com/emilleishida/fink_sn_activelearning.git@e16152091ff8f9ece8d4823e8da1f498d60ac45f#egg=actsnfink
+        pip install git+https://github.com/COINtoolbox/ActSNClass.git@2c61da91a9d13834d39804fc35aeb3245ba20755#egg=actsnclass
+        
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash

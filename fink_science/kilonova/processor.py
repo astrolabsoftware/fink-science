@@ -55,7 +55,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     model_name: str
         Nome of the model to be fetched from the kndetect package.
         supported options: "complete.pkl", "partial.pkl"
-        deault is "complete.pkl" (model trained for complete light curves)
+        deault is "partial.pkl" (model trained for complete light curves)
 
     Returns
     ----------
@@ -64,14 +64,13 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
 
     Examples
     ----------
-    >>> from fink_science.xmatch.processor import cdsxmatch
+    >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
 
-    >>> colnames = [df['objectId'], df['candidate.ra'], df['candidate.dec']]
-    >>> df = df.withColumn('cdsxmatch', cdsxmatch(*colnames))
+    >>> df = xmatch_cds(df)
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
@@ -90,13 +89,14 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     >>> df = df.withColumn('pKNe', knscore(*args))
 
     >>> df.filter(df['pKNe'] > 0.5).count()
-    0
+    1
 
     >>> df.filter(df['pKNe'] > 0.5).select(['rf_kn_vs_nonkn', 'pKNe']).show()
-    +--------------+----+
-    |rf_kn_vs_nonkn|pKNe|
-    +--------------+----+
-    +--------------+----+
+    +--------------+------------------+
+    |rf_kn_vs_nonkn|              pKNe|
+    +--------------+------------------+
+    |           0.0|0.6333333333333333|
+    +--------------+------------------+
     <BLANKLINE>
 
     # Perform the fit + classification (another model)
@@ -106,7 +106,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     >>> df = df.withColumn('pKNe', knscore(*args))
 
     >>> df.filter(df['pKNe'] > 0.5).count()
-    0
+    1
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
@@ -147,7 +147,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
 
     # Load pre-trained model
     if model_name is None:
-        model = load_classifier("complete.pkl")
+        model = load_classifier("partial.pkl")
     else:
         model = load_classifier(model_name.values[0])
 
@@ -283,7 +283,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    model_name = 'complete.pkl'
+    model_name = 'partial.pkl'
     globs["model_name"] = model_name
 
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)

@@ -1,0 +1,6 @@
+sample.parquet/
+samples/
+output.csv
+input.csv
+snippets.ipynb
+fink.conf.shell

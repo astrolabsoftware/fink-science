@@ -26,8 +26,10 @@ from fink_utils.data.utils import format_data_as_snana
 from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
-from fink_science.random_forest_snia.classifier_sigmoid import get_sigmoid_features_dev
-from fink_science.random_forest_snia.classifier_sigmoid import RF_FEATURE_NAMES
+from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
+from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc
+
+from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
 from fink_science.tester import spark_unit_tests
 
@@ -97,14 +99,13 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
 
     Examples
     ----------
-    >>> from fink_science.xmatch.processor import cdsxmatch
+    >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
 
-    >>> colnames = [df['objectId'], df['candidate.ra'], df['candidate.dec']]
-    >>> df = df.withColumn('cdsxmatch', cdsxmatch(*colnames))
+    >>> df = xmatch_cds(df)
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
@@ -129,12 +130,12 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     +----------------+-----+
     |rf_snia_vs_nonia|  pIa|
     +----------------+-----+
-    |           0.839|0.597|
-    |           0.782| 0.62|
-    |           0.887|0.629|
-    |           0.785|0.596|
-    |            0.88|0.641|
-    |           0.777|0.611|
+    |           0.839|0.689|
+    |           0.782|0.649|
+    |           0.887|0.803|
+    |           0.785|0.674|
+    |            0.88|0.816|
+    |           0.777|0.693|
     +----------------+-----+
     <BLANKLINE>
 
@@ -272,7 +273,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
     return pd.Series(concatenated_features)
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, model=None) -> pd.Series:
+def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, maxduration=None, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
@@ -290,6 +291,9 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         Type of object found in Simbad (string)
     nobs: Spark DataFrame Column
         Column containing the number of detections by LSST
+    maxduration: Spark DataFrame Column
+        Integer for the maximum duration (in days) of the lightcurve to be classified.
+        Default is None, i.e. no maximum duration
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/default-model.obj` is loaded.
@@ -332,14 +336,14 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     """
     mask = apply_selection_cuts_ztf(psFlux, nobs, cdsxmatch, maxndethist=100)
 
-    mask *= filterName.apply(lambda array: np.sum([x in ['g', 'r'] for x in array]) > 3)
+    dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
+
+    # Maximum days in the history
+    if maxduration is not None:
+        mask *= (dt <= maxduration.values[0])
 
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
-
-    # change filter name for the moment to stick to ZTF definition
-    filter_conversion_dic = {'u': 0, 'g': 1, 'r': 2, 'i': 3, 'z': 4, 'Y': 5}
-    filterName = filterName.apply(lambda array: [filter_conversion_dic[x] for x in array])
 
     candid = pd.Series(range(len(midPointTai)))
     pdf = format_data_as_snana(
@@ -353,7 +357,7 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/default-model_sigmoid.obj'
+        model = curdir + '/data/models/default-model_sigmoid_elasticc.obj'
         clf = load_scikit_model(model)
 
     test_features = []
@@ -361,11 +365,7 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     for id in np.unique(pdf['SNID']):
         f1 = pdf['SNID'] == id
         pdf_sub = pdf[f1]
-        features = get_sigmoid_features_dev(pdf_sub)
-        if (features[0] == 0) or (features[6] == 0):
-            flag.append(False)
-        else:
-            flag.append(True)
+        features = get_sigmoid_features_elasticc(pdf_sub)
         test_features.append(features)
 
     flag = np.array(flag, dtype=np.bool)
