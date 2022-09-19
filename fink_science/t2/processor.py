@@ -26,12 +26,12 @@ from astronet.preprocess import robust_scale
 from fink_utils.data.utils import format_data_as_snana
 
 from fink_science import __file__
-from fink_science.t2.utilities import get_model, apply_selection_cuts_ztf
+from fink_science.t2.utilities import get_lite_model, apply_selection_cuts_ztf
 
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
-def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name=None, model_id=None) -> pd.Series:
+def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name=None) -> pd.Series:
     """ Return max prob from T2
 
     Parameters
@@ -46,8 +46,7 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
         Magnitude from PSF-fit photometry, and 1-sigma error
     model_name: Spark DataFrame Column, optional
         T2 pre-trained model. Currently available:
-            * t2 (default)
-            * atx
+            * tinho
 
     Returns
     ----------
@@ -91,15 +90,6 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
 
     >>> df.filter(df['t2_maxclass'] == 'SNIa').count()
     0
-
-    # Note that we can also specify another model
-    >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']]
-    >>> args += [F.col('roid'), F.col('cdsxmatch'), F.col('candidate.jdstarthist')]
-    >>> args += [F.lit('atx'), F.lit('206145-1644662345-0.3.1.dev36+gfd02ace')]
-    >>> df = df.withColumn('atx_maxclass', t2_max_prob(*args))
-
-    >>> df.filter(df['t2_maxclass'] == 'SNIbc').count()
-    0
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 
@@ -137,10 +127,10 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
 
     if model_name is not None:
         # take the first element of the Series
-        model = get_model(model_name=model_name.values[0], model_id=model_id.values[0])
+        model = get_lite_model(model_name=model_name.values[0])
     else:
         # Load default pre-trained model
-        model = get_model()
+        model = get_lite_model()
 
     vals = []
     for candid_ in candid[mask].values:

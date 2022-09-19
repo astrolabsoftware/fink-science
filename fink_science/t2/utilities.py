@@ -23,6 +23,61 @@ from astronet.metrics import WeightedLogLoss
 from fink_science import __file__
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
+import tensorflow as tf
+
+class LiteModel:
+    @classmethod
+    def from_file(cls, model_path):
+        return LiteModel(tf.lite.Interpreter(model_path=model_path))
+
+    @classmethod
+    def from_saved_model(cls, model_path, tflite_file_path=None):
+        converter = tf.lite.TFLiteConverter.from_saved_model(model_path)
+        converter.target_spec.supported_ops = [
+            tf.lite.OpsSet.TFLITE_BUILTINS,  # enable TensorFlow Lite ops.
+            tf.lite.OpsSet.SELECT_TF_OPS,  # enable TensorFlow ops.
+        ]
+        converter.experimental_enable_resource_variables = True
+        converter.experimental_new_converter = True
+        converter.optimizations = [tf.lite.Optimize.DEFAULT]
+        tflite_model = converter.convert()
+
+        if tflite_file_path is not None:
+            with open(tflite_file_path, "wb") as f:
+                f.write(tflite_model)
+
+        return LiteModel(tf.lite.Interpreter(model_content=tflite_model))
+
+    def __init__(self, interpreter):
+        self.interpreter = interpreter
+        self.interpreter.allocate_tensors()
+        input_det = self.interpreter.get_input_details()[0]
+        output_det = self.interpreter.get_output_details()[0]
+        self.input_index = input_det["index"]
+        self.output_index = output_det["index"]
+        self.input_shape = input_det["shape"]
+        self.output_shape = output_det["shape"]
+        self.input_dtype = input_det["dtype"]
+        self.output_dtype = output_det["dtype"]
+
+    def predict(self, inp):
+        inp = inp.astype(self.input_dtype)
+        count = inp.shape[0]
+        out = np.zeros((count, self.output_shape[1]), dtype=self.output_dtype)
+        for i in range(count):
+            self.interpreter.set_tensor(self.input_index, inp[i : i + 1])
+            self.interpreter.invoke()
+            out[i] = self.interpreter.get_tensor(self.output_index)[0]
+        return out
+
+def get_lite_model(model_name: str = 'quantized-model-GR-noZ-28341-1654269564-0.5.1.dev73+g70f85f8-LL0.836.tflite'):
+    path = os.path.dirname(__file__)
+    model_path = (
+        f"{path}/data/models/{model_name}"
+    )
+    model = LiteModel.from_file(model_path=model_path)
+    return model
+
 def get_model(model_name: str = 't2', model_id: str = "23057-1642540624-0.1.dev963+g309c9d8"):
     """ Load pre-trained model for T2
 
