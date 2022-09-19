@@ -25,6 +25,7 @@ from astronet.preprocess import robust_scale
 
 from fink_utils.data.utils import format_data_as_snana
 
+from fink_science import __file__
 from fink_science.t2.utilities import get_model, apply_selection_cuts_ztf
 
 from fink_science.tester import spark_unit_tests
