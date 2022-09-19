@@ -90,7 +90,7 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
     >>> df = df.withColumn('t2_maxclass', t2_max_prob(*args))
 
     >>> df.filter(df['t2_maxclass'] == 'SNIa').count()
-    7
+    0
 
     # Note that we can also specify another model
     >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']]
@@ -98,7 +98,7 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
     >>> args += [F.lit('atx'), F.lit('206145-1644662345-0.3.1.dev36+gfd02ace')]
     >>> df = df.withColumn('atx_maxclass', t2_max_prob(*args))
 
-    >>> df.filter(df['t2_maxclass'] == 'SNIa').count()
+    >>> df.filter(df['t2_maxclass'] == 'SNIbc').count()
     7
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
