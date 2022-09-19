@@ -177,7 +177,6 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
         values = y_preds.tolist()
         predictions = dict(zip(keys, values[0]))
 
-        #snia_val = predictions['SNIa']
         idx = np.where(np.array(list(predictions.values())) == np.max(list(predictions.values())))[0][0]
         snia_val = list(predictions.keys())[idx]
         vals.append(str(snia_val))
