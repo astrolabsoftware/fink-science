@@ -65,7 +65,7 @@ class LiteModel:
         count = inp.shape[0]
         out = np.zeros((count, self.output_shape[1]), dtype=self.output_dtype)
         for i in range(count):
-            self.interpreter.set_tensor(self.input_index, inp[i : i + 1])
+            self.interpreter.set_tensor(self.input_index, inp[i: i + 1])
             self.interpreter.invoke()
             out[i] = self.interpreter.get_tensor(self.output_index)[0]
         return out
