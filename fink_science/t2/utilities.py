@@ -20,6 +20,7 @@ from pathlib import Path
 
 from astronet.metrics import WeightedLogLoss
 
+from fink_science import __file__
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 def get_model(model_name: str = 't2', model_id: str = "23057-1642540624-0.1.dev963+g309c9d8"):
@@ -37,7 +38,7 @@ def get_model(model_name: str = 't2', model_id: str = "23057-1642540624-0.1.dev9
     out: keras model
     """
     model_path = (
-        f"{Path(__name__).absolute().parent.parent}/data/models/{model_name}/model-{model_id}"
+        f"{__file__}/data/models/{model_name}/model-{model_id}"
     )
 
     model = keras.models.load_model(
