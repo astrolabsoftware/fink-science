@@ -56,7 +56,7 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
 
     Examples
     ----------
-    >>> from fink_science.xmatch.processor import cdsxmatch
+    >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_science.asteroids.processor import roid_catcher
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
@@ -64,8 +64,7 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Add SIMBAD field
-    >>> colnames = [df['objectId'], df['candidate.ra'], df['candidate.dec']]
-    >>> df = df.withColumn('cdsxmatch', cdsxmatch(*colnames))
+    >>> df = xmatch_cds(df)
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
