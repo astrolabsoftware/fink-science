@@ -99,7 +99,7 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
     >>> df = df.withColumn('atx_maxclass', t2_max_prob(*args))
 
     >>> df.filter(df['t2_maxclass'] == 'SNIbc').count()
-    7
+    0
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 
