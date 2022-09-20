@@ -138,11 +138,27 @@ def extract_features_ad_raw(
     jd = jd[mask]
     cfid = cfid[mask]
 
+    sub = pd.DataFrame(
+        {
+            'magpsf': magpsf,
+            'sigmapsf': sigmapsf,
+            'jd': jd,
+            'cfid': cfid
+        }
+    )
+
+    sub = sub.sort_values('jd', ascending=True)
+
     full_result = {}
     for passband_id in passbands:
-        passband = cfid == passband_id
+        passband = sub['cfid'].values == passband_id
         try:
-            result = extractor(jd[passband], magpsf[passband], sigmapsf[passband], fill_value=np.nan)
+            result = extractor(
+                sub['jd'].values[passband],
+                sub['magpsf'].values[passband],
+                sub['sigmapsf'].values[passband],
+                fill_value=np.nan
+        )
         except ValueError as err:
             # log if known error, then skip
             if err.args[0] == "t must be in ascending order":
