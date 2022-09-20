@@ -245,7 +245,7 @@ def snn_ia_elasticc(
     >>> df = df.withColumn('pIa', snn_ia_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    19
+    5
     """
     mask = apply_selection_cuts_ztf(
         psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=180)
