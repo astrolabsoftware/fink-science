@@ -229,7 +229,7 @@ def snn_ia_elasticc(
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvForcedDiaSources')
+    ...         current='diaSource', history='prvDiaForcedSources')
 
     # add redshift
     >>> df = df.withColumn('redshift', F.when(df['diaObject.hostgal_zspec'] != -9.0, df['diaObject.hostgal_zphot']))
