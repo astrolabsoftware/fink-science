@@ -158,7 +158,7 @@ def extract_features_ad_raw(
                 sub['magpsf'].values[passband],
                 sub['sigmapsf'].values[passband],
                 fill_value=np.nan
-        )
+            )
         except ValueError as err:
             # log if known error, then skip
             if err.args[0] == "t must be in ascending order":
