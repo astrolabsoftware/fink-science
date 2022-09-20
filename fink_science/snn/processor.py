@@ -135,7 +135,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> args += [F.lit('snn_snia_vs_nonia')]
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
-    >>> df.select(['objectId', 'pIa']).show()
+    >>> df.select(['objectId', 'pIa']).filter(df['pIa'] > 0.5).show()
     toto
 
     >>> df.filter(df['pIa'] > 0.5).count()
@@ -150,7 +150,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> df.select(['objectId', 'pIa2']).show()
     toto
 
-    >>> df.filter(df['pIa2'] > 0.5).count()
+    >>> df.filter(df['pIa2'] > 0.5).filter(df['pIa2'] > 0.5).count()
     7
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
