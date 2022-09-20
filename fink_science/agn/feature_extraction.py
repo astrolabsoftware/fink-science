@@ -337,7 +337,7 @@ def get_min(x, absolute=False):
         return x.min()
 
 
-def transform_data(converted):
+def transform_data(converted, minimum_points):
 
     """Apply transformations for each band on a flux converted dataset
             - Shift cjd so that the max flux point is at 0
@@ -349,6 +349,8 @@ def transform_data(converted):
     ----------
     converted : pd.DataFrame
         Dataframe of alerts from Fink with nan removed and converted to flux
+    minimum_points : int
+        Minimum number of points in that passband to be considered valid
 
     Returns
     -------
@@ -358,34 +360,6 @@ def transform_data(converted):
 
     transformed_2 : pd.DataFrame
         Transformed DataFrame that only contains passband r
-
-        Examples
-    --------
-    >>> example = pd.DataFrame(data = {"cfid": [np.array([1, 2, 2]), np.array([2])],\
-                                    "cjd" : [np.array([3, 3.5, 5]), np.array([7])],\
-                                    "cflux" : [np.array([10, 20, 25]), np.array([10.5])],\
-                                    "csigflux" : [np.array([1, 2, 2.5]), np.array([-10.5])],\
-                                    "anything" : [np.array([0.1, 2]), np.array(['toto'])]})
-
-    >>> expect_2 = pd.DataFrame(data = {"cfid": [np.array([2, 2]), np.array([2])],\
-                                    "cjd" : [np.array([-1.5, 0]), np.array([0])],\
-                                    "cflux" : [np.array([0.8, 1]), np.array([1])],\
-                                    "csigflux" : [np.array([0.08, 0.1]), np.array([-1])],\
-                                    "anything" : [np.array([0.1, 2]), np.array(['toto'])],\
-                                    "peak" : [25, 10.5],\
-                                    "snr" : [np.array([10, 10]), np.array([-1])]})
-
-    >>> expect_1 = pd.DataFrame(data = {"cfid": [np.array([1]), np.array([])],\
-                                    "cjd" : [np.array([0.]), np.array([])],\
-                                    "cflux" : [np.array([1.]), np.array([])],\
-                                    "csigflux" : [np.array([0.1]), np.array([])],\
-                                    "anything" : [np.array([0.1, 2]), np.array(['toto'])],\
-                                    "peak" : [10, -1],\
-                                    "snr" : [np.array([10.]), np.array([])]})
-
-    >>> pd.testing.assert_frame_equal((transform_data(example)[0]).round(2), expect_1)
-    >>> pd.testing.assert_frame_equal((transform_data(example)[1]).round(2), expect_2)
-
     """
 
     # Create a dataframe with only measurement from band 1
@@ -411,7 +385,9 @@ def transform_data(converted):
             lambda pdf: pdf["cflux"] / pdf["csigflux"], axis=1
         )
 
-    return transformed_1, transformed_2
+    valid = (transformed_1['cjd'].apply(len) >= minimum_points) & (transformed_2['cjd'].apply(len) >= minimum_points)
+
+    return transformed_1[valid], transformed_2[valid], valid
 
 
 def parametric_bump(ps):
@@ -508,14 +484,13 @@ def compute_color(ps):
     return unnorm_cflux_1 - unnorm_cflux_2
 
 
-def parametrise(transformed, minimum_points, band, target_col=""):
+def parametrise(transformed, band, target_col=""):
 
     """Extract parameters from a transformed dataset. Construct a new DataFrame
     Parameters are :  - 'nb_points' : number of points
                       - 'std' : standard deviation of the flux
                       - 'peak' : maximum before normalization
                       - 'mean_snr' : mean signal over noise ratio
-                      - 'valid' : is the number of point above the minimum (boolean)
 
     Also compute a fit using the bump function on each lightcurve. By construction this function
     requieres the light curve to be centered on 40 jd.
@@ -525,8 +500,6 @@ def parametrise(transformed, minimum_points, band, target_col=""):
     ----------
     transformed : pd.DataFrame
         Transformed DataFrame that only contains a single passband
-    minimum_points : int
-        Minimum number of points in that passband to be considered valid
     band : int
         Passband of the dataframe
     target_col: str
@@ -539,32 +512,6 @@ def parametrise(transformed, minimum_points, band, target_col=""):
     df_parameters : pd.DataFrame
         DataFrame of parameters.
         Contains additionnal columns which will be used to compute color parameters
-
-    Example
-    -------
-    >>> example = pd.DataFrame(data = {"objectId": [np.array(5485), np.array(2000)],\
-                                    "ra" : [np.array(90), np.array(-42)],\
-                                    "dec" : [np.array(70), np.array(-2)],\
-                                    "cjd" : [np.array([-1.5, 0]), np.array([0])],\
-                                    "cflux" : [np.array([0.8, 1]), np.array([1])],\
-                                    "csigflux" : [np.array([0.08, 0.1]), np.array([-1])],\
-                                    "peak" : [25, 10.5],\
-                                    "snr" : [np.array([10, 10]), np.array([-1])],\
-                                    "target" : ['AGN', 'other']})
-
-    >>> param = parametrise(example, 2, 1, target_col='target')
-    >>> valid = param['valid_1']
-    >>> (valid[0] == True) & (valid[1] == False)
-    True
-
-    >>> bump = param['bump_1']
-    >>> (len(bump[0]) & len(bump[0])) == 4
-    True
-
-    >>> (param.keys() == ['object_id', 'ra', 'dec', 'std_1', 'peak_1', 'mean_snr_1', 'nb_points_1', 'valid_1',\
-           'target', 'bump_1', 'cflux_1', 'cjd_1']).sum()==12
-    True
-
     """
 
     nb_points = transformed["cflux"].apply(lambda x: len(x))
@@ -575,8 +522,6 @@ def parametrise(transformed, minimum_points, band, target_col=""):
     ra = transformed['ra']
     dec = transformed['dec']
 
-    valid = nb_points >= minimum_points
-
     df_parameters = pd.DataFrame(
         data={
             "object_id": ids,
@@ -586,7 +531,6 @@ def parametrise(transformed, minimum_points, band, target_col=""):
             f"peak_{band}": peak,
             f"mean_snr_{band}": mean_snr,
             f"nb_points_{band}": nb_points,
-            f"valid_{band}": valid,
         }
     )
 
@@ -609,7 +553,7 @@ def parametrise(transformed, minimum_points, band, target_col=""):
 def merge_features(features_1, features_2, target_col=""):
 
     """Merge feature tables of band g and r.
-    Also merge valid columns into one.
+
     Compute color parameters : - 'max_color' : absolute maximum of the color
                                - 'std_color' : standard deviation of the color
 
@@ -631,12 +575,9 @@ def merge_features(features_1, features_2, target_col=""):
         ['object_id', 'std_1', 'std_2', 'peak_1', 'peak_2', 'mean_snr_1',
         'mean_snr_2', 'nb_points_1', 'nb_points_2', 'std_color', 'max_color']
 
-    valid : np.array
-        Boolean array, indicates if both passband respect the minimum number of points
-
     Examples
     --------
-    >>> band1 = pd.DataFrame(data = {'object_id':42, 'valid_1':True,\
+    >>> band1 = pd.DataFrame(data = {'object_id':42,\
                              'ra':90, 'dec':90,\
                              'std_1':4.1, 'peak_1':2563,\
                              'mean_snr_1':0.8, 'nb_points_1':4,\
@@ -644,7 +585,7 @@ def merge_features(features_1, features_2, target_col=""):
                              'cjd_1':[np.array([1, 20, 40, 45])],\
                              'cflux_1':[np.array([0.1, 0.5, 1, 0.7])]})
 
-    >>> band2 = pd.DataFrame(data = {'object_id':42, 'valid_2':False,\
+    >>> band2 = pd.DataFrame(data = {'object_id':42,\
                              'ra':90, 'dec':90,\
                              'std_2':3.1, 'peak_2':263,\
                              'mean_snr_2':0.2, 'nb_points_2':2,\
@@ -654,17 +595,15 @@ def merge_features(features_1, features_2, target_col=""):
 
     >>> result = merge_features(band1, band2)
     >>> len(result)
-    2
-    >>> result[1][0]
-    False
+    1
     >>> expected = pd.DataFrame(data = {'object_id':42, 'ra':90, 'dec':90,\
                                  'std_1':4.1, 'std_2':3.1, 'peak_1':2563, 'peak_2':263,\
                                  'mean_snr_1':0.8, 'mean_snr_2':0.2,\
                                  'nb_points_1':4, 'nb_points_2':2, 'std_color':747.15, 'max_color':2271.83}, index=[0])
 
-    >>> pd.testing.assert_frame_equal(expected, result[0].round(2))
+    >>> pd.testing.assert_frame_equal(expected, result.round(2))
 
-    >>> band1_target = pd.DataFrame(data = {'object_id':42, 'valid_1':True,\
+    >>> band1_target = pd.DataFrame(data = {'object_id':42,\
                              'ra':90, 'dec':90,\
                              'std_1':4.1, 'peak_1':2563,\
                              'mean_snr_1':0.8, 'nb_points_1':4,\
@@ -673,7 +612,7 @@ def merge_features(features_1, features_2, target_col=""):
                              'cflux_1':[np.array([0.1, 0.5, 1, 0.7])], \
                              'target':['AGN']})
 
-    >>> band2_target = pd.DataFrame(data = {'object_id':42, 'valid_2':False,\
+    >>> band2_target = pd.DataFrame(data = {'object_id':42,\
                              'ra':90, 'dec':90,\
                              'std_2':3.1, 'peak_2':263,\
                              'mean_snr_2':0.2, 'nb_points_2':2,\
@@ -681,8 +620,6 @@ def merge_features(features_1, features_2, target_col=""):
                              'cjd_2':[np.array([13, 40])],\
                              'cflux_2':[np.array([0.3, 1])],\
                              'target':['AGN']})
-
-    >>> result_target = merge_features(band1_target, band2_target, target_col="target")
     """
 
     # Avoid having twice the same column
@@ -692,8 +629,6 @@ def merge_features(features_1, features_2, target_col=""):
         features_2 = features_2.drop(columns={"object_id", "ra", "dec", target_col})
 
     features = features_1.join(features_2)
-    valid = features["valid_1"] & features["valid_2"]
-    features = features.drop(columns=["valid_1", "valid_2"])
 
     ordered_features = features[
         [
@@ -719,7 +654,7 @@ def merge_features(features_1, features_2, target_col=""):
     if target_col != "":
         ordered_features[target_col] = features[target_col]
 
-    return ordered_features, valid
+    return ordered_features
 
 
 def get_probabilities(clf, features, valid):
@@ -750,39 +685,27 @@ def get_probabilities(clf, features, valid):
                                  'std_2':[0.7, 0.3, 0.07], 'peak_1':[2563, 10000, 1500], 'peak_2':[263, 10000, 1500],\
                                  'mean_snr_1':[0.8, 3, 6], 'mean_snr_2':[0.2, 4, 6],\
                                  'nb_points_1':[4,18, 5], 'nb_points_2':[2,12, 5],\
-                                 'std_color':[74.15, 3, 0], 'max_color':[2271.83, 500, 0]})
-
-    >>> valid = np.array([False, True, True])
+                                 'std_color':[74.15, 3, 0], 'max_color':[2271.83, 500, 0]}, index=[0,1,3])
+    >>> valid = np.array([True, True, False, True])
     >>> clf = pickle.load(open(k.CLASSIFIER, "rb"))
     >>> proba = get_probabilities(clf, example, valid)
     >>> len(proba)
-    3
-    >>> proba[2]!=-1
+    4
+    >>> proba[3]!=-1
+    True
+    >>> proba[2]==-1
     True
     >>> proba[1]!=-1
     True
-    >>> proba[0]==-1
-    True
-
-    >>> valid2 = np.array([False, False, False])
-    >>> proba = get_probabilities(clf, example, valid2)
-    >>> len(proba)
-    3
-    >>> proba[2]==-1
-    True
-    >>> proba[1]==-1
-    True
-    >>> proba[0]==-1
+    >>> proba[0]!=-1
     True
     """
 
-    final_proba = np.array([-1] * len(features["object_id"])).astype(np.float64)
+    final_proba = np.array([-1] * len(valid)).astype(np.float64)
 
-    valid_alerts = features.loc[valid]
-
-    if len(valid_alerts) > 0:
-        agn_or_not = clf.predict_proba(valid_alerts.iloc[:, 1:])
-        index_to_replace = valid_alerts.iloc[:, 1:].index
+    if len(features) > 0:
+        agn_or_not = clf.predict_proba(features.iloc[:, 1:])
+        index_to_replace = features.iloc[:, 1:].index
         final_proba[index_to_replace.values] = agn_or_not[:, 1]
 
     return final_proba
