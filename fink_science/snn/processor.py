@@ -287,9 +287,6 @@ def snn_ia_elasticc(
         model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
 
     # Compute predictions
-    print(pdf.head(40))
-    pdf = pdf.dropna()
-    print(pdf.head(40))
     if len(pdf) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
