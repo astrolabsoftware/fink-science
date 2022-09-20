@@ -288,6 +288,7 @@ def snn_ia_elasticc(
 
     # Compute predictions
     pdf = pdf.dropna()
+    print(pdf.head(40))
     ids, pred_probs = classify_lcs(pdf, model, 'cpu')
 
     # Reformat and re-index
