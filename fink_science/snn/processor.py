@@ -249,6 +249,10 @@ def snn_ia_elasticc(
     mask = apply_selection_cuts_ztf(
         psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=180)
 
+    nmeas = midPointTai.apply(lambda x: len(x))
+
+    mask *= nmeas > 1
+
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
