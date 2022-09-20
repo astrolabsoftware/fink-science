@@ -136,7 +136,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    7
+    6
 
     # Note that we can also specify a model
     >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']]
@@ -145,7 +145,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> df = df.withColumn('pIa2', snn_ia(*args))
 
     >>> df.filter(df['pIa2'] > 0.5).count()
-    7
+    8
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 
@@ -249,10 +249,6 @@ def snn_ia_elasticc(
     mask = apply_selection_cuts_ztf(
         psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=180)
 
-    nmeas = midPointTai.apply(lambda x: len(x))
-
-    mask *= nmeas > 1
-
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
@@ -291,6 +287,7 @@ def snn_ia_elasticc(
         model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
 
     # Compute predictions
+    pdf = pdf.dropna()
     ids, pred_probs = classify_lcs(pdf, model, 'cpu')
 
     # Reformat and re-index
