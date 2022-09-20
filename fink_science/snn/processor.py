@@ -229,7 +229,7 @@ def snn_ia_elasticc(
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaSources')
+    ...         current='diaSource', history='prvForcedDiaSources')
 
     # add redshift
     >>> df = df.withColumn('redshift', F.when(df['diaObject.hostgal_zspec'] != -9.0, df['diaObject.hostgal_zphot']))
@@ -287,10 +287,11 @@ def snn_ia_elasticc(
         model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
 
     # Compute predictions
+    print(pdf.head(40))
     pdf = pdf.dropna()
+    print(pdf.head(40))
     if len(pdf) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
-
 
     ids, pred_probs = classify_lcs(pdf, model, 'cpu')
 
