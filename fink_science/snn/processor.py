@@ -164,6 +164,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
         model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
 
     # Compute predictions
+    pdf = pdf.dropna()
     ids, pred_probs = classify_lcs(pdf, model, 'cpu')
 
     # Reformat and re-index
