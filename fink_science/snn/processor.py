@@ -232,8 +232,8 @@ def snn_ia_elasticc(
     ...         current='diaSource', history='prvDiaForcedSources')
 
     # add redshift
-    >>> df = df.withColumn('redshift', F.when(df['diaObject.hostgal_zspec'] != -9.0, df['diaObject.hostgal_zphot']))
-    >>> df = df.withColumn('redshift_err', F.when(df['diaObject.hostgal_zspec_err'] == -9.0, df['diaObject.hostgal_zphot_err']))
+    >>> df = df.withColumn('redshift', F.when(df['diaObject.hostgal_zspec'] != -9.0, df['diaObject.hostgal_zspec']).otherwise(df['diaObject.hostgal_zphot']))
+    >>> df = df.withColumn('redshift_err', F.when(df['diaObject.hostgal_zspec_err'] != -9.0, df['diaObject.hostgal_zspec_err']).otherwise(df['diaObject.hostgal_zphot_err']))
 
     # Perform the fit + classification (default model)
     >>> args = [F.col('diaSource.diaSourceId')]
