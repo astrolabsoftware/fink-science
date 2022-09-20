@@ -136,7 +136,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    7
+    6
 
     # Note that we can also specify a model
     >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']]
@@ -145,7 +145,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> df = df.withColumn('pIa2', snn_ia(*args))
 
     >>> df.filter(df['pIa2'] > 0.5).count()
-    7
+    8
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 
@@ -164,6 +164,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
         model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
 
     # Compute predictions
+    pdf = pdf.dropna()
     ids, pred_probs = classify_lcs(pdf, model, 'cpu')
 
     # Reformat and re-index
@@ -179,7 +180,11 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     return pd.Series(to_return)
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roid, cdsxmatch, jdstarthist, model_name, model_ext=None) -> pd.Series:
+def snn_ia_elasticc(
+        diaSourceId, midPointTai, filterName, psFlux, psFluxErr,
+        roid, cdsxmatch, jdstarthist,
+        mwebv, redshift, redshift_err,
+        model_name, model_ext=None) -> pd.Series:
     """ Compute probabilities of alerts to be SN Ia using SuperNNova
 
     Parameters
@@ -194,10 +199,9 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
         SNANA calibrated flux from LSST, and 1-sigma error
     model_name: Spark DataFrame Column
         SuperNNova pre-trained model. Currently available:
-            * snn_snia_vs_nonia
-            * snn_sn_vs_all
+            * elasticc
     model_ext: Spark DataFrame Column, optional
-        Path to the trained model (overwrite `model`). Default is None
+        Path to the trained model (overwrite `model_name`). Default is None
 
     Returns
     ----------
@@ -226,29 +230,28 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaSources')
+    ...         current='diaSource', history='prvDiaForcedSources')
+
+    # add redshift
+    >>> df = df.withColumn('redshift', F.when(df['diaObject.hostgal_zspec'] != -9.0, df['diaObject.hostgal_zspec']).otherwise(df['diaObject.hostgal_zphot']))
+    >>> df = df.withColumn('redshift_err', F.when(df['diaObject.hostgal_zspec_err'] != -9.0, df['diaObject.hostgal_zspec_err']).otherwise(df['diaObject.hostgal_zphot_err']))
 
     # Perform the fit + classification (default model)
     >>> args = [F.col('diaSource.diaSourceId')]
     >>> args += [F.col(i) for i in what_prefix]
     >>> args += [F.col('roid'), F.col('cdsxmatch'), F.array_min('cmidPointTai')]
-    >>> args += [F.lit('snn_snia_vs_nonia')]
+    >>> args += [F.col('diaObject.mwebv'), F.col('redshift'), F.col('redshift_err')]
+    >>> args += [F.lit('elasticc')]
     >>> df = df.withColumn('pIa', snn_ia_elasticc(*args))
 
-    >>> df.filter(df['pIa'] > 0.0).count()
-    19
+    >>> df.filter(df['pIa'] > 0.5).count()
+    5
     """
     mask = apply_selection_cuts_ztf(
         psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=180)
 
-    mask *= filterName.apply(lambda array: np.sum([x in ['g', 'r'] for x in array]) > 1)
-
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
-
-    # change filter name for the moment to stick to ZTF definition
-    filter_conversion_dic = {'u': 0, 'g': 1, 'r': 2, 'i': 3, 'z': 4, 'Y': 5}
-    filterName = filterName.apply(lambda array: [filter_conversion_dic[x] for x in array])
 
     diaSourceId = diaSourceId.apply(lambda x: str(x))
     pdf = format_data_as_snana(
@@ -257,9 +260,24 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
         transform_to_flux=False
     )
 
-    # Keep only g & r
-    filt_mask = pdf['FLT'].isin(['g', 'r'])
-    pdf = pdf[filt_mask]
+    # Add extinction & redshift
+    pdf_tmp = pd.DataFrame.from_dict(
+        {
+            'jd': midPointTai[mask],
+            'MWEBV': mwebv[mask],
+            'HOSTGAL_SPECZ': redshift[mask],
+            'HOSTGAL_PHOTOZ': redshift[mask],
+            'HOSTGAL_SPECZ_ERR': redshift_err[mask],
+            'HOSTGAL_PHOTOZ_ERR': redshift_err[mask],
+        }
+    )
+    pdf_tmp = pdf_tmp.explode('jd')
+
+    pdf['MWEBV'] = pdf_tmp['MWEBV']
+    pdf['HOSTGAL_SPECZ'] = pdf_tmp['HOSTGAL_SPECZ']
+    pdf['HOSTGAL_SPECZ_ERR'] = pdf_tmp['HOSTGAL_SPECZ_ERR']
+    pdf['HOSTGAL_PHOTOZ'] = pdf_tmp['HOSTGAL_PHOTOZ']
+    pdf['HOSTGAL_PHOTOZ_ERR'] = pdf_tmp['HOSTGAL_PHOTOZ_ERR']
 
     if model_ext is not None:
         # take the first element of the Series
@@ -270,6 +288,9 @@ def snn_ia_elasticc(diaSourceId, midPointTai, filterName, psFlux, psFluxErr, roi
         model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
 
     # Compute predictions
+    if len(pdf) == 0:
+        return pd.Series(np.zeros(len(midPointTai), dtype=float))
+
     ids, pred_probs = classify_lcs(pdf, model, 'cpu')
 
     # Reformat and re-index
@@ -294,11 +315,14 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_parquet'.format(path)
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_sample_seed0.parquet'.format(path)
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path = '{}/data/models/snn_models/snn_sn_vs_all/model.pt'.format(path)
     globs["model_path"] = model_path
+
+    elasticc_model_path = '{}/data/models/snn_models/elasticc/model.pt'.format(path)
+    globs["elasticc_model_path"] = elasticc_model_path
 
     # Run the test suite
     spark_unit_tests(globs)
