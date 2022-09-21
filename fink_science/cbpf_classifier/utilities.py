@@ -1,11 +1,11 @@
 import numpy as np
 
-def extract_max_prob(arr):
+def extract_max_prob(arr: list) -> list:
     """ Extract main class and associated probability from a vector of probabilities
     """
     array = np.array(arr)
     index = np.argmax(array)
-    return {'class': index, 'prob': array[index]}
+    return [index, array[index]]
 
 def normalize_lc(lc_array: np.array) -> np.array:
     """
