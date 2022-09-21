@@ -22,6 +22,7 @@ from pyspark.sql.types import ArrayType, FloatType
 import tensorflow as tf
 from tensorflow_addons import optimizers
 
+from fink_science import __file__
 from fink_science.cbpf_classifier.utilities import normalize_lc, extract_max_prob
 from fink_science.tester import spark_unit_tests
 
