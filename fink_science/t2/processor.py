@@ -382,6 +382,7 @@ def t2_max_prob_elasticc(
     # return main class and associated probability
     return pd.Series([[i, j] for i, j in zip(t2_class, t2_max_prob)])
 
+
 if __name__ == "__main__":
     """ Execute the test suite """
 
