@@ -391,7 +391,9 @@ def snn_broad_elasticc(
         psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=180)
 
     if len(midPointTai[mask]) == 0:
-        return pd.Series(np.zeros(len(midPointTai), dtype=float))
+        snn_class = np.ones(len(midPointTai), dtype=float) * -1
+        snn_max_prob = np.zeros(len(midPointTai), dtype=float)
+        return pd.Series([[i, j] for i, j in zip(snn_class, snn_max_prob)])
 
     diaSourceId = diaSourceId.apply(lambda x: str(x))
     pdf = format_data_as_snana(
@@ -429,7 +431,9 @@ def snn_broad_elasticc(
 
     # Compute predictions
     if len(pdf) == 0:
-        return pd.Series(np.zeros(len(midPointTai), dtype=float))
+        snn_class = np.ones(len(midPointTai), dtype=float) * -1
+        snn_max_prob = np.zeros(len(midPointTai), dtype=float)
+        return pd.Series([[i, j] for i, j in zip(snn_class, snn_max_prob)])
 
     ids, pred_probs = classify_lcs(pdf, model, 'cpu')
 
