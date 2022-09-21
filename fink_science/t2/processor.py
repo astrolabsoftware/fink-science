@@ -252,7 +252,7 @@ def t2_max_prob_elasticc(
     mask = apply_selection_cuts_ztf(
         psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=1e6)
 
-    if len(jd[mask]) == 0:
+    if len(midPointTai[mask]) == 0:
         t2_class = np.ones(len(midPointTai), dtype=float) * -1
         t2_max_prob = np.zeros(len(midPointTai), dtype=float)
         return pd.Series([[i, j] for i, j in zip(t2_class, t2_max_prob)])
