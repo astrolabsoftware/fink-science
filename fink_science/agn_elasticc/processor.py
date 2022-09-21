@@ -23,8 +23,11 @@ from fink_science.tester import spark_unit_tests
 
 
 @pandas_udf(DoubleType())
-def agn_spark(diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec):
-
+def agn_spark(
+        diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName,
+        ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec,
+        model_path=None
+    ):
     """High level spark wrapper for the AGN classifier on ELASTiCC data
 
     Parameters
@@ -51,6 +54,9 @@ def agn_spark(diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, de
     hostgal_dec: Spark DataFrame Column
         Declination ascension of the host galaxy
         -999 if object is in the milky way
+    model_path: Spark DataFrame Column, optional
+        Path to the model. If None (default), it is
+        taken from `k.CLASSIFIER`.
 
     Returns
     -------
@@ -75,7 +81,10 @@ def agn_spark(diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, de
         }
     )
 
-    proba = agn_classifier(data)
+    if model_path is not None:
+        model_path = model_path.values[0]
+
+    proba = agn_classifier(data, model_path)
     return pd.Series(proba)
 
 
