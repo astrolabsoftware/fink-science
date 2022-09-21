@@ -47,25 +47,25 @@ export COVERAGE_PROCESS_START="${ROOTPATH}/.coveragerc"
 # Run the test suite on the utilities
 for filename in fink_science/*.py
 do
-  # Run test suite + coverage
-  coverage run \
-    --source=${ROOTPATH} \
-    --rcfile ${ROOTPATH}/.coveragerc $filename
+ # Run test suite + coverage
+ coverage run \
+   --source=${ROOTPATH} \
+   --rcfile ${ROOTPATH}/.coveragerc $filename
 done
 
 # Run the test suite on the modules
 for filename in fink_science/*/*.py
 do
-  # Skip Spark if needed
-  if [[ "$NO_SPARK" = true ]] && [[ ${filename##*/} = 'processor.py' ]] ; then
-    echo '[NO SPARK] skipping' $filename
-  else
-    echo $filename
-    # Run test suite + coverage
-    coverage run \
-      --source=${ROOTPATH} \
-      --rcfile ${ROOTPATH}/.coveragerc $filename
-  fi
+ # Skip Spark if needed
+ if [[ "$NO_SPARK" = true ]] && [[ ${filename##*/} = 'processor.py' ]] ; then
+   echo '[NO SPARK] skipping' $filename
+ else
+   echo $filename
+   # Run test suite + coverage
+   coverage run \
+     --source=${ROOTPATH} \
+     --rcfile ${ROOTPATH}/.coveragerc $filename
+ fi
 done
 
 # Combine individual reports in one
