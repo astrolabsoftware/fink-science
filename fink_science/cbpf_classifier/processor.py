@@ -23,6 +23,7 @@ import tensorflow as tf
 from tensorflow_addons import optimizers
 
 from fink_science.cbpf_classifier.utilities import normalize_lc, extract_max_prob
+from fink_science.tester import spark_unit_tests
 
 tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
 
@@ -163,3 +164,16 @@ def predict_nn(
     to_return = [extract_max_prob(elem) for elem in preds]
 
     return pd.Series(to_return)
+
+
+if __name__ == "__main__":
+    """ Execute the test suite """
+
+    globs = globals()
+    path = os.path.dirname(__file__)
+
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_sample_seed0.parquet'.format(path)
+    globs["elasticc_alert_sample"] = elasticc_alert_sample
+
+    # Run the test suite
+    spark_unit_tests(globs)
