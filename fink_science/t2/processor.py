@@ -366,7 +366,6 @@ def t2_max_prob_elasticc(
             ]
         )
 
-        keys = class_names
         values = y_preds.tolist()[0]
 
         idx = np.argmax(values)
@@ -380,7 +379,7 @@ def t2_max_prob_elasticc(
     t2_class[mask] = classes
     t2_max_prob[mask] = max_probs
 
-        # return main class and associated probability
+    # return main class and associated probability
     return pd.Series([[i, j] for i, j in zip(t2_class, t2_max_prob)])
 
 if __name__ == "__main__":
