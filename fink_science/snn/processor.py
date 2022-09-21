@@ -385,10 +385,10 @@ def snn_broad_elasticc(
     >>> df = df.withColumn('snn_max_prob', F.col('preds').getItem(1))
 
     >>> df.filter(df['snn_class'] == 0).count()
-    5
+    19
     """
     mask = apply_selection_cuts_ztf(
-        psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=180)
+        psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=1e6)
 
     if len(midPointTai[mask]) == 0:
         snn_class = np.ones(len(midPointTai), dtype=float) * -1
