@@ -73,13 +73,13 @@ class LiteModel:
 def get_lite_model(model_name: str = 'quantized-model-GR-noZ-28341-1654269564-0.5.1.dev73+g70f85f8-LL0.836.tflite'):
     path = os.path.dirname(__file__)
     model_path = (
-        f"{path}/data/models/{model_name}"
+        f"{path}/data/models/t2/{model_name}"
     )
     model = LiteModel.from_file(model_path=model_path)
     return model
 
-def get_model(model_name: str = 't2', model_id: str = "23057-1642540624-0.1.dev963+g309c9d8"):
-    """ Load pre-trained model for T2
+def get_model(model_name: str = "model-UGRIZY-wZ-31367-1654360237-0.5.1.dev78+g702e399.d20220604-LL0.450"):
+    """ Load pre-trained model for T2. Default is tinho plasticc
 
     Parameters
     ----------
@@ -94,7 +94,7 @@ def get_model(model_name: str = 't2', model_id: str = "23057-1642540624-0.1.dev9
     """
     path = os.path.dirname(__file__)
     model_path = (
-        f"{path}/data/models/{model_name}/model-{model_id}"
+        f"{path}/data/models/t2/{model_name}"
     )
 
     model = keras.models.load_model(
@@ -145,7 +145,5 @@ def apply_selection_cuts_ztf(
 
     list_of_sn_host = return_list_of_eg_host()
     mask *= cdsxmatch.apply(lambda x: x in list_of_sn_host)
-
-    # Add cuts on having exactly 2 filters
 
     return mask
