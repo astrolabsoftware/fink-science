@@ -44,32 +44,29 @@ done
 export PYTHONPATH="${SPARK_HOME}/python/test_coverage:$PYTHONPATH"
 export COVERAGE_PROCESS_START="${ROOTPATH}/.coveragerc"
 
-# # Run the test suite on the utilities
-# for filename in fink_science/*.py
-# do
-#  # Run test suite + coverage
-#  coverage run \
-#    --source=${ROOTPATH} \
-#    --rcfile ${ROOTPATH}/.coveragerc $filename
-# done
+# Run the test suite on the utilities
+for filename in fink_science/*.py
+do
+ # Run test suite + coverage
+ coverage run \
+   --source=${ROOTPATH} \
+   --rcfile ${ROOTPATH}/.coveragerc $filename
+done
 
-# # Run the test suite on the modules
-# for filename in fink_science/*/*.py
-# do
-#  # Skip Spark if needed
-#  if [[ "$NO_SPARK" = true ]] && [[ ${filename##*/} = 'processor.py' ]] ; then
-#    echo '[NO SPARK] skipping' $filename
-#  else
-#    echo $filename
-#    # Run test suite + coverage
-#    coverage run \
-#      --source=${ROOTPATH} \
-#      --rcfile ${ROOTPATH}/.coveragerc $filename
-#  fi
-# done
-coverage run \
+# Run the test suite on the modules
+for filename in fink_science/*/*.py
+do
+ # Skip Spark if needed
+ if [[ "$NO_SPARK" = true ]] && [[ ${filename##*/} = 'processor.py' ]] ; then
+   echo '[NO SPARK] skipping' $filename
+ else
+   echo $filename
+   # Run test suite + coverage
+   coverage run \
      --source=${ROOTPATH} \
-     --rcfile ${ROOTPATH}/.coveragerc fink_science/cbpf_classifier/processor.py
+     --rcfile ${ROOTPATH}/.coveragerc $filename
+ fi
+done
 
 # Combine individual reports in one
 coverage combine
