@@ -308,11 +308,11 @@ def snn_ia_elasticc(
     return pd.Series(to_return)
 
 def extract_max_prob(arr):
-        """ Extract main class and associated probability from a vector of probabilities
-        """
-        array = np.array(arr)
-        index = np.argmax(array)
-        return {'class': index, 'prob': array[index]}
+    """ Extract main class and associated probability from a vector of probabilities
+    """
+    array = np.array(arr)
+    index = np.argmax(array)
+    return {'class': index, 'prob': array[index]}
 
 @pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 def snn_broad_elasticc(
