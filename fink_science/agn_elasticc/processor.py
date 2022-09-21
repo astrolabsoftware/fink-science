@@ -26,8 +26,7 @@ from fink_science.tester import spark_unit_tests
 def agn_spark(
         diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName,
         ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec,
-        model_path=None
-    ):
+        model_path=None):
     """High level spark wrapper for the AGN classifier on ELASTiCC data
 
     Parameters
