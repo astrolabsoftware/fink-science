@@ -39,6 +39,15 @@ def predict_nn(
 ) -> pd.Series:
     """ Return predctions from a CBPF model using Elasticc alert data
 
+    For the default model, one has:
+    class_dict = {
+        0: 11,
+        1: 12,
+        2: 13,
+        3: 21,
+        4: 22,
+    }
+
     Parameters:
     -----------
     midpointTai: spark DataFrame Column
@@ -101,7 +110,7 @@ def predict_nn(
     >>> df = df.withColumn('cbpf_max_prob', F.col('preds').getItem(1))
 
     >>> df.filter(df['cbpf_class'] == 0).count()
-    5
+    59
     """
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
