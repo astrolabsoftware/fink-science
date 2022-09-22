@@ -50,7 +50,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     -------
     np.array
         ordered probabilities of being an AGN
-        Return -1 if the minimum number of point per passband
+        Return 0 if the minimum number of point per passband
         (specified in kernel.py) is not respected.
 
 
