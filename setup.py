@@ -40,8 +40,10 @@ setuptools.setup(
             'data/models/snn_models/*/*.pt',
             'data/models/snn_models/*/*.json',
             'data/models/snn_models/*/*.txt',
-            'data/models/cbpf_models/*',
-            'data/models/t2/*',
+            'data/models/cbpf_models/*/*.pb',
+            'data/models/cbpf_models/*/*/variables*',
+            'data/models/t2/*/*.pb',
+            'data/models/t2/*/*/variables*',
             'data/catalogs/*.parquet'],
     },
 
