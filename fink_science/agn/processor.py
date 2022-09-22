@@ -95,7 +95,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     mask = (nbands == 2) & (ng >= 4) & (nr >= 4)
 
     if len(objectId[mask]) == 0:
-        return pd.Series(np.ones(len(objectId), dtype=float) * -1)
+        return pd.Series(np.zeros(len(objectId), dtype=float))
 
     data = pd.DataFrame(
         {
@@ -111,7 +111,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
 
     proba = agn_classifier(data[mask])
 
-    to_return = np.ones(len(jd), dtype=float) * -1
+    to_return = np.zeros(len(jd), dtype=float)
     to_return[mask] = proba
     return pd.Series(to_return)
 
