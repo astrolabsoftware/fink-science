@@ -71,7 +71,7 @@ def agn_classifier(data, model_path=None):
     -------
     np.array
         ordered probabilities of being an AGN
-        Return -1 if the minimum number of point per passband is not respected
+        Return 0 if the minimum number of point per passband is not respected
     """
 
     formated = fe.format_data(data)

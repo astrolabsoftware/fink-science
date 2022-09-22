@@ -61,7 +61,7 @@ def agn_spark(
     -------
     np.array
         ordered probabilities of being an AGN
-        Return -1 if the minimum points number is not respected.
+        Return 0 if the minimum points number is not respected.
     """
 
     data = pd.DataFrame(
