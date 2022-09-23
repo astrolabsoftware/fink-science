@@ -331,8 +331,8 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     >>> args += [F.col('cdsxmatch'), F.col('diaSource.nobs')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
-    >>> df.filter(df['pIa'] > 0.0).count()
-    29
+    >>> df.filter(df['pIa'] > 0.5).count()
+    0
     """
     mask = apply_selection_cuts_ztf(psFlux, nobs, cdsxmatch, maxndethist=100)
 
