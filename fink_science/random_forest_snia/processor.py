@@ -273,7 +273,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
     return pd.Series(concatenated_features)
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore_sigmoid_elasticc_(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, maxduration=None, model=None) -> pd.Series:
+def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, maxduration=None, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
