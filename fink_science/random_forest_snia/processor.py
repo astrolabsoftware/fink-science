@@ -273,7 +273,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
     return pd.Series(concatenated_features)
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, maxduration=None, model=None) -> pd.Series:
+def rfscore_sigmoid_elasticc_(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, maxduration=None, model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
@@ -366,6 +366,20 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         f1 = pdf['SNID'] == id
         pdf_sub = pdf[f1]
         features = get_sigmoid_features_elasticc(pdf_sub)
+
+        # Do not classify if less than 2 bands
+        feats = []
+        nfeat_per_band = 6
+        nbands = 6
+        for i in range(nbands):
+            feats.append(features[i * nfeat_per_band])
+
+        n_nonzero_feats = np.sum(np.array(feats) != 0)
+
+        if n_nonzero_feats < 2:
+            flag.append(False)
+        else:
+            flag.append(True)
         test_features.append(features)
 
     flag = np.array(flag, dtype=np.bool)
