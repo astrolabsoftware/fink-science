@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 import numpy as np
 import pandas as pd
@@ -41,7 +42,6 @@ def predict_nn(
         model=None
 ) -> pd.DataFrame:
     """ Return predctions from a CBPF hierarchical model using Elasticc alert data
-
     For the default model, one has:
     class_dict = {
         0: 11,
@@ -50,7 +50,6 @@ def predict_nn(
         3: 21,
         4: 22,
     }
-
     For the fine classifiers mapping, one has:
     fine_classifier_map = {
         0: sn_model,
@@ -59,36 +58,37 @@ def predict_nn(
         3: periodic_model,
         4: None
     }
-
     Each of the fine classifiers has it's own mapping:
     SN model:
         SN_map = {
-            0: 'SNIa'
-            1: 'SNIb/c
-            2: 'SNII'
-            3: 'SNIax'
+            0: 'SNIa',
+            1: 'SNIb/c',
+            2: 'SNII',
+            3: 'SNIax',
             4: 'SNIa-91bg'
         }
+    Fast model:
         fast_model = {
-            0: 'KN'
-            1: 'M-dwarf-flare'
-            2: 'dwarf novae'
+            0: 'KN',
+            1: 'M-dwarf-flare',
+            2: 'dwarf novae',
             3: 'uLens'
         }
+    Long model:
         long_model = {
-            0: 'SLSN'
-            1: 'TDE'
-            2: 'ILOT'
-            3: 'CART'
+            0: 'SLSN',
+            1: 'TDE',
+            2: 'ILOT',
+            3: 'CART',
             4: 'PISN'
         }
+    Periodic model:
         periodic_model = {
-            0: 'Cepheid'
-            1: 'RR Lyrae
-            2: 'Delta Scuti'
+            0: 'Cepheid',
+            1: 'RR Lyrae',
+            2: 'Delta Scuti',
             3: 'EB'
         }
-
     Parameters:
     -----------
     midpointTai: spark DataFrame Column
@@ -111,7 +111,6 @@ def predict_nn(
         error in photometric redshift of host galaxy (float)
     model: spark DataFrame Column
         path to pre-trained Hierarchical Classifier model. (string)
-
     Returns:
     --------
     preds_df: pd.DataFrame
@@ -119,39 +118,31 @@ def predict_nn(
         with probabilities for broad classes (e.g. SN-like, Fast, Long,
         Periodic and AGN) and a second column called 'fine_preds' with
         predictions for finer_classes according to each fine classifier.
-
     Examples
     -----------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
-
     # Assuming random positions
     >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
     >>> df = df.withColumn('roid', F.lit(0))
-
     # Required alert columns
     >>> what = ['midPointTai', 'psFlux', 'psFluxErr', 'filterName']
-
     # Use for creating temp name
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
-
     # Append temp columns with historical + current measurements
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
     ...         current='diaSource', history='prvDiaForcedSources')
-
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += [F.col('diaObject.mwebv'), F.col('diaObject.z_final'), F.col('diaObject.z_final_err')]
     >>> args += [F.col('diaObject.hostgal_zphot'), F.col('diaObject.hostgal_zphot_err')]
     >>> df = df.withColumn('preds', predict_nn(*args))
-
     >>> df = df.withColumn('cbpf_class', F.col('preds').getItem(0).astype('int'))
     >>> df = df.withColumn('cbpf_max_prob', F.col('preds').getItem(1))
-
     >>> df.filter(df['cbpf_class'] == 0).count()
     39
     """
@@ -234,7 +225,7 @@ def predict_nn(
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/cbpf_models/model_test_meta_ragged_1det_broad_tuner.h5'
+        model_path = curdir + '/data/models/cats_models/model_test_meta_ragged_1det_broad_tuner.h5'
     else:
         model_path = model.values[0]
 
@@ -243,10 +234,33 @@ def predict_nn(
             'RectifiedAdam': optimizers.RectifiedAdam
         })
     preds = NN.predict(X)
+    preds_fine = []
 
-    to_return = [extract_max_prob(elem) for elem in preds]
+    for i, p in enumerate(preds):
+        if np.nan not in p:
+            if p.argmax() <= 3:
+                pred = fine_classifier_map[p.argmax()].predict(
+                    [X['band'][i:i+1], X['lc'][i:i+1], X['meta'][i:i+1]])
+                if pred.shape[1] == 4:
+                    pred = np.concatenate((pred, [[np.nan]]), axis=1)
 
-    return pd.Series(to_return)
+                preds_fine.append(pred)
+
+            else:
+                to_concat = np.array([[p[-1]]])
+                pred = np.concatenate((to_concat, [[np.nan]*4]), axis=1)
+                preds_fine.append(pred)
+        else:
+            preds_fine.append(np.array([[np.nan]*5]))
+
+    preds_fine = np.concatenate(preds_fine)
+
+    preds_df = pd.DataFrame({
+        'broad_preds': [p for p in preds],
+        'fine_preds': list(preds_fine)
+    })
+
+    return preds_df
 
 
 if __name__ == "__main__":
