@@ -24,7 +24,7 @@ import tensorflow as tf
 from tensorflow_addons import optimizers
 
 from fink_science import __file__
-from fink_science.cats.utilities import normalize_lc, extract_max_prob
+from fink_science.cats.utilities import normalize_lc
 from fink_science.tester import spark_unit_tests
 
 tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
@@ -153,21 +153,21 @@ def predict_nn(
     models_path = curdir + '/data/models/cats_models/'
 
     sn_model = tf.keras.models.load_model(
-        models_path+'/model_test_meta_ragged_1det_sn_tuner_1month',
+        models_path + '/model_test_meta_ragged_1det_sn_tuner_1month',
         custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
     )
     fast_model = tf.keras.models.load_model(
-        models_path+'/model_test_meta_ragged_1det_fast_tanh',
+        models_path + '/model_test_meta_ragged_1det_fast_tanh',
         custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
     )
 
     long_model = tf.keras.models.load_model(
-        models_path+'/model_test_meta_ragged_1det_long_tuner_1month',
+        models_path + '/model_test_meta_ragged_1det_long_tuner_1month',
         custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
     )
 
     periodic_model = tf.keras.models.load_model(
-        models_path+'/model_test_meta_ragged_1det_periodic_tuner_1month',
+        models_path + '/model_test_meta_ragged_1det_periodic_tuner_1month',
         custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
     )
 
@@ -225,8 +225,7 @@ def predict_nn(
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir +\
-        '/data/models/cats_models/model_test_meta_ragged_1det_broad_tuner.h5'
+        model_path = curdir + '/data/models/cats_models/model_test_meta_ragged_1det_broad_tuner.h5'
     else:
         model_path = model.values[0]
 
@@ -241,7 +240,7 @@ def predict_nn(
         if np.nan not in p:
             if p.argmax() <= 3:
                 pred = fine_classifier_map[p.argmax()].predict(
-                    [X['band'][i:i+1], X['lc'][i:i+1], X['meta'][i:i+1]])
+                    [X['band'][i:i + 1], X['lc'][i:i + 1], X['meta'][i:i + 1]])
                 if pred.shape[1] == 4:
                     pred = np.concatenate((pred, [[np.nan]]), axis=1)
 
@@ -249,10 +248,10 @@ def predict_nn(
 
             else:
                 to_concat = np.array([[p[-1]]])
-                pred = np.concatenate((to_concat, [[np.nan]*4]), axis=1)
+                pred = np.concatenate((to_concat, [[np.nan] * 4]), axis=1)
                 preds_fine.append(pred)
         else:
-            preds_fine.append(np.array([[np.nan]*5]))
+            preds_fine.append(np.array([[np.nan] * 5]))
 
     preds_fine = np.concatenate(preds_fine)
 
