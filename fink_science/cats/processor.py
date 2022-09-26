@@ -63,32 +63,29 @@ def predict_nn(
     Each of the fine classifiers has it's own mapping:
     SN model:
         SN_map = {
-            0: 'SNIa',
-            1: 'SNIb/c',
-            2: 'SNII',
-            3: 'SNIax',
+            0: 'SNIa'
+            1: 'SNIb/c
+            2: 'SNII'
+            3: 'SNIax'
             4: 'SNIa-91bg'
         }
-    Fast model:
         fast_model = {
-            0: 'KN',
-            1: 'M-dwarf-flare',
-            2: 'dwarf novae',
+            0: 'KN'
+            1: 'M-dwarf-flare'
+            2: 'dwarf novae'
             3: 'uLens'
         }
-    Long model:
         long_model = {
-            0: 'SLSN',
-            1: 'TDE',
-            2: 'ILOT',
-            3: 'CART',
+            0: 'SLSN'
+            1: 'TDE'
+            2: 'ILOT'
+            3: 'CART'
             4: 'PISN'
         }
-    Periodic model:
         periodic_model = {
-            0: 'Cepheid',
-            1: 'RR Lyrae',
-            2: 'Delta Scuti',
+            0: 'Cepheid'
+            1: 'RR Lyrae
+            2: 'Delta Scuti'
             3: 'EB'
         }
 
@@ -237,7 +234,7 @@ def predict_nn(
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/cats_models/model_test_meta_ragged_1det_broad_tuner.h5'
+        model_path = curdir + '/data/models/cbpf_models/model_test_meta_ragged_1det_broad_tuner.h5'
     else:
         model_path = model.values[0]
 
@@ -246,33 +243,10 @@ def predict_nn(
             'RectifiedAdam': optimizers.RectifiedAdam
         })
     preds = NN.predict(X)
-    preds_fine = []
 
-    for i, p in enumerate(preds):
-        if np.nan not in p:
-            if p.argmax() <= 3:
-                pred = fine_classifier_map[p.argmax()].predict(
-                    [X['band'][i:i+1], X['lc'][i:i+1], X['meta'][i:i+1]])
-                if pred.shape[1] == 4:
-                    pred = np.concatenate((pred, [[np.nan]]), axis=1)
+    to_return = [extract_max_prob(elem) for elem in preds]
 
-                preds_fine.append(pred)
-
-            else:
-                to_concat = np.array([[p[-1]]])
-                pred = np.concatenate((to_concat, [[np.nan]*4]), axis=1)
-                preds_fine.append(pred)
-        else:
-            preds_fine.append(np.array([[np.nan]*5]))
-
-    preds_fine = np.concatenate(preds_fine)
-
-    preds_df = pd.DataFrame({
-        'broad_preds': [p for p in preds],
-        'fine_preds': list(preds_fine)
-    })
-
-    return preds_df
+    return pd.Series(to_return)
 
 
 if __name__ == "__main__":

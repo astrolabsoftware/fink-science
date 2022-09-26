@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # General
 numpy>=1.17
 pandas
@@ -38,6 +39,7 @@ scikit-image
 light-curve-python>=0.3.5
 light-curve>=0.4.0
 
+=======
 # General
 numpy>=1.17
 pandas
@@ -81,3 +83,4 @@ light-curve>=0.4.0
 # AGN
 iminuit==2.11.2
 
+>>>>>>> 6bb240e59b205bcab5333d7b0be01aa93eac40f8
