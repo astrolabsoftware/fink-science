@@ -59,7 +59,7 @@ def agn_classifier(data):
     -------
     np.array
         ordered probabilities of being an AGN
-        Return -1 if the minimum number of point per passband is not respected
+        Return 0.0 if the minimum number of point per passband is not respected
 
     Examples
     --------
@@ -67,9 +67,9 @@ def agn_classifier(data):
     >>> proba = agn_classifier(df)
     >>> len(proba)
     2
-    >>> len(proba[proba!=-1])
+    >>> len(proba[proba != 0.0])
     1
-    >>> len(proba[proba==-1])
+    >>> len(proba[proba == 0.0])
     1
     """
 

@@ -1,12 +1,30 @@
-from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import ArrayType
-from pyspark.sql.types import FloatType
-
-import tensorflow as tf
+# Copyright 2020-2022 AstroLab Software
+# Author: Andre Santos, Bernardo Fraga, Clecio de Bom
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import os
 import numpy as np
 import pandas as pd
+
+from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.types import ArrayType, FloatType
+
+import tensorflow as tf
 from tensorflow_addons import optimizers
-from fink_science.cbpf_classifier.utilities import normalize_lc
+
+from fink_science import __file__
+from fink_science.cbpf_classifier.utilities import normalize_lc, extract_max_prob
+from fink_science.tester import spark_unit_tests
 
 tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
 
@@ -17,10 +35,18 @@ def predict_nn(
         filterName: pd.Series, mwebv: pd.Series, z_final: pd.Series,
         z_final_err: pd.Series, hostgal_zphot: pd.Series,
         hostgal_zphot_err: pd.Series,
-        model
+        model=None
 ) -> pd.Series:
-    """
-    Return predctions from a model given inputs as pd.Series
+    """ Return predctions from a CBPF model using Elasticc alert data
+
+    For the default model, one has:
+    class_dict = {
+        0: 11,
+        1: 12,
+        2: 13,
+        3: 21,
+        4: 22,
+    }
 
     Parameters:
     -----------
@@ -50,6 +76,41 @@ def predict_nn(
     preds: pd.Series
         predictions of a broad class in an pd.Series format
         (pd.Series[np.ndarray[float]]).
+
+    Examples
+    -----------
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+    >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
+
+    # Assuming random positions
+    >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
+    >>> df = df.withColumn('roid', F.lit(0))
+
+    # Required alert columns
+    >>> what = ['midPointTai', 'psFlux', 'psFluxErr', 'filterName']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...     df = concat_col(
+    ...         df, colname, prefix=prefix,
+    ...         current='diaSource', history='prvDiaForcedSources')
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('diaObject.mwebv'), F.col('diaObject.z_final'), F.col('diaObject.z_final_err')]
+    >>> args += [F.col('diaObject.hostgal_zphot'), F.col('diaObject.hostgal_zphot_err')]
+    >>> df = df.withColumn('preds', predict_nn(*args))
+
+    >>> df = df.withColumn('cbpf_class', F.col('preds').getItem(0).astype('int'))
+    >>> df = df.withColumn('cbpf_max_prob', F.col('preds').getItem(1))
+
+    >>> df.filter(df['cbpf_class'] == 0).count()
+    39
     """
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
@@ -97,10 +158,32 @@ def predict_nn(
         else:
             X['meta'][i, 1:] = x
 
+    if model is None:
+        # Load pre-trained model
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        model_path = curdir + '/data/models/cbpf_models/model_test_meta_ragged_1det_broad_tuner'
+    else:
+        model_path = model.values[0]
+
     NN = tf.keras.models.load_model(
-        model.values[0], custom_objects={
+        model_path, custom_objects={
             'RectifiedAdam': optimizers.RectifiedAdam
         })
     preds = NN.predict(X)
 
-    return pd.Series(preds)
+    to_return = [extract_max_prob(elem) for elem in preds]
+
+    return pd.Series(to_return)
+
+
+if __name__ == "__main__":
+    """ Execute the test suite """
+
+    globs = globals()
+    path = os.path.dirname(__file__)
+
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_sample_seed0.parquet'.format(path)
+    globs["elasticc_alert_sample"] = elasticc_alert_sample
+
+    # Run the test suite
+    spark_unit_tests(globs)

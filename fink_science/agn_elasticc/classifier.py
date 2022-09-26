@@ -23,10 +23,16 @@ import pandas as pd  # noqa: F401
 import numpy as np  # noqa: F401
 
 
-def load_classifier():
+def load_classifier(model_path=None):
     """
     load the random forest classifier trained to recognize the AGN
     on binary cases : AGNs vs non-AGNs  (pickle format).
+
+    Parameters
+    ----------
+    model_path: str, optional
+        Path to the model. If None (default), it is
+        taken from `k.CLASSIFIER`.
 
     Returns
     -------
@@ -40,13 +46,16 @@ def load_classifier():
     >>> rf.n_features_
     39
     """
-    with open(k.CLASSIFIER, "rb") as f:
+    if model_path is None:
+        model_path = k.CLASSIFIER
+
+    with open(model_path, "rb") as f:
         clf = pickle.load(f)
 
     return clf
 
 
-def agn_classifier(data):
+def agn_classifier(data, model_path=None):
     """
     call the agn_classifier
 
@@ -54,12 +63,15 @@ def agn_classifier(data):
     ----------
     data : DataFrame
         alerts from fink with aggregated lightcurves
+    model_path: str, optional
+        Path to the model. If None (default), it is
+        taken from `k.CLASSIFIER`.
 
     Returns
     -------
     np.array
         ordered probabilities of being an AGN
-        Return -1 if the minimum number of point per passband is not respected
+        Return 0 if the minimum number of point per passband is not respected
     """
 
     formated = fe.format_data(data)
@@ -70,7 +82,7 @@ def agn_classifier(data):
 
     features = fe.merge_features(all_features, k.MINIMUM_POINTS)
 
-    clf = load_classifier()
+    clf = load_classifier(model_path)
 
     proba = fe.get_probabilities(clf, features, valid)
 
