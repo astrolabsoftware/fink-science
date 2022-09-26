@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # General
 numpy>=1.17
 pandas
@@ -38,3 +39,48 @@ scikit-image
 light-curve-python>=0.3.5
 light-curve>=0.4.0
 
+=======
+# General
+numpy>=1.17
+pandas
+scipy==1.4.1
+scikit-learn==1.0.2
+
+# Coverage
+coveralls
+coverage>=4.2
+codecov
+
+# Spark
+pyarrow
+
+# xmatch
+astropy
+astroquery
+
+# Microlensing
+# You would simply use pip install git+https://github.com/JulienPeloton/LIA.git@4513654b15a0760312eff2661b0fcf4989171ce3 --upgrade
+-e git+https://github.com/JulienPeloton/LIA.git@4513654b15a0760312eff2661b0fcf4989171ce3#egg=LIA
+
+# Supernnova
+supernnova
+h5py
+natsort
+colorama
+seaborn
+scikit-image
+
+# Random Forest AL
+-e git+https://github.com/emilleishida/fink_sn_activelearning.git@fdd9eda71f56d5738c31947302f0bddf78e26780#egg=fink_sn_activelearning
+
+# KN
+-e git+https://github.com/b-biswas/kndetect@kndetect#egg=kndetect
+
+# SNAD
+light-curve-python>=0.3.5
+light-curve>=0.4.0
+
+# AGN
+iminuit==2.11.2
+
+>>>>>>> 6bb240e59b205bcab5333d7b0be01aa93eac40f8

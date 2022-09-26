@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 name: Sentinel
 
 on:
@@ -49,3 +50,62 @@ jobs:
         pip install git+https://github.com/COINtoolbox/ActSNClass.git@2c61da91a9d13834d39804fc35aeb3245ba20755#egg=actsnclass
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
+=======
+name: Sentinel
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test-suite:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        container: ["julienpeloton/fink-ci:prod", "julienpeloton/fink-ci:dev"]
+
+    container:
+      image: ${{ matrix.container }}
+
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up env [1/2]
+      run: |
+        echo "FINK_SCIENCE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+        echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
+        echo "${BINPATH}" >> $GITHUB_PATH
+
+    - name: Set up env [2/2]
+      run: |
+        echo "PYTHONPATH="${PYTHONPATH}:${SPARKLIB}:${FINK_SCIENCE}"" >> $GITHUB_ENV
+
+    - name: Check env
+      run: |
+        echo "FINK_SCIENCE: $FINK_SCIENCE"
+        echo "SPARK_HOME: $SPARK_HOME"
+        echo "SPARKLIB: $SPARKLIB"
+        echo "PYTHONPATH: $PYTHONPATH"
+        echo "JAVA_HOME: $JAVA_HOME"
+        echo `python -V`
+
+    - name: Run test suites
+      run: |
+        pip install --upgrade --force-reinstall supernnova
+        pip install fink-utils --upgrade
+        pip install iminuit==2.11.2
+        pip install scikit-learn==1.0.2
+        pip install git+https://github.com/b-biswas/kndetect --upgrade
+        pip install git+https://github.com/emilleishida/fink_sn_activelearning.git@e16152091ff8f9ece8d4823e8da1f498d60ac45f#egg=actsnfink
+        pip install git+https://github.com/COINtoolbox/ActSNClass.git@2c61da91a9d13834d39804fc35aeb3245ba20755#egg=actsnclass
+        pip uninstall -y supernnova
+        pip install --no-cache-dir torch==1.12.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+        pip install git+https://github.com/supernnova/SuperNNova.git@7765ac51843997a9e6df4ff866f416ab48010fa2
+
+        ./run_tests.sh
+        curl -s https://codecov.io/bash | bash
+>>>>>>> 6bb240e59b205bcab5333d7b0be01aa93eac40f8
