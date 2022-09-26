@@ -46,7 +46,7 @@ def predict_nn(
 
     Returns:
     --------
-    preds: pd.Series
+    preds: pd.DataFrame
         predictions of a broad class in an pd.Series format (pd.Series[int])
     """
 
