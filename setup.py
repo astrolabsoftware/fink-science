@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Copyright 2019 AstroLab Software
 # Author: Julien Peloton
 #
@@ -56,7 +55,6 @@ setuptools.setup(
         'Source': 'https://github.com/astrolabsoftware/fink-science'
     },
 )
-=======
 # Copyright 2019 AstroLab Software
 # Author: Julien Peloton
 #
@@ -119,4 +117,3 @@ setuptools.setup(
         'Source': 'https://github.com/astrolabsoftware/fink-science'
     },
 )
->>>>>>> 6bb240e59b205bcab5333d7b0be01aa93eac40f8

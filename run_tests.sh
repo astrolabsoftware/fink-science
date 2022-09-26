@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #!/bin/bash
 # Copyright 2019-2022 AstroLab Software
 # Author: Julien Peloton
@@ -76,7 +75,6 @@ unset COVERAGE_PROCESS_START
 
 coverage report
 coverage html
-=======
 #!/bin/bash
 # Copyright 2019-2022 AstroLab Software
 # Author: Julien Peloton
@@ -154,4 +152,3 @@ unset COVERAGE_PROCESS_START
 
 coverage report -m
 coverage html
->>>>>>> 6bb240e59b205bcab5333d7b0be01aa93eac40f8
