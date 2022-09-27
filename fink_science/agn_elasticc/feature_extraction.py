@@ -604,7 +604,7 @@ def get_probabilities(clf, features, valid):
         ordered probabilities of being an AGN
     """
 
-    final_proba = np.array([-1] * len(valid)).astype(np.float64)
+    final_proba = np.array([0.0] * len(valid)).astype(np.float64)
 
     if len(features) > 0:
         agn_or_not = clf.predict_proba(features.iloc[:, 1:])

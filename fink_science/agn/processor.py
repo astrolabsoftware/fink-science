@@ -50,7 +50,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     -------
     np.array
         ordered probabilities of being an AGN
-        Return -1 if the minimum number of point per passband
+        Return 0 if the minimum number of point per passband
         (specified in kernel.py) is not respected.
 
 
@@ -77,10 +77,10 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     >>> args += ['candidate.ra', 'candidate.dec']
     >>> df_agn = df.withColumn('proba', agn_spark(*args))
 
-    >>> df_agn.filter(df_agn['proba'] != -1).count()
+    >>> df_agn.filter(df_agn['proba'] != 0.0).count()
     145
 
-    >>> df_agn.filter(df_agn['proba'] == -1.0).count()
+    >>> df_agn.filter(df_agn['proba'] == 0.0).count()
     175
 
     >>> df_agn.filter(df_agn['proba'] > 0.5).count()
@@ -95,7 +95,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     mask = (nbands == 2) & (ng >= 4) & (nr >= 4)
 
     if len(objectId[mask]) == 0:
-        return pd.Series(np.ones(len(objectId), dtype=float) * -1)
+        return pd.Series(np.zeros(len(objectId), dtype=float))
 
     data = pd.DataFrame(
         {
@@ -111,7 +111,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
 
     proba = agn_classifier(data[mask])
 
-    to_return = np.ones(len(jd), dtype=float) * -1
+    to_return = np.zeros(len(jd), dtype=float)
     to_return[mask] = proba
     return pd.Series(to_return)
 
