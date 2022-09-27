@@ -17,6 +17,7 @@ from fink_science.agn_elasticc.classifier import agn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 import pandas as pd
+import numpy as np
 import os
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
@@ -64,6 +65,15 @@ def agn_spark(
         Return 0 if the minimum points number is not respected.
     """
 
+    # we want at least 2 bands and 4 points per band
+    nbands = cfilterName.apply(lambda x: len(np.unique(x)))
+    npoints = cfilterName.apply(lambda x: len(x))
+
+    mask = (nbands >= 2) & (npoints >= 8)
+
+    if len(diaObjectId[mask]) == 0:
+        return pd.Series(np.zeros(len(diaObjectId), dtype=float))
+
     data = pd.DataFrame(
         {
             "objectId": diaObjectId,
@@ -83,8 +93,11 @@ def agn_spark(
     if model_path is not None:
         model_path = model_path.values[0]
 
-    proba = agn_classifier(data, model_path)
-    return pd.Series(proba)
+    proba = agn_classifier(data[mask], model_path)
+
+    to_return = np.zeros(len(cmidPoinTai), dtype=float)
+    to_return[mask] = proba
+    return pd.Series(to_return)
 
 
 if __name__ == "__main__":
