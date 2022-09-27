@@ -89,7 +89,7 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
     >>> df = df.withColumn('t2_maxclass', t2_max_prob(*args))
 
     >>> df.filter(df['t2_maxclass'] == 'SNIa').count()
-    4
+    2
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 
