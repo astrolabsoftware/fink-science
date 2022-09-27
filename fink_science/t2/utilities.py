@@ -78,7 +78,7 @@ def get_lite_model(model_name: str = 'quantized-model-GR-noZ-28341-1654269564-0.
     model = LiteModel.from_file(model_path=model_path)
     return model
 
-def get_model(model_name: str = "model-UGRIZY-wZ-31367-1654360237-0.5.1.dev78+g702e399.d20220604-LL0.450"):
+def get_model(model_name: str = "model-UGRIZY-wZ-1664224704-None-v0.10.0-26-g627bc8a-LL0.987"):
     """ Load pre-trained model for T2. Default is tinho plasticc
 
     Parameters
