@@ -67,8 +67,9 @@ def agn_spark(
 
     # we want at least 2 bands and 4 points per band
     nbands = cfilterName.apply(lambda x: len(np.unique(x)))
+    npoints = cfilterName.apply(lambda x: len(x))
 
-    mask = (nbands >= 2)
+    mask = (nbands >= 2) & (npoints >= 8)
 
     if len(diaObjectId[mask]) == 0:
         return pd.Series(np.zeros(len(diaObjectId), dtype=float))
