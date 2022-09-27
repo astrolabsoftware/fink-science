@@ -93,8 +93,10 @@ def agn_spark(
     if model_path is not None:
         model_path = model_path.values[0]
 
-    proba = agn_classifier(data[mask], model_path)
+    # agn_classifier relies on index being a range from 0 to N
+    data_sub = data[mask].reset_index()
 
+    proba = agn_classifier(data_sub, model_path)
     to_return = np.zeros(len(cmidPoinTai), dtype=float)
     to_return[mask] = proba
     return pd.Series(to_return)
