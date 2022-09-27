@@ -24,7 +24,7 @@ import tensorflow as tf
 from tensorflow_addons import optimizers
 
 from fink_science import __file__
-from fink_science.cats.utilities import normalize_lc
+from fink_science.cats.utilities import normalize_lc, extract_max_prob
 from fink_science.tester import spark_unit_tests
 
 tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
@@ -123,26 +123,31 @@ def predict_nn(
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
+
     # Assuming random positions
     >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
     >>> df = df.withColumn('roid', F.lit(0))
+
     # Required alert columns
     >>> what = ['midPointTai', 'psFlux', 'psFluxErr', 'filterName']
+
     # Use for creating temp name
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
+
     # Append temp columns with historical + current measurements
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
     ...         current='diaSource', history='prvDiaForcedSources')
+
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += [F.col('diaObject.mwebv'), F.col('diaObject.z_final'), F.col('diaObject.z_final_err')]
     >>> args += [F.col('diaObject.hostgal_zphot'), F.col('diaObject.hostgal_zphot_err')]
     >>> df = df.withColumn('preds', predict_nn(*args))
-    >>> df = df.withColumn('cbpf_class', F.col('preds').getItem(0).astype('int'))
-    >>> df = df.withColumn('cbpf_max_prob', F.col('preds').getItem(1))
+    >>> df = df.withColumn('cbpf_class', F.col('preds.broad').getItem(0).astype('int'))
+    >>> df = df.withColumn('cbpf_max_prob', F.col('preds.broad').getItem(1))
     >>> df.filter(df['cbpf_class'] == 0).count()
     39
     """
@@ -153,21 +158,21 @@ def predict_nn(
     models_path = curdir + '/data/models/cats_models/'
 
     sn_model = tf.keras.models.load_model(
-        models_path + '/model_test_meta_ragged_1det_sn_tuner_1month',
+        models_path + '/model_test_meta_ragged_1det_sn_tuner_1month.h5',
         custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
     )
     fast_model = tf.keras.models.load_model(
-        models_path + '/model_test_meta_ragged_1det_fast_tanh',
+        models_path + '/model_test_meta_ragged_1det_fast_tanh.h5',
         custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
     )
 
     long_model = tf.keras.models.load_model(
-        models_path + '/model_test_meta_ragged_1det_long_tuner_1month',
+        models_path + '/model_test_meta_ragged_1det_long_tuner_1month.h5',
         custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
     )
 
     periodic_model = tf.keras.models.load_model(
-        models_path + '/model_test_meta_ragged_1det_periodic_tuner_1month',
+        models_path + '/model_test_meta_ragged_1det_periodic_tuner_1month.h5',
         custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
     )
 
@@ -242,23 +247,25 @@ def predict_nn(
                 pred = fine_classifier_map[p.argmax()].predict(
                     [X['band'][i:i + 1], X['lc'][i:i + 1], X['meta'][i:i + 1]])
                 if pred.shape[1] == 4:
-                    pred = np.concatenate((pred, [[np.nan]]), axis=1)
+                    pred = np.concatenate((pred, [[-1.0]]), axis=1)
 
                 preds_fine.append(pred)
 
             else:
                 to_concat = np.array([[p[-1]]])
-                pred = np.concatenate((to_concat, [[np.nan] * 4]), axis=1)
+                pred = np.concatenate((to_concat, [[-1.0] * 4]), axis=1)
                 preds_fine.append(pred)
         else:
-            preds_fine.append(np.array([[np.nan] * 5]))
+            preds_fine.append(np.array([[-1.0] * 5]))
 
     preds_fine = np.concatenate(preds_fine)
 
-    preds_df = pd.DataFrame({
-        'broad_preds': [p for p in preds],
-        'fine_preds': list(preds_fine)
-    })
+    preds_df = pd.DataFrame(
+        {
+            'broad_preds': [extract_max_prob(elem) for elem in preds],
+            'fine_preds': [extract_max_prob(elem) for elem in preds_fine]
+        }
+    )
 
     return preds_df
 
