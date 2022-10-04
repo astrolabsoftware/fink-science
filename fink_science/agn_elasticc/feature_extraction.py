@@ -583,8 +583,8 @@ def merge_features(all_features, minimum_points, target_col=""):
     max_size = 2**30
     float_cols = ordered_features.columns[ordered_features.columns != 'object_id']
 
-    ordered_features[float_cols] = ordered_features[float_cols].mask(ordered_features[float_cols]>max_size, max_size)
-    ordered_features[float_cols] = ordered_features[float_cols].mask(ordered_features[float_cols]<-max_size, -max_size)
+    ordered_features[float_cols] = ordered_features[float_cols].mask(ordered_features[float_cols] > max_size, max_size)
+    ordered_features[float_cols] = ordered_features[float_cols].mask(ordered_features[float_cols] < -max_size, -max_size)
 
     return ordered_features
 
