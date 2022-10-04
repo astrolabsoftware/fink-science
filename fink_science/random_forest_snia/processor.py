@@ -331,8 +331,8 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     >>> args += [F.col('cdsxmatch'), F.col('diaSource.nobs')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
-    >>> df.filter(df['pIa'] > 0.0).count()
-    29
+    >>> df.filter(df['pIa'] > 0.5).count()
+    0
     """
     mask = apply_selection_cuts_ztf(psFlux, nobs, cdsxmatch, maxndethist=100)
 
@@ -366,6 +366,20 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         f1 = pdf['SNID'] == id
         pdf_sub = pdf[f1]
         features = get_sigmoid_features_elasticc(pdf_sub)
+
+        # Do not classify if less than 2 bands
+        feats = []
+        nfeat_per_band = 6
+        nbands = 6
+        for i in range(nbands):
+            feats.append(features[i * nfeat_per_band])
+
+        n_nonzero_feats = np.sum(np.array(feats) != 0)
+
+        if n_nonzero_feats < 2:
+            flag.append(False)
+        else:
+            flag.append(True)
         test_features.append(features)
 
     flag = np.array(flag, dtype=np.bool)

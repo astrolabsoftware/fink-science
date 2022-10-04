@@ -604,9 +604,10 @@ def get_probabilities(clf, features, valid):
         ordered probabilities of being an AGN
     """
 
-    final_proba = np.array([-1] * len(valid)).astype(np.float64)
+    final_proba = np.array([0.0] * len(valid)).astype(np.float64)
 
     if len(features) > 0:
+        features = features.replace(np.inf, 0.0).replace(np.nan, 0.0)
         agn_or_not = clf.predict_proba(features.iloc[:, 1:])
         index_to_replace = features.iloc[:, 1:].index
         final_proba[index_to_replace.values] = agn_or_not[:, 1]

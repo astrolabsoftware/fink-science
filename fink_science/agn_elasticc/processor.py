@@ -17,14 +17,17 @@ from fink_science.agn_elasticc.classifier import agn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 import pandas as pd
+import numpy as np
 import os
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
 
 
 @pandas_udf(DoubleType())
-def agn_spark(diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec):
-
+def agn_spark(
+        diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName,
+        ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec,
+        model_path=None):
     """High level spark wrapper for the AGN classifier on ELASTiCC data
 
     Parameters
@@ -51,13 +54,25 @@ def agn_spark(diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, de
     hostgal_dec: Spark DataFrame Column
         Declination ascension of the host galaxy
         -999 if object is in the milky way
+    model_path: Spark DataFrame Column, optional
+        Path to the model. If None (default), it is
+        taken from `k.CLASSIFIER`.
 
     Returns
     -------
     np.array
         ordered probabilities of being an AGN
-        Return -1 if the minimum points number is not respected.
+        Return 0 if the minimum points number is not respected.
     """
+
+    # we want at least 2 bands and 4 points per band
+    nbands = cfilterName.apply(lambda x: len(np.unique(x)))
+    npoints = cfilterName.apply(lambda x: len(x))
+
+    mask = (nbands >= 2) & (npoints >= 8)
+
+    if len(diaObjectId[mask]) == 0:
+        return pd.Series(np.zeros(len(diaObjectId), dtype=float))
 
     data = pd.DataFrame(
         {
@@ -75,8 +90,16 @@ def agn_spark(diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, de
         }
     )
 
-    proba = agn_classifier(data)
-    return pd.Series(proba)
+    if model_path is not None:
+        model_path = model_path.values[0]
+
+    # agn_classifier relies on index being a range from 0 to N
+    data_sub = data[mask].reset_index()
+
+    proba = agn_classifier(data_sub, model_path)
+    to_return = np.zeros(len(cmidPoinTai), dtype=float)
+    to_return[mask] = proba
+    return pd.Series(to_return)
 
 
 if __name__ == "__main__":
