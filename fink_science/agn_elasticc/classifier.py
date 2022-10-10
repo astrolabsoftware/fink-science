@@ -77,6 +77,10 @@ def agn_classifier(data, model_path=None):
     formated = fe.format_data(data)
 
     all_transformed, valid = fe.transform_data(formated, k.MINIMUM_POINTS)
+    all_empty = [i.empty for i in all_transformed]
+
+    if np.all(all_empty):
+        return np.zeros(len(data), dtype=np.float)
 
     all_features = fe.parametrise(all_transformed)
 
