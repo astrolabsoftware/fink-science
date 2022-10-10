@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
+
 import os
 import pandas as pd
 import numpy as np
@@ -51,7 +52,7 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     np.array
         ordered probabilities of being an AGN
         Return 0 if the minimum number of point per passband
-        (specified in kernel.py) is not respected.
+        (specified in kernel.py) if not respected.
 
 
     Examples
