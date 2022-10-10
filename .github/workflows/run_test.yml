@@ -42,12 +42,19 @@ jobs:
 
     - name: Run test suites
       run: |
+        pip install --upgrade --force-reinstall supernnova
         pip install fink-utils --upgrade
         pip install iminuit==2.11.2
         pip install scikit-learn==1.0.2
         pip install git+https://github.com/b-biswas/kndetect --upgrade
-        pip install git+https://github.com/emilleishida/fink_sn_activelearning.git@e713fad465986ee6b53a16d62856ca2ab156672c#egg=actsnfink
+        pip install git+https://github.com/emilleishida/fink_sn_activelearning.git@e16152091ff8f9ece8d4823e8da1f498d60ac45f#egg=actsnfink
         pip install git+https://github.com/COINtoolbox/ActSNClass.git@2c61da91a9d13834d39804fc35aeb3245ba20755#egg=actsnclass
+<<<<<<< HEAD
+=======
+        pip uninstall -y supernnova
+        pip install --no-cache-dir torch==1.12.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+        pip install git+https://github.com/supernnova/SuperNNova.git@7765ac51843997a9e6df4ff866f416ab48010fa2
+>>>>>>> f0784aba8b520c42198cf869249ccc4540e20826
 
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash

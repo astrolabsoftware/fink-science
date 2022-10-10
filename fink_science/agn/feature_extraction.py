@@ -553,6 +553,10 @@ def parametrise(transformed, band, target_col=""):
 def merge_features(features_1, features_2, target_col=""):
 
     """Merge feature tables of band g and r.
+<<<<<<< HEAD
+=======
+
+>>>>>>> f0784aba8b520c42198cf869249ccc4540e20826
     Compute color parameters : - 'max_color' : absolute maximum of the color
                                - 'std_color' : standard deviation of the color
 
@@ -690,17 +694,17 @@ def get_probabilities(clf, features, valid):
     >>> proba = get_probabilities(clf, example, valid)
     >>> len(proba)
     4
-    >>> proba[3]!=-1
+    >>> proba[3] != 0.0
     True
-    >>> proba[2]==-1
+    >>> proba[2] == 0.0
     True
-    >>> proba[1]!=-1
+    >>> proba[1] != 0.0
     True
-    >>> proba[0]!=-1
+    >>> proba[0] != 0.0
     True
     """
 
-    final_proba = np.array([-1] * len(valid)).astype(np.float64)
+    final_proba = np.array([0.0] * len(valid)).astype(np.float64)
 
     if len(features) > 0:
         agn_or_not = clf.predict_proba(features.iloc[:, 1:])
