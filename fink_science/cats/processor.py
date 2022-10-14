@@ -41,54 +41,32 @@ def predict_nn(
         hostgal_zphot_err: pd.Series,
         model=None
 ) -> pd.DataFrame:
-    """ Return predctions from a CBPF hierarchical model using Elasticc alert data
-    For the default model, one has:
+    """ Return predctions from a CBPF classifier model (cats general) using Elasticc alert data.
+
+    For the default model, one has the following mapping:
+
     class_dict = {
-        0: 11,
-        1: 12,
-        2: 13,
-        3: 21,
-        4: 22,
+        0: 111,
+        1: 112,
+        2: 113,
+        3: 114,
+        4: 115,
+        5: 121,
+        6: 122,
+        7: 123,
+        8: 124,
+        9: 131,
+        10: 132,
+        11: 133,
+        12: 134,
+        13: 135,
+        14: 211,
+        15: 212,
+        16: 213,
+        17: 214,
+        18: 221
     }
-    For the fine classifiers mapping, one has:
-    fine_classifier_map = {
-        0: sn_model,
-        1: fast_model,
-        2: long_model,
-        3: periodic_model,
-        4: None
-    }
-    Each of the fine classifiers has it's own mapping:
-    SN model:
-        SN_map = {
-            0: 'SNIa',
-            1: 'SNIb/c',
-            2: 'SNII',
-            3: 'SNIax',
-            4: 'SNIa-91bg'
-        }
-    Fast model:
-        fast_model = {
-            0: 'KN',
-            1: 'M-dwarf-flare',
-            2: 'dwarf novae',
-            3: 'uLens'
-        }
-    Long model:
-        long_model = {
-            0: 'SLSN',
-            1: 'TDE',
-            2: 'ILOT',
-            3: 'CART',
-            4: 'PISN'
-        }
-    Periodic model:
-        periodic_model = {
-            0: 'Cepheid',
-            1: 'RR Lyrae',
-            2: 'Delta Scuti',
-            3: 'EB'
-        }
+   
     Parameters:
     -----------
     midpointTai: spark DataFrame Column
@@ -113,11 +91,9 @@ def predict_nn(
         path to pre-trained Hierarchical Classifier model. (string)
     Returns:
     --------
-    preds_df: pd.DataFrame
-        preds_df is an pd.DataFrame which contains a 'broad_class' column
-        with probabilities for broad classes (e.g. SN-like, Fast, Long,
-        Periodic and AGN) and a second column called 'fine_preds' with
-        predictions for finer_classes according to each fine classifier.
+    preds: pd.Series
+        preds is an pd.Series which contains a 'cats_general_preds' column
+        with probabilities for classes shown in Elasticc data challenge.
     Examples
     -----------
     >>> from fink_utils.spark.utils import concat_col
@@ -157,31 +133,31 @@ def predict_nn(
     curdir = os.path.dirname(os.path.abspath(__file__))
     models_path = curdir + '/data/models/cats_models/'
 
-    sn_model = tf.keras.models.load_model(
-        models_path + '/model_test_meta_ragged_1det_sn_tuner_1month.h5',
-        custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
-    )
-    fast_model = tf.keras.models.load_model(
-        models_path + '/model_test_meta_ragged_1det_fast_tanh.h5',
+    cats_general = tf.keras.models.load_model(
+        models_path + '/model_test_meta_ragged_alerts.h5',
         custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
     )
 
-    long_model = tf.keras.models.load_model(
-        models_path + '/model_test_meta_ragged_1det_long_tuner_1month.h5',
-        custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
-    )
-
-    periodic_model = tf.keras.models.load_model(
-        models_path + '/model_test_meta_ragged_1det_periodic_tuner_1month.h5',
-        custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
-    )
-
-    fine_classifier_map = {
-        0: sn_model,
-        1: fast_model,
-        2: long_model,
-        3: periodic_model,
-        4: None
+    class_dict = {
+        0: 111,
+        1: 112,
+        2: 113,
+        3: 114,
+        4: 115,
+        5: 121,
+        6: 122,
+        7: 123,
+        8: 124,
+        9: 131,
+        10: 132,
+        11: 133,
+        12: 134,
+        13: 135,
+        14: 211,
+        15: 212,
+        16: 213,
+        17: 214,
+        18: 221
     }
 
     bands = []
@@ -195,8 +171,8 @@ def predict_nn(
                 [filter_dict[f] for f in filterName.values[i]]
             ).astype(np.int16))
             lc = np.concatenate(
-                [mjds[:, None], psFlux.values[i][:, None],
-                    psFluxErr.values[i][:, None]], axis=-1
+                [mjds[:, None], 0.02754 * psFlux.values[i][:, None],
+                   0.02754 * psFluxErr.values[i][:, None]], axis=-1
             )
 
             if not np.isnan(mwebv.values[i]):
@@ -230,7 +206,7 @@ def predict_nn(
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/cats_models/model_test_meta_ragged_1det_broad_tuner.h5'
+        model_path = curdir + '/model_test_meta_ragged_alerts.h5'
     else:
         model_path = model.values[0]
 
@@ -238,36 +214,10 @@ def predict_nn(
         model_path, custom_objects={
             'RectifiedAdam': optimizers.RectifiedAdam
         })
+
     preds = NN.predict(X)
-    preds_fine = []
-
-    for i, p in enumerate(preds):
-        if np.nan not in p:
-            if p.argmax() <= 3:
-                pred = fine_classifier_map[p.argmax()].predict(
-                    [X['band'][i:i + 1], X['lc'][i:i + 1], X['meta'][i:i + 1]])
-                if pred.shape[1] == 4:
-                    pred = np.concatenate((pred, [[-1.0]]), axis=1)
-
-                preds_fine.append(pred)
-
-            else:
-                to_concat = np.array([[p[-1]]])
-                pred = np.concatenate((to_concat, [[-1.0] * 4]), axis=1)
-                preds_fine.append(pred)
-        else:
-            preds_fine.append(np.array([[-1.0] * 5]))
-
-    preds_fine = np.concatenate(preds_fine)
-
-    preds_df = pd.DataFrame(
-        {
-            'broad_preds': [extract_max_prob(elem) for elem in preds],
-            'fine_preds': [extract_max_prob(elem) for elem in preds_fine]
-        }
-    )
-
-    return preds_df
+    
+    return pd.Series([extract_max_prob(elem) for elem in preds])
 
 
 if __name__ == "__main__":
