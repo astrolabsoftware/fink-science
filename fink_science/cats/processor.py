@@ -63,7 +63,7 @@ def predict_nn(
         17: 214,
         18: 221
     }
-   
+
     Parameters:
     -----------
     midpointTai: spark DataFrame Column
@@ -199,7 +199,8 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_sample_seed0.parquet'.format(path)
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_sample_seed0.parquet'.format(
+        path)
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     # Run the test suite
