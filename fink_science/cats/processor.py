@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StructType, StructField, ArrayType, FloatType
+from pyspark.sql.types import ArrayType, FloatType
 
 import tensorflow as tf
 from tensorflow_addons import optimizers
