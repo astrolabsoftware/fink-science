@@ -135,7 +135,7 @@ def predict_nn(
     bands = []
     lcs = []
     meta = []
-    frac = 10**(-(31.4 - 27.5)/2.5)
+    frac = 10**( - (31.4 - 27.5) / 2.5)
 
     for i, mjds in enumerate(midpointTai):
 
@@ -145,7 +145,7 @@ def predict_nn(
             ).astype(np.int16))
             lc = np.concatenate(
                 [mjds[:, None], frac * psFlux.values[i][:, None],
-                   frac * psFluxErr.values[i][:, None]], axis=-1
+                frac * psFluxErr.values[i][:, None]], axis=-1
             )
 
             if not np.isnan(mwebv.values[i]):
@@ -189,7 +189,7 @@ def predict_nn(
         })
 
     preds = NN.predict(X)
-    
+
     return pd.Series([extract_max_prob(elem) for elem in preds])
 
 
