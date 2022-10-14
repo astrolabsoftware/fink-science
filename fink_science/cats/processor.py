@@ -131,38 +131,11 @@ def predict_nn(
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
 
     curdir = os.path.dirname(os.path.abspath(__file__))
-    models_path = curdir + '/data/models/cats_models/'
-
-    cats_general = tf.keras.models.load_model(
-        models_path + '/model_test_meta_ragged_alerts.h5',
-        custom_objects={'RectifiedAdam': optimizers.RectifiedAdam}
-    )
-
-    class_dict = {
-        0: 111,
-        1: 112,
-        2: 113,
-        3: 114,
-        4: 115,
-        5: 121,
-        6: 122,
-        7: 123,
-        8: 124,
-        9: 131,
-        10: 132,
-        11: 133,
-        12: 134,
-        13: 135,
-        14: 211,
-        15: 212,
-        16: 213,
-        17: 214,
-        18: 221
-    }
 
     bands = []
     lcs = []
     meta = []
+    frac = 10**(-(31.4 - 27.5)/2.5)
 
     for i, mjds in enumerate(midpointTai):
 
@@ -171,8 +144,8 @@ def predict_nn(
                 [filter_dict[f] for f in filterName.values[i]]
             ).astype(np.int16))
             lc = np.concatenate(
-                [mjds[:, None], 0.02754 * psFlux.values[i][:, None],
-                   0.02754 * psFluxErr.values[i][:, None]], axis=-1
+                [mjds[:, None], frac * psFlux.values[i][:, None],
+                   frac * psFluxErr.values[i][:, None]], axis=-1
             )
 
             if not np.isnan(mwebv.values[i]):
@@ -206,7 +179,7 @@ def predict_nn(
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/model_test_meta_ragged_alerts.h5'
+        model_path = curdir + '/data/models/cats_models/model_test_meta_ragged_alerts.h5'
     else:
         model_path = model.values[0]
 
