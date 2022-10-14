@@ -30,10 +30,7 @@ from fink_science.tester import spark_unit_tests
 tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
 
 
-@pandas_udf(StructType([
-    StructField("broad_preds", ArrayType(FloatType())),
-    StructField("fine_preds", ArrayType(FloatType()))
-]), PandasUDFType.SCALAR)
+@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 def predict_nn(
         midpointTai: pd.Series, psFlux: pd.Series, psFluxErr: pd.Series,
         filterName: pd.Series, mwebv: pd.Series, z_final: pd.Series,
@@ -135,7 +132,7 @@ def predict_nn(
     bands = []
     lcs = []
     meta = []
-    frac = 10**( - (31.4 - 27.5) / 2.5)
+    frac = 10**(- (31.4 - 27.5) / 2.5)
 
     for i, mjds in enumerate(midpointTai):
 
@@ -144,8 +141,11 @@ def predict_nn(
                 [filter_dict[f] for f in filterName.values[i]]
             ).astype(np.int16))
             lc = np.concatenate(
-                [mjds[:, None], frac * psFlux.values[i][:, None],
-                frac * psFluxErr.values[i][:, None]], axis=-1
+                [
+                    mjds[:, None],
+                    frac * psFlux.values[i][:, None],
+                    frac * psFluxErr.values[i][:, None]
+                ], axis=-1
             )
 
             if not np.isnan(mwebv.values[i]):
