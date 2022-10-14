@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StructType, StructField, ArrayType, FloatType
+from pyspark.sql.types import ArrayType, FloatType
 
 import tensorflow as tf
 from tensorflow_addons import optimizers
@@ -30,10 +30,7 @@ from fink_science.tester import spark_unit_tests
 tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
 
 
-@pandas_udf(StructType([
-    StructField("broad_preds", ArrayType(FloatType())),
-    StructField("fine_preds", ArrayType(FloatType()))
-]), PandasUDFType.SCALAR)
+@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 def predict_nn(
         midpointTai: pd.Series, psFlux: pd.Series, psFluxErr: pd.Series,
         filterName: pd.Series, mwebv: pd.Series, z_final: pd.Series,
@@ -135,7 +132,7 @@ def predict_nn(
     bands = []
     lcs = []
     meta = []
-    frac = 10**( - (31.4 - 27.5) / 2.5)
+    frac = 10**(- (31.4 - 27.5) / 2.5)
 
     for i, mjds in enumerate(midpointTai):
 
