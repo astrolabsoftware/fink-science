@@ -122,7 +122,7 @@ def predict_nn(
     >>> df = df.withColumn('cbpf_class', F.col('preds').getItem(0).astype('int'))
     >>> df = df.withColumn('cbpf_max_prob', F.col('preds').getItem(1))
     >>> df.filter(df['cbpf_class'] == 0).count()
-    39
+    1
     """
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
