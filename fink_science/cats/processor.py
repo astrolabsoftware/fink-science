@@ -127,8 +127,6 @@ def predict_nn(
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
 
-    curdir = os.path.dirname(os.path.abspath(__file__))
-
     bands = []
     lcs = []
     meta = []
