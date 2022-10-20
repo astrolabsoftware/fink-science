@@ -119,15 +119,13 @@ def predict_nn(
     >>> args += [F.col('diaObject.mwebv'), F.col('diaObject.z_final'), F.col('diaObject.z_final_err')]
     >>> args += [F.col('diaObject.hostgal_zphot'), F.col('diaObject.hostgal_zphot_err')]
     >>> df = df.withColumn('preds', predict_nn(*args))
-    >>> df = df.withColumn('cbpf_class', F.col('preds.broad_preds').getItem(0).astype('int'))
-    >>> df = df.withColumn('cbpf_max_prob', F.col('preds.broad_preds').getItem(1))
+    >>> df = df.withColumn('cbpf_class', F.col('preds').getItem(0).astype('int'))
+    >>> df = df.withColumn('cbpf_max_prob', F.col('preds').getItem(1))
     >>> df.filter(df['cbpf_class'] == 0).count()
-    39
+    1
     """
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
-
-    curdir = os.path.dirname(os.path.abspath(__file__))
 
     bands = []
     lcs = []
