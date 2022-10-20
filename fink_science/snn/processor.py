@@ -256,7 +256,7 @@ def snn_ia_elasticc(
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
     # Conversion to FLUXCAL
-    fac = 10**(-(31.4 - 27.5)/2.5)
+    fac = 10**(-(31.4 - 27.5) / 2.5)
     psFlux = psFlux * fac
     psFluxErr = psFluxErr * fac
 
@@ -401,7 +401,7 @@ def snn_broad_elasticc(
         return pd.Series([[i, j] for i, j in zip(snn_class, snn_max_prob)])
 
     # Conversion to FLUXCAL
-    fac = 10**(-(31.4 - 27.5)/2.5)
+    fac = 10**(-(31.4 - 27.5) / 2.5)
     psFlux = psFlux * fac
     psFluxErr = psFluxErr * fac
 
