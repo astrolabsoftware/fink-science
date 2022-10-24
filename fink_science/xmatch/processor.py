@@ -311,7 +311,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     +---+-----------+-----------+-------+
     <BLANKLINE>
 
-    >>> df = df.withColumn(
+    >>> df.withColumn(
     ...     'vsx',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
@@ -323,7 +323,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     +---+-----------+-----------+----+
     <BLANKLINE>
 
-    >>> df = df.withColumn(
+    >>> df.withColumn(
     ...     '3hsp',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('3hsp'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
@@ -335,7 +335,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     +---+-----------+-----------+----+
     <BLANKLINE>
 
-    >>> df = df.withColumn(
+    >>> df.withColumn(
     ...     '4lac',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('4lac'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
