@@ -28,6 +28,7 @@ import numpy as np
 
 from fink_science.xmatch.utils import generate_csv
 from fink_science.xmatch.utils import extract_vsx, extract_gcvs
+from fink_science.xmatch.utils import extract_3hsp, extract_4lac
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
@@ -257,6 +258,8 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     Currently supporting:
     - GCVS
     - VSX
+    - 3HSP
+    - 4LAC
 
     Parameters
     ----------
@@ -267,7 +270,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     dec: float
         ZTF declinations
     catalog_name: str
-        Name of the catalog to use. currently supported: gcvs, vsx
+        Name of the catalog to use. currently supported: gcvs, vsx, 3hsp, 4lac
 
     Returns
     ----------
@@ -319,6 +322,30 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     |  2|101.3520545| 24.5421872|RRAB|
     +---+-----------+-----------+----+
     <BLANKLINE>
+
+    >>> df = df.withColumn(
+    ...     '3hsp',
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('3hsp'))
+    ... ).show() # doctest: +NORMALIZE_WHITESPACE
+    +---+-----------+-----------+----+
+    | id|         ra|        dec| vsx|
+    +---+-----------+-----------+----+
+    |  1| 26.8566983|-26.9677112|MISC|
+    |  2|101.3520545| 24.5421872|RRAB|
+    +---+-----------+-----------+----+
+    <BLANKLINE>
+
+    >>> df = df.withColumn(
+    ...     '4lac',
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('4lac'))
+    ... ).show() # doctest: +NORMALIZE_WHITESPACE
+    +---+-----------+-----------+----+
+    | id|         ra|        dec| vsx|
+    +---+-----------+-----------+----+
+    |  1| 26.8566983|-26.9677112|MISC|
+    |  2|101.3520545| 24.5421872|RRAB|
+    +---+-----------+-----------+----+
+    <BLANKLINE>
     """
     pdf = pd.DataFrame(
         {
@@ -335,6 +362,13 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     elif catalog_name.values[0] == 'vsx':
         catalog = curdir + '/data/catalogs/vsx.parquet'
         ra2, dec2, type2 = extract_vsx(catalog)
+    elif catalog_name.values[0] == '3hsp':
+        catalog = curdir + '/data/catalogs/3hsp.csv'
+        ra2, dec2, type2 = extract_3hsp(catalog)
+    elif catalog_name.values[0] == '4lac':
+        catalog_h = curdir + '/data/catalogs/table-4LAC-DR3-h.fits'
+        catalog_l = curdir + '/data/catalogs/table-4LAC-DR3-l.fits'
+        ra2, dec2, type2 = extract_4lac(catalog_h, catalog_l)
 
     # create catalogs
     catalog_ztf = SkyCoord(

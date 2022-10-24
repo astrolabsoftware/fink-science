@@ -16,7 +16,86 @@ import io
 import csv
 import pandas as pd
 
+from astropy.coordinates import SkyCoord
+from astropy.table import Table
+
 from fink_science.tester import regular_unit_tests
+
+def extract_4lac(filename_h, filename_l):
+    """ Read the 4LAC DR3 catalogs and extract useful columns
+
+    Parameters
+    ----------
+    filename{i}: str
+        Path to the high and low latitudes catalogs (fits file)
+
+    Returns
+    ----------
+    out: pd.Series, pd.Series, pd.Series
+        (ra, dec, Source Name )from the catalog
+
+    Examples
+    ----------
+    >>> import os
+    >>> curdir = os.path.dirname(os.path.abspath(__file__))
+    >>> catalog_h = curdir + '/../data/catalogs/table-4LAC-DR3-h.fits'
+    >>> catalog_l = curdir + '/../data/catalogs/table-4LAC-DR3-l.fits'
+    >>> ra, dec, sourcename = extract_4lac(catalog_h, catalog_l)
+    """
+    dat = Table.read(filename1, format='fits')
+    pdf_4lac_h = dat.to_pandas()
+
+    dat = Table.read(filename1, format='fits')
+    pdf_4lac_l = dat.to_pandas()
+
+    pdf_4lac = pd.concat([pdf_4lac_h, pdf_4lac_l])
+
+    # decode as str
+    pdf_4lac['Source_Name'] = pdf_4lac['Source_Name'].apply(lambda x: x.decode())
+
+    return pdf_4lac['RAJ2000'], pdf_4lac['DEJ2000'], pdf_4lac['Source_Name']
+
+def extract_3hsp(filename):
+    """ Read the 3HSP catalog and extract useful columns
+
+    Parameters
+    ----------
+    filename: str
+        Path to the catalog (csv file)
+
+    Returns
+    ----------
+    out: pd.Series, pd.Series, pd.Series
+        (ra, dec, Source Name )from the catalog
+
+    Examples
+    ----------
+    >>> import os
+    >>> curdir = os.path.dirname(os.path.abspath(__file__))
+    >>> catalog = curdir + '/../data/catalogs/3hsp.csv'
+    >>> ra, dec, sourcename = extract_3hsp(catalog)
+    """
+    pdf_3hsp = pd.read_csv(filename, header=0)
+
+    # remove white spaces around column names
+    pdf_3hsp = pdf_3hsp.rename(columns={i:i.strip() for i in pdf_3hsp.columns})
+
+    # convert RA/Dec into degrees
+    pdf_3hsp['R.A.'] = pdf_3hsp['R.A.'].apply(lambda x: x.strip().replace('"', ''))
+    pdf_3hsp['Dec'] = pdf_3hsp['Dec'].apply(lambda x: x.strip().replace('"', ''))
+
+    coord = SkyCoord(
+        pdf_3hsp[['R.A.', 'Dec']].apply(lambda x: '{} {}'.format(*x), axis=1).values,
+        unit=(u.hourangle, u.deg)
+    )
+
+    pdf_3hsp['ra'] = coord.ra.deg
+    pdf_3hsp['dec'] = coord.dec.deg
+
+    # format correctly names!
+    pdf['3HSP Source name'] = pdf['3HSP Source name'].apply(lambda x: x.strip().replace('"', ''))
+
+    return pdf_3hsp['ra'], pdf_3hsp['dec'], pdf_3hsp['3HSP Source name']
 
 def extract_gcvs(filename):
     """ Read the gcvs catalog and extract useful columns
