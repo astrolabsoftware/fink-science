@@ -108,7 +108,7 @@ def rate(magpsf, jd, fid, filt, absolute):
             else:
                 dt = 1.
             if dt > 0:
-                delta.append(dm/dt)
+                delta.append(dm / dt)
             else:
                 delta.append(None)
         else:
@@ -120,7 +120,6 @@ def color(magpsf, jd, fid, absolute):
     """ Compute (g-r)(t + dt) - (g-r)(t)
     """
     absolute = absolute.values[0]
-    transfilt = {1: 2, 2: 1}
     delta = []
     for m, t, f in zip(magpsf.values, jd.values, fid.values):
         mask = m == m
