@@ -252,7 +252,7 @@ def xmatch_cds(
 
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
-def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arsec=None):
+def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
     """ Crossmatch alerts with user-defined catalogs
 
     Currently supporting:
