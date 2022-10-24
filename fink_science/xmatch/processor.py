@@ -282,9 +282,9 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     >>> from pyspark.sql.functions import lit
 
     Simulate fake data
-    >>> ra = [26.8566983, 101.3520545]
-    >>> dec = [-26.9677112, 24.5421872]
-    >>> id = ["1", "2"]
+    >>> ra = [26.8566983, 101.3520545, 0.3126, 0.31820833]
+    >>> dec = [-26.9677112, 24.5421872, 47.6859, 29.59277778]
+    >>> id = ["1", "2", "3", "4"]
 
     Wrap data into a Spark DataFrame
     >>> rdd = spark.sparkContext.parallelize(zip(id, ra, dec))
@@ -327,12 +327,12 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     ...     '3hsp',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('3hsp'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
-    +---+-----------+-----------+----+
-    | id|         ra|        dec| vsx|
-    +---+-----------+-----------+----+
-    |  1| 26.8566983|-26.9677112|MISC|
-    |  2|101.3520545| 24.5421872|RRAB|
-    +---+-----------+-----------+----+
+     +---+-----------+-----------+-------+
+    | id|         ra|        dec|   3hsp|
+    +---+-----------+-----------+-------+
+    |  1| 26.8566983|-26.9677112|Unknown|
+    |  2|101.3520545| 24.5421872|Unknown|
+    +---+-----------+-----------+-------+
     <BLANKLINE>
 
     >>> df.withColumn(
