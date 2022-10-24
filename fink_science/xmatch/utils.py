@@ -18,6 +18,7 @@ import pandas as pd
 
 from astropy.coordinates import SkyCoord
 from astropy.table import Table
+import astropy.units as u
 
 from fink_science.tester import regular_unit_tests
 
@@ -42,10 +43,10 @@ def extract_4lac(filename_h, filename_l):
     >>> catalog_l = curdir + '/../data/catalogs/table-4LAC-DR3-l.fits'
     >>> ra, dec, sourcename = extract_4lac(catalog_h, catalog_l)
     """
-    dat = Table.read(filename1, format='fits')
+    dat = Table.read(filename_h, format='fits')
     pdf_4lac_h = dat.to_pandas()
 
-    dat = Table.read(filename1, format='fits')
+    dat = Table.read(filename_l, format='fits')
     pdf_4lac_l = dat.to_pandas()
 
     pdf_4lac = pd.concat([pdf_4lac_h, pdf_4lac_l])
@@ -78,7 +79,7 @@ def extract_3hsp(filename):
     pdf_3hsp = pd.read_csv(filename, header=0)
 
     # remove white spaces around column names
-    pdf_3hsp = pdf_3hsp.rename(columns={i:i.strip() for i in pdf_3hsp.columns})
+    pdf_3hsp = pdf_3hsp.rename(columns={i: i.strip() for i in pdf_3hsp.columns})
 
     # convert RA/Dec into degrees
     pdf_3hsp['R.A.'] = pdf_3hsp['R.A.'].apply(lambda x: x.strip().replace('"', ''))
@@ -93,7 +94,7 @@ def extract_3hsp(filename):
     pdf_3hsp['dec'] = coord.dec.deg
 
     # format correctly names!
-    pdf['3HSP Source name'] = pdf['3HSP Source name'].apply(lambda x: x.strip().replace('"', ''))
+    pdf_3hsp['3HSP Source name'] = pdf_3hsp['3HSP Source name'].apply(lambda x: x.strip().replace('"', ''))
 
     return pdf_3hsp['ra'], pdf_3hsp['dec'], pdf_3hsp['3HSP Source name']
 
