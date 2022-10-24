@@ -252,7 +252,7 @@ def xmatch_cds(
 
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
-def crossmatch_other_catalog(candid, ra, dec, catalog_name):
+def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arsec=None):
     """ Crossmatch alerts with user-defined catalogs
 
     Currently supporting:
@@ -271,6 +271,8 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
         ZTF declinations
     catalog_name: str
         Name of the catalog to use. currently supported: gcvs, vsx, 3hsp, 4lac
+    radius_arcsec: float, optional
+        Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
 
     Returns
     ----------
@@ -345,7 +347,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
 
     >>> df.withColumn(
     ...     '4lac',
-    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('4lac'))
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('4lac'), lit(60.0))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+-----------+-----------+-----------------+
     | id|         ra|        dec|             4lac|
@@ -395,7 +397,12 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     idx, d2d, d3d = catalog_other.match_to_catalog_sky(catalog_ztf)
 
     # set separation length
-    sep_constraint = d2d.degree < 1.5 / 3600
+    if radius_arcsec is None:
+        radius_arcsec = 1.5
+    else:
+        radius_arcsec = float(radius_arcsec.values[0])
+
+    sep_constraint = d2d.degree < radius_arcsec / 3600.0
 
     catalog_matches = np.unique(pdf['candid'].values[idx[sep_constraint]])
 
