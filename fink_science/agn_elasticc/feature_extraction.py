@@ -363,25 +363,6 @@ def parametric_bump(ps, band):
     list
         List of best fitting parameter values [p1, p2, p3, p4]
         Returns [0.225, -2.5, 0.038, -1] if the fit didn't converge.
-
-    Examples
-    --------
-
-    >>> example = pd.Series(data = {"cjd" : np.array([-1, 0]),\
-                            "cflux" : np.array([20, 300]),\
-                            "csigflux" : np.array([1, 3]),\
-                            "anything" : np.array(['toto'])})
-
-    >>> np.array_equal(np.round(parametric_bump(example), 3), np.array([ 13.465, 119.56 , -14.035,  47.9  ]))
-    True
-
-    >>> example2 = pd.Series(data = {"cjd" : np.array([]),\
-                            "cflux" : np.array([]),\
-                            "csigflux" : np.array([]),\
-                            "anything" : np.array(['toto'])})
-
-    >>> np.array_equal(np.round(parametric_bump(example2), 3), np.array([ 0.225, -2.5  ,  0.038, -1.   ]))
-    True
     """
 
     try:
