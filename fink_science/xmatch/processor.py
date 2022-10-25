@@ -28,6 +28,7 @@ import numpy as np
 
 from fink_science.xmatch.utils import generate_csv
 from fink_science.xmatch.utils import extract_vsx, extract_gcvs
+from fink_science.xmatch.utils import extract_3hsp, extract_4lac
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
@@ -251,12 +252,14 @@ def xmatch_cds(
 
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
-def crossmatch_other_catalog(candid, ra, dec, catalog_name):
+def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
     """ Crossmatch alerts with user-defined catalogs
 
     Currently supporting:
     - GCVS
     - VSX
+    - 3HSP
+    - 4LAC
 
     Parameters
     ----------
@@ -267,7 +270,9 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     dec: float
         ZTF declinations
     catalog_name: str
-        Name of the catalog to use. currently supported: gcvs, vsx
+        Name of the catalog to use. currently supported: gcvs, vsx, 3hsp, 4lac
+    radius_arcsec: float, optional
+        Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
 
     Returns
     ----------
@@ -279,9 +284,9 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     >>> from pyspark.sql.functions import lit
 
     Simulate fake data
-    >>> ra = [26.8566983, 101.3520545]
-    >>> dec = [-26.9677112, 24.5421872]
-    >>> id = ["1", "2"]
+    >>> ra = [26.8566983, 101.3520545, 0.3126, 0.31820833]
+    >>> dec = [-26.9677112, 24.5421872, 47.6859, 29.59277778]
+    >>> id = ["1", "2", "3", "4"]
 
     Wrap data into a Spark DataFrame
     >>> rdd = spark.sparkContext.parallelize(zip(id, ra, dec))
@@ -292,6 +297,8 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     +---+-----------+-----------+
     |  1| 26.8566983|-26.9677112|
     |  2|101.3520545| 24.5421872|
+    |  3|     0.3126|    47.6859|
+    |  4| 0.31820833|29.59277778|
     +---+-----------+-----------+
     <BLANKLINE>
 
@@ -305,19 +312,51 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     +---+-----------+-----------+-------+
     |  1| 26.8566983|-26.9677112|Unknown|
     |  2|101.3520545| 24.5421872|     RR|
+    |  3|     0.3126|    47.6859|Unknown|
+    |  4| 0.31820833|29.59277778|Unknown|
     +---+-----------+-----------+-------+
     <BLANKLINE>
 
-    >>> df = df.withColumn(
+    >>> df.withColumn(
     ...     'vsx',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
-    +---+-----------+-----------+----+
-    | id|         ra|        dec| vsx|
-    +---+-----------+-----------+----+
-    |  1| 26.8566983|-26.9677112|MISC|
-    |  2|101.3520545| 24.5421872|RRAB|
-    +---+-----------+-----------+----+
+    +---+-----------+-----------+-------+
+    | id|         ra|        dec|    vsx|
+    +---+-----------+-----------+-------+
+    |  1| 26.8566983|-26.9677112|   MISC|
+    |  2|101.3520545| 24.5421872|   RRAB|
+    |  3|     0.3126|    47.6859|Unknown|
+    |  4| 0.31820833|29.59277778|Unknown|
+    +---+-----------+-----------+-------+
+    <BLANKLINE>
+
+    >>> df.withColumn(
+    ...     '3hsp',
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('3hsp'))
+    ... ).show() # doctest: +NORMALIZE_WHITESPACE
+    +---+-----------+-----------+--------------------+
+    | id|         ra|        dec|                3hsp|
+    +---+-----------+-----------+--------------------+
+    |  1| 26.8566983|-26.9677112|             Unknown|
+    |  2|101.3520545| 24.5421872|             Unknown|
+    |  3|     0.3126|    47.6859|             Unknown|
+    |  4| 0.31820833|29.59277778|3HSPJ000116.4+293534|
+    +---+-----------+-----------+--------------------+
+    <BLANKLINE>
+
+    >>> df.withColumn(
+    ...     '4lac',
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('4lac'), lit(60.0))
+    ... ).show() # doctest: +NORMALIZE_WHITESPACE
+    +---+-----------+-----------+-----------------+
+    | id|         ra|        dec|             4lac|
+    +---+-----------+-----------+-----------------+
+    |  1| 26.8566983|-26.9677112|          Unknown|
+    |  2|101.3520545| 24.5421872|          Unknown|
+    |  3|     0.3126|    47.6859|4FGL J0001.2+4741|
+    |  4| 0.31820833|29.59277778|          Unknown|
+    +---+-----------+-----------+-----------------+
     <BLANKLINE>
     """
     pdf = pd.DataFrame(
@@ -335,6 +374,13 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     elif catalog_name.values[0] == 'vsx':
         catalog = curdir + '/data/catalogs/vsx.parquet'
         ra2, dec2, type2 = extract_vsx(catalog)
+    elif catalog_name.values[0] == '3hsp':
+        catalog = curdir + '/data/catalogs/3hsp.csv'
+        ra2, dec2, type2 = extract_3hsp(catalog)
+    elif catalog_name.values[0] == '4lac':
+        catalog_h = curdir + '/data/catalogs/table-4LAC-DR3-h.fits'
+        catalog_l = curdir + '/data/catalogs/table-4LAC-DR3-l.fits'
+        ra2, dec2, type2 = extract_4lac(catalog_h, catalog_l)
 
     # create catalogs
     catalog_ztf = SkyCoord(
@@ -351,7 +397,12 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name):
     idx, d2d, d3d = catalog_other.match_to_catalog_sky(catalog_ztf)
 
     # set separation length
-    sep_constraint = d2d.degree < 1.5 / 3600
+    if radius_arcsec is None:
+        radius_arcsec = 1.5
+    else:
+        radius_arcsec = float(radius_arcsec.values[0])
+
+    sep_constraint = d2d.degree < radius_arcsec / 3600.0
 
     catalog_matches = np.unique(pdf['candid'].values[idx[sep_constraint]])
 
