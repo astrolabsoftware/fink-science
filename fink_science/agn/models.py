@@ -17,7 +17,7 @@ import numpy as np
 
 
 def protected_exponent(x1):
-    """Exponential function : cannot exceed e**10
+    """Exponential function : cannot exceed e**100
 
     Examples
     --------
@@ -26,9 +26,10 @@ def protected_exponent(x1):
     >>> np.round_(protected_exponent(1), 5)
     2.71828
     """
-    maxi = 100
-    with np.errstate(over="ignore"):
-        return np.where(x1 < maxi, np.exp(x1), np.exp(maxi))
+    with np.errstate(over='ignore'):
+        lim = 100
+        protex = np.where(x1 < lim, x1, lim)
+        return np.exp(protex)
 
 
 def sig(x):

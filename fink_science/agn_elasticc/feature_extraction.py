@@ -21,6 +21,10 @@ from pandas.testing import assert_frame_equal  # noqa: F401
 import fink_science.agn_elasticc.kernel as k  # noqa: F401
 import numpy as np
 import pickle  # noqa: F401
+import time
+from scipy.optimize import curve_fit
+import warnings
+
 
 
 def map_fid(ps):
@@ -268,6 +272,17 @@ def transform_data(converted, minimum_points):
 
         all_transformed.append(transformed)
 
+
+    condition = []
+    for pair in range(5):
+        condition.append((all_transformed[pair]['cjd'].apply(len) >= minimum_points) & (all_transformed[pair + 1]['cjd'].apply(len) >= minimum_points))
+
+    valid = np.array([False] * len(converted))
+    for cond in condition:
+        valid = valid | cond
+        
+    all_transformed = [x[valid].copy() for x in all_transformed]
+    
     for df in all_transformed:
 
         df["cjd"] = df.apply(translate, axis=1)
@@ -277,20 +292,11 @@ def transform_data(converted, minimum_points):
         df["snr"] = df[["cflux", "csigflux"]].apply(
             lambda pdf: pdf["cflux"] / pdf["csigflux"], axis=1
         )
-
-    condition = []
-
-    for pair in range(5):
-        condition.append((all_transformed[pair]['cjd'].apply(len) >= minimum_points) & (all_transformed[pair + 1]['cjd'].apply(len) >= minimum_points))
-
-    valid = np.array([False] * len(converted))
-    for cond in condition:
-        valid = valid | cond
-
-    return [x[valid] for x in all_transformed], valid
+   
+    return all_transformed, valid
 
 
-def parametric_bump(ps):
+def parametric_bump(ps, band):
 
     """Fit the lightcurves using the bump function. Extract the parameters
     Parameters
@@ -325,18 +331,14 @@ def parametric_bump(ps):
     True
     """
 
-    parameters_dict = {"p1": 0.225, "p2": -2.5, "p3": 0.038, "p4": get_min(ps["cflux"])}
+    try:
+        fit = curve_fit(mod.bump, ps[f"cjd_{band}"], ps[f"cflux_{band}"], sigma= ps[f"csigflux_{band}"],\
+                        p0=[0.225, -2.5, 0.038, get_min(ps[f"cflux_{band}"])], maxfev=k.MAXFEV)
 
-    least_squares = LeastSquares(ps["cjd"], ps["cflux"], ps["csigflux"], mod.bump)
-    fit = Minuit(least_squares, **parameters_dict)
+    except:
+        fit = [[0.225, -2.5, 0.038, -1]]
 
-    fit.migrad()
-
-    parameters = []
-    for fit_v in range(len(fit.values)):
-        parameters.append(fit.values[fit_v])
-
-    return parameters
+    return fit[0]
 
 
 def compute_color(ps, minimum=4):
@@ -358,31 +360,18 @@ def compute_color(ps, minimum=4):
 
     """
 
-    all_colors = []
+    # Compute fitted values at cjd from the other band
+    add_from_1 = mod.bump(ps["cjd_red"], *ps["bump_blue"])
+    add_from_0 = mod.bump(ps["cjd_blue"], *ps["bump_red"])
 
-    for pair in [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]:
+    # Add to the flux list : maintain the same order : cjd from 0 then cjd from 1
+    new_cflux_0 = np.append(ps["cflux_blue"], add_from_1)
+    new_cflux_1 = np.append(add_from_0, ps["cflux_red"])
 
-        if (len(ps[f"cjd_{pair[1]}"]) >= minimum) & (
-            len(ps[f"cjd_{pair[1]}"]) >= minimum
-        ):
-
-            # Compute fitted values at cjd from the other band
-            add_from_1 = mod.bump(ps[f"cjd_{pair[1]}"], *ps[f"bump_{pair[0]}"])
-            add_from_0 = mod.bump(ps[f"cjd_{pair[0]}"], *ps[f"bump_{pair[1]}"])
-
-            # Add to the flux list : maintain the same order : cjd from 0 then cjd from 1
-            new_cflux_0 = np.append(ps[f"cflux_{pair[0]}"], add_from_1)
-            new_cflux_1 = np.append(add_from_0, ps[f"cflux_{pair[1]}"])
-
-            unnorm_cflux_0 = new_cflux_0 * ps[f"peak_{pair[0]}"]
-            unnorm_cflux_1 = new_cflux_1 * ps[f"peak_{pair[1]}"]
-
-            all_colors.append(unnorm_cflux_0 - unnorm_cflux_1)
-
-        else:
-            all_colors.append([0])
-
-    return all_colors
+    unnorm_cflux_0 = new_cflux_0 * ps["peak_blue"]
+    unnorm_cflux_1 = new_cflux_1 * ps["peak_red"]
+    
+    return unnorm_cflux_0 - unnorm_cflux_1
 
 
 def compute_std(x):
@@ -428,8 +417,12 @@ def parametrise(all_transformed, target_col=""):
     """
 
     all_features = []
+    
+   
 
     for band in range(6):
+        
+        start_time = time.time()
 
         transformed = all_transformed[band]
         nb_points = transformed["cflux"].apply(lambda x: len(x))
@@ -457,18 +450,18 @@ def parametrise(all_transformed, target_col=""):
                 f"nb_points_{band}": nb_points,
             }
         )
+        
 
         if target_col != "":
             targets = transformed[target_col]
             df_parameters["target"] = targets
-
-        # Compute missing values for the color
+            
+            
         # The bump function is built to fit transient centered on 40
         transformed["cjd"] = transformed["cjd"].apply(lambda x: np.array(x) + 40)
-        bump_parameters = transformed.apply(parametric_bump, axis=1)
-        df_parameters[f"bump_{band}"] = bump_parameters
 
         df_parameters[f"cflux_{band}"] = transformed["cflux"]
+        df_parameters[f"csigflux_{band}"] = transformed["csigflux"]
         df_parameters[f"cjd_{band}"] = transformed["cjd"]
 
         all_features.append(df_parameters)
@@ -500,37 +493,27 @@ def merge_features(all_features, minimum_points, target_col=""):
         ['object_id', 'std_1', 'std_2', 'peak_1', 'peak_2', 'mean_snr_1',
         'mean_snr_2', 'nb_points_1', 'nb_points_2', 'std_color', 'max_color']
     """
+    
+    warnings.filterwarnings('ignore', '.*Covariance of the parameters could not be estimated.*')
+    
+    features = all_features[0]
 
     # Avoid having twice the same column
-    if target_col == "":
-        for band in [1, 2, 3, 4, 5]:
-            all_features[band] = all_features[band].drop(
-                columns={
-                    "object_id",
-                    "ra",
-                    "dec",
-                    "hostgal_dist",
-                    "hostgal_zphot",
-                    "hostgal_zphot_err",
-                }
-            )
-    else:
-        for band in [1, 2, 3, 4, 5]:
-            all_features[band] = all_features[band].drop(
-                columns={
-                    "object_id",
-                    "ra",
-                    "dec",
-                    "hostgal_dist",
-                    "hostgal_zphot",
-                    "hostgal_zphot_err",
-                    target_col,
-                }
-            )
 
-    features = all_features[0]
     for band in [1, 2, 3, 4, 5]:
+        all_features[band] = all_features[band].drop(
+            columns={
+                "object_id",
+                "ra",
+                "dec",
+                "hostgal_dist",
+                "hostgal_zphot",
+                "hostgal_zphot_err",
+                target_col,
+            }, errors='ignore')
+
         features = features.join(all_features[band])
+
 
     ordered_features = features[
         [
@@ -566,15 +549,31 @@ def merge_features(all_features, minimum_points, target_col=""):
             "nb_points_5",
         ]
     ].copy()
+    
+    features['color_not_computed'] = True
+    features[['bump_blue', 'blue_band', 'cjd_blue', 'cflux_blue','peak_blue',\
+              'bump_red', 'cjd_red', 'cflux_red', 'peak_red']] = None
 
+    for pair in [[1, 2], [2, 3], [4, 5], [0, 1], [3, 4]]:
+        
+        mask_color_compute = (features[f'cjd_{pair[0]}'].apply(len)>=k.MINIMUM_POINTS) &\
+                             (features[f'cjd_{pair[1]}'].apply(len)>=k.MINIMUM_POINTS) &\
+                             features['color_not_computed']
+
+        for colo_idx, colo in enumerate(['blue', 'red']):
+            features.loc[mask_color_compute, f'bump_{colo}'] = features[mask_color_compute].apply(parametric_bump, axis=1, args=(pair[colo_idx],))
+            for colname in ['cjd', 'cflux', 'peak']:
+                features.loc[mask_color_compute, f'{colname}_{colo}'] = features.loc[mask_color_compute, f'{colname}_{pair[colo_idx]}']
+            
+        features.loc[mask_color_compute, f'blue_band'] = pair[0]
+        features.loc[mask_color_compute, 'color_not_computed'] = False
+
+        
     # Add color features
-    color = features.apply(compute_color, axis=1, args=(minimum_points,))
-    color = color.apply(pd.Series)
+    features['color'] = features.apply(compute_color, axis=1, args=(minimum_points,))
 
-    for idx, i in enumerate(["u-g", "g-r", "r-i", "i-z", "z-Y"]):
-
-        ordered_features[f"std_{i}"] = color[idx].apply(compute_std)
-        ordered_features[f"max_{i}"] = color[idx].apply(get_max, args=(True,))
+    ordered_features[f"std_color"] = features['color'].apply(compute_std)
+    ordered_features[f"max_color"] = features['color'].apply(get_max, args=(True,))
 
     if target_col != "":
         ordered_features[target_col] = features[target_col]
