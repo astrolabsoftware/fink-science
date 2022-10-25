@@ -43,7 +43,9 @@ setuptools.setup(
             'data/models/cats_models/*.h5',
             'data/models/t2/*/*.pb',
             'data/models/t2/*/*/variables*',
-            'data/catalogs/*.parquet'],
+            'data/catalogs/*.parquet',
+            'data/catalogs/*.fits',
+            'data/catalogs/*.csv'],
     },
 
     classifiers=[
