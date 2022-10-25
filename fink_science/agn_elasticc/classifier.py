@@ -44,7 +44,7 @@ def load_classifier(model_path=None):
     >>> rf.n_classes_
     2
     >>> rf.n_features_
-    39
+    31
     """
     if model_path is None:
         model_path = k.CLASSIFIER

@@ -14,25 +14,50 @@
 # limitations under the License.
 
 import pandas as pd
-from iminuit import Minuit
-from iminuit.cost import LeastSquares
 import fink_science.agn_elasticc.models as mod
 from pandas.testing import assert_frame_equal  # noqa: F401
 import fink_science.agn_elasticc.kernel as k  # noqa: F401
 import numpy as np
 import pickle  # noqa: F401
-import time
 from scipy.optimize import curve_fit
 import warnings
 
 
-
 def map_fid(ps):
+    """Convert LSST filters to corresponding int value
+    From u, g, r, i, z, Y to 0, 1, 2, 3, 4, 5
+
+    Parameters
+    ----------
+    ps: pd.Series
+        Must contain columns 'cfid'
+
+    Returns
+    -------
+    pd.Series
+        Serie with 'cfid' converted to ints
+    """
+
     band_dict = {"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "Y": 5}
     return np.array(list(map(band_dict.get, ps)))
 
 
 def compute_hostgal_dist(df):
+    """Compute the distance to host galaxy column
+        using simple Pythagoras computation.
+
+    Parameters
+    ----------
+    df: pd.DataFrame
+       ELASTiCC alert data.
+       Must contain "hostgal_ra","hostgal_dec", "ra", "dec" columns.
+
+    Returns
+    -------
+    np.array
+        Distance from object to host galaxy.
+        Returns -9 if galaxy position is unspecified
+    """
 
     if (df["hostgal_ra"] == -999) & (df["hostgal_dec"] == -999):
         hostgal_dist = -9
@@ -45,7 +70,30 @@ def compute_hostgal_dist(df):
 
 
 def format_data(df):
+    """Transform filter names to ints and
+    add distance to host galaxy column.
 
+    Parameters
+    ----------
+    df: pd.DataFrame
+       ELASTiCC alert data with columns :
+            "objectId": diaObjectId,
+            "cjd": cmidPoinTai,
+            "cflux": cpsFlux,
+            "csigflux": cpsFluxErr,
+            "cfid": cfilterName,
+            "ra": ra,
+            "dec": decl,
+            "hostgal_zphot": hostgal_zphot,
+            "hostgal_zphot_err": hostgal_zphot_err,
+            "hostgal_ra": hostgal_ra,
+            "hostgal_dec": hostgal_dec
+
+    Returns
+    -------
+    pd.DataFrame
+        Formated dataset
+    """
     # Compute distance from host
     df["hostgal_dist"] = df.apply(compute_hostgal_dist, axis=1)
     df = df.drop(columns={"hostgal_ra", "hostgal_dec"})
@@ -58,7 +106,7 @@ def format_data(df):
 
 def keep_filter(ps, band):
     """
-    funtion that removes points from other bands than the one specified
+    Funtion that removes points from other bands than the one specified
 
     Parameters
     ---------
@@ -236,53 +284,57 @@ def get_min(x, absolute=False):
         return x.min()
 
 
-def transform_data(converted, minimum_points):
+def transform_data(formated, minimum_points):
 
-    """Apply transformations for each band on a flux converted dataset
+    """Apply transformations for each band on a flux formated dataset
             - Shift cjd so that the max flux point is at 0
             - Normalize by dividing flux and flux err by the maximum flux
             - Add a column with maxflux before normalization
 
+    Split the results into 6 dataframes each containing only one passband.
+
 
     Parameters
     ----------
-    converted : pd.DataFrame
-        Dataframe of alerts from Fink with nan removed and converted to flux
-    minimum_points: minimum number of points for passband to be considered valid
-        The classifier requieres at least two consecutive valid passbands
+    formated : pd.DataFrame
+        Dataframe of alerts from ELASTiCC formated using "format_data" function.
+    minimum_points: minimum number of points for a passband to be considered valid
+        The classifier requires at least two consecutive valid passbands.
 
     Returns
     -------
-    transformed_1 : pd.DataFrame
-        Transformed DataFrame that only contains passband g
+    all_transformed : list
+        List of 6 DataFrame. Each df is a transformed version of formated
+        that only contains observations from one passband and valid objects.
 
 
-    transformed_2 : pd.DataFrame
-        Transformed DataFrame that only contains passband r
+    valid: np.array
+        Boolean array describing if each object is valid.
+        Objects are valid if they have at least two consecutive passbands
+        containing at least k.MINIMUM_POINTS observations.
 
     """
 
     all_transformed = []
 
     for band in range(6):
-        transformed = converted.copy()
+        transformed = formated.copy()
         transformed[["cfid", "cjd", "cflux", "csigflux"]] = transformed[
             ["cfid", "cjd", "cflux", "csigflux"]
         ].apply(keep_filter, args=(band,), axis=1, result_type="expand")
 
         all_transformed.append(transformed)
 
-
     condition = []
     for pair in range(5):
         condition.append((all_transformed[pair]['cjd'].apply(len) >= minimum_points) & (all_transformed[pair + 1]['cjd'].apply(len) >= minimum_points))
 
-    valid = np.array([False] * len(converted))
+    valid = np.array([False] * len(formated))
     for cond in condition:
         valid = valid | cond
-        
+
     all_transformed = [x[valid].copy() for x in all_transformed]
-    
+
     for df in all_transformed:
 
         df["cjd"] = df.apply(translate, axis=1)
@@ -292,7 +344,7 @@ def transform_data(converted, minimum_points):
         df["snr"] = df[["cflux", "csigflux"]].apply(
             lambda pdf: pdf["cflux"] / pdf["csigflux"], axis=1
         )
-   
+
     return all_transformed, valid
 
 
@@ -302,14 +354,15 @@ def parametric_bump(ps, band):
     Parameters
     ----------
     ps : pd.Series
-        pd Series of alerts from Fink with nan removed and converted to flux.
-        Flux must be normalised
+        Alerts that have been transformed using 'transform_data' function.
         Lightcurves's max flux must be centered on 40.
         p4 guess is set to the minimum flux value
+
     Returns
     -------
-    parameters : list
+    list
         List of best fitting parameter values [p1, p2, p3, p4]
+        Returns [0.225, -2.5, 0.038, -1] if the fit didn't converge.
 
     Examples
     --------
@@ -332,10 +385,10 @@ def parametric_bump(ps, band):
     """
 
     try:
-        fit = curve_fit(mod.bump, ps[f"cjd_{band}"], ps[f"cflux_{band}"], sigma= ps[f"csigflux_{band}"],\
+        fit = curve_fit(mod.bump, ps[f"cjd_{band}"], ps[f"cflux_{band}"], sigma=ps[f"csigflux_{band}"],
                         p0=[0.225, -2.5, 0.038, get_min(ps[f"cflux_{band}"])], maxfev=k.MAXFEV)
 
-    except:
+    except RuntimeError:
         fit = [[0.225, -2.5, 0.038, -1]]
 
     return fit[0]
@@ -343,7 +396,7 @@ def parametric_bump(ps, band):
 
 def compute_color(ps, minimum=4):
 
-    """Compute the color of an alert by computing g-r (before normalisation)
+    """Compute the color of an alert by computing blue-red
     Proceed by virtually filling missing points of each band using the bump fit
 
     Parameters
@@ -356,7 +409,7 @@ def compute_color(ps, minimum=4):
     Returns
     -------
     np.array
-        Array of color g-r at each point
+        Array of color blue-red at each point
 
     """
 
@@ -370,11 +423,24 @@ def compute_color(ps, minimum=4):
 
     unnorm_cflux_0 = new_cflux_0 * ps["peak_blue"]
     unnorm_cflux_1 = new_cflux_1 * ps["peak_red"]
-    
+
     return unnorm_cflux_0 - unnorm_cflux_1
 
 
 def compute_std(x):
+    """Compute standard deviation of an array
+    Return -1 if the array is empty
+
+    Parameters
+    ----------
+    x: np.array
+
+    Returns
+    -------
+    float
+        Standard deviation of the array
+    """
+
     if len(x) == 0:
         return -1
     else:
@@ -382,6 +448,19 @@ def compute_std(x):
 
 
 def compute_mean(x):
+    """Compute mean of an array
+    Return -1 if the array is empty
+
+    Parameters
+    ----------
+    x: np.array
+
+    Returns
+    -------
+    float
+        Mean of the array
+    """
+
     if len(x) == 0:
         return -1
     else:
@@ -389,20 +468,23 @@ def compute_mean(x):
 
 
 def parametrise(all_transformed, target_col=""):
+    """Extract parameters from a list of transformed dataset.
 
-    """Extract parameters from a transformed dataset. Construct a new DataFrame
-    Parameters are :  - 'nb_points' : number of points
-                      - 'std' : standard deviation of the flux
-                      - 'peak' : maximum before normalization
-                      - 'mean_snr' : mean signal over noise ratio
-
-    Also compute a fit using the bump function on each lightcurve. Parameters
-    of the fit will later be used to compute color parameters
+    Parameters are :
+            - "ra" : right ascension
+            - "dec" : declination
+            - "hostgal_dist" : distance to host galaxy
+            - "hostgal_zphot" : redshift of the host galaxy
+            - "hostgal_zphot_err" : error on the redshift of the host galaxy
+            - 'std' : standard deviation of the flux for each filter
+            - 'peak' : maximum before normalization for each filter
+            - 'mean_snr' : mean signal over noise ratio for each filter
+            - 'nb_points' : number of points for each filter
 
     Parameters
     ----------
-    transformed : pd.DataFrame
-        Transformed DataFrame that only contains a single passband
+    all_transformed : list
+        List of transformed DataFrame using "transform_data" function
     target_col: str
         If inputed a non empty str, add the corresponding
         column as a target column to the final dataset
@@ -412,17 +494,12 @@ def parametrise(all_transformed, target_col=""):
     -------
     df_parameters : pd.DataFrame
         DataFrame of parameters.
-        Contains additionnal columns which will be used to compute color parameters
-
-    """
+        Also adds columns of cjd, cflux and csigflux that
+        will be used to compute color later on.    """
 
     all_features = []
-    
-   
 
     for band in range(6):
-        
-        start_time = time.time()
 
         transformed = all_transformed[band]
         nb_points = transformed["cflux"].apply(lambda x: len(x))
@@ -450,13 +527,11 @@ def parametrise(all_transformed, target_col=""):
                 f"nb_points_{band}": nb_points,
             }
         )
-        
 
         if target_col != "":
             targets = transformed[target_col]
             df_parameters["target"] = targets
-            
-            
+
         # The bump function is built to fit transient centered on 40
         transformed["cjd"] = transformed["cjd"].apply(lambda x: np.array(x) + 40)
 
@@ -471,16 +546,23 @@ def parametrise(all_transformed, target_col=""):
 
 def merge_features(all_features, minimum_points, target_col=""):
 
-    """Merge feature tables of band g and r.
-    Compute color parameters : - 'max_color' : absolute maximum of the color
-                               - 'std_color' : standard deviation of the color
+    """Merge feature tables of all filters.
+    Additionnaly compute color parameters :
+                                - 'max_color' : absolute maximum of the color
+                                - 'std_color' : standard deviation of the color
+
+    It requires k.MINIMUM_POINTS points in two consecutive passbands.
+    We compute only one color, the first that satistfies the requirement,
+    checked in the following order : g-r, r-i, z-Y, u-g, i-z
+
 
     Parameters
     ----------
-    features_1: pd.DataFrame
-        features of band g
-    features_2: pd.DataFrame
-        features of band r
+    all_features: DataFrame
+        Parameter dataframe, output of the "parametrise" function
+
+    minimum_points: int
+        Minimum number of point in a filter to be considered valid
     target_col: str
         If inputed a non empty str, add the corresponding
         column as a target column to the final dataset
@@ -490,12 +572,17 @@ def merge_features(all_features, minimum_points, target_col=""):
     -------
     ordered_features : pd.DataFrame
         Final features dataset with ordered columns :
-        ['object_id', 'std_1', 'std_2', 'peak_1', 'peak_2', 'mean_snr_1',
-        'mean_snr_2', 'nb_points_1', 'nb_points_2', 'std_color', 'max_color']
+        ["object_id","ra","dec","hostgal_dist","hostgal_zphot",
+        "hostgal_zphot_err","std_0","std_1","std_2","std_3",
+        "std_4","std_5","peak_0","peak_1","peak_2","peak_3",
+        "peak_4","peak_5","mean_snr_0","mean_snr_1","mean_snr_2",
+        "mean_snr_3","mean_snr_4","mean_snr_5","nb_points_0",
+        "nb_points_1","nb_points_2","nb_points_3","nb_points_4",
+        "nb_points_5","std_color", "max_color"]
     """
-    
+
     warnings.filterwarnings('ignore', '.*Covariance of the parameters could not be estimated.*')
-    
+
     features = all_features[0]
 
     # Avoid having twice the same column
@@ -513,7 +600,6 @@ def merge_features(all_features, minimum_points, target_col=""):
             }, errors='ignore')
 
         features = features.join(all_features[band])
-
 
     ordered_features = features[
         [
@@ -549,31 +635,27 @@ def merge_features(all_features, minimum_points, target_col=""):
             "nb_points_5",
         ]
     ].copy()
-    
+
     features['color_not_computed'] = True
-    features[['bump_blue', 'blue_band', 'cjd_blue', 'cflux_blue','peak_blue',\
+    features[['bump_blue', 'blue_band', 'cjd_blue', 'cflux_blue', 'peak_blue',
               'bump_red', 'cjd_red', 'cflux_red', 'peak_red']] = None
 
     for pair in [[1, 2], [2, 3], [4, 5], [0, 1], [3, 4]]:
-        
-        mask_color_compute = (features[f'cjd_{pair[0]}'].apply(len)>=k.MINIMUM_POINTS) &\
-                             (features[f'cjd_{pair[1]}'].apply(len)>=k.MINIMUM_POINTS) &\
-                             features['color_not_computed']
+        mask_color_compute = (features[f'cjd_{pair[0]}'].apply(len) >= k.MINIMUM_POINTS) & (features[f'cjd_{pair[1]}'].apply(len) >= k.MINIMUM_POINTS) & features['color_not_computed']
 
         for colo_idx, colo in enumerate(['blue', 'red']):
             features.loc[mask_color_compute, f'bump_{colo}'] = features[mask_color_compute].apply(parametric_bump, axis=1, args=(pair[colo_idx],))
             for colname in ['cjd', 'cflux', 'peak']:
                 features.loc[mask_color_compute, f'{colname}_{colo}'] = features.loc[mask_color_compute, f'{colname}_{pair[colo_idx]}']
-            
-        features.loc[mask_color_compute, f'blue_band'] = pair[0]
+
+        features.loc[mask_color_compute, 'blue_band'] = pair[0]
         features.loc[mask_color_compute, 'color_not_computed'] = False
 
-        
     # Add color features
     features['color'] = features.apply(compute_color, axis=1, args=(minimum_points,))
 
-    ordered_features[f"std_color"] = features['color'].apply(compute_std)
-    ordered_features[f"max_color"] = features['color'].apply(get_max, args=(True,))
+    ordered_features["std_color"] = features['color'].apply(compute_std)
+    ordered_features["max_color"] = features['color'].apply(get_max, args=(True,))
 
     if target_col != "":
         ordered_features[target_col] = features[target_col]
@@ -608,6 +690,7 @@ def get_probabilities(clf, features, valid):
     -------
     final_proba : np.array
         ordered probabilities of being an AGN
+        Proba = 0 if the object is not valid.
     """
 
     final_proba = np.array([0.0] * len(valid)).astype(np.float64)
