@@ -24,7 +24,7 @@ import numpy as np
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(IntegerType(), PandasUDFType.SCALAR)
-def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
+def roid_catcher(jd, magpsf, sgscore1, ssdistnr, distpsnr1):
     """ Determine if an alert is a potential Solar System object (SSO) using two criteria:
 
     1. The alert has been flagged as an SSO by ZTF (MPC) within 5"
@@ -47,12 +47,6 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
         Observation Julian date at start of exposure [days]
     magpsf: Spark DataFrame Column
         Magnitude from PSF-fit photometry [mag]
-    ndethist: Spark DataFrame Column
-        Number of spatially-coincident detections falling within 1.5 arcsec
-        going back to beginning of survey; only detections that fell on the
-        same field and readout-channel ID where the input candidate was
-        observed are counted. All raw detections down to a
-        photometric S/N of ~ 3 are included. [int]
     sgscore1: Spark DataFrame Column
         Star/Galaxy score of closest source from PS1 catalog
         0 <= sgscore <= 1 where closer to 1 implies higher
@@ -93,7 +87,7 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
     # Perform the fit + classification (default model)
     >>> args = [
     ...     'cjd', 'cmagpsf',
-    ...     'candidate.ndethist', 'candidate.sgscore1',
+    ...     'candidate.sgscore1',
     ...     'candidate.ssdistnr', 'candidate.distpsnr1']
     >>> df = df.withColumn('roid', roid_catcher(*args))
 
@@ -106,7 +100,7 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
     >>> df.filter(df['roid'] == 3).count()
     3
     """
-    flags = np.zeros_like(ndethist.values, dtype=int)
+    flags = np.zeros(len(jd), dtype=int)
 
     # remove NaN
     nalerthist = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x)))
@@ -145,7 +139,9 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
         f_relative_distance = (abs(distpsnr1) - ssdistnr) > 0.0
 
         # Not seen many times with the same objectId
-        f_ndethist = ndethist <= 2
+        # I was assuming 2 before, but I've seen 3 & 4.
+        # 10 should be conservative enough...
+        f_ndethist = nalerthist <= 10
 
         mask_roid = f_distance1 & f_distance2 & f_relative_distance & f_ndethist
         flags[mask_roid] = 3

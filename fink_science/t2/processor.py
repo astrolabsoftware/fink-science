@@ -79,7 +79,7 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
     # Add SSO field
     >>> args_roid = [
     ...    'cjd', 'cmagpsf',
-    ...    'candidate.ndethist', 'candidate.sgscore1',
+    ...    'candidate.sgscore1',
     ...    'candidate.ssdistnr', 'candidate.distpsnr1']
     >>> df = df.withColumn('roid', roid_catcher(*args_roid))
 
