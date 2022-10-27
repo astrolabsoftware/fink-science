@@ -21,6 +21,7 @@ import numpy as np
 import pickle  # noqa: F401
 from scipy.optimize import curve_fit
 import warnings
+import unit_examples as uex  # noqa: F401
 
 
 def map_fid(ps):
@@ -36,6 +37,11 @@ def map_fid(ps):
     -------
     pd.Series
         Serie with 'cfid' converted to ints
+
+    Examples
+    --------
+    >>> np.array_equal(map_fid(['u', 'g', 'r', 'i', 'z', 'Y']), np.array([0, 1, 2, 3, 4, 5]))
+    True
     """
 
     band_dict = {"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "Y": 5}
@@ -48,7 +54,7 @@ def compute_hostgal_dist(df):
 
     Parameters
     ----------
-    df: pd.DataFrame
+    ps: pd.Series
        ELASTiCC alert data.
        Must contain "hostgal_ra","hostgal_dec", "ra", "dec" columns.
 
@@ -57,9 +63,18 @@ def compute_hostgal_dist(df):
     np.array
         Distance from object to host galaxy.
         Returns -9 if galaxy position is unspecified
+
+    Examples
+    --------
+    >>> df1 = pd.Series(data = {"hostgal_ra":90,"hostgal_dec":46, "ra":89, "dec":46.5})
+    >>> round(compute_hostgal_dist(df1))
+    1118
+    >>> df2 = pd.Series(data = {"hostgal_ra":90,"hostgal_dec":-999, "ra":89, "dec":46.5})
+    >>> compute_hostgal_dist(df2)
+    -9
     """
 
-    if (df["hostgal_ra"] == -999) & (df["hostgal_dec"] == -999):
+    if (df["hostgal_ra"] == -999) | (df["hostgal_dec"] == -999):
         hostgal_dist = -9
     else:
         hostgal_dist = (
@@ -93,7 +108,14 @@ def format_data(df):
     -------
     pd.DataFrame
         Formated dataset
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({"cfid":[['u', 'g', 'r', 'i', 'z', 'Y']], "hostgal_ra":[90], "hostgal_dec":[46], "ra":[89], "dec":[46.5]})
+    >>> expect = pd.DataFrame({'cfid': {0: [0, 1, 2, 3, 4, 5]}, 'ra': {0: 89}, 'dec': {0: 46.5}, 'hostgal_dist': {0: 1118.033988749895}})
+    >>> assert_frame_equal(format_data(df), expect)
     """
+
     # Compute distance from host
     df["hostgal_dist"] = df.apply(compute_hostgal_dist, axis=1)
     df = df.drop(columns={"hostgal_ra", "hostgal_dec"})
@@ -307,12 +329,20 @@ def transform_data(formated, minimum_points):
         List of 6 DataFrame. Each df is a transformed version of formated
         that only contains observations from one passband and valid objects.
 
-
     valid: np.array
         Boolean array describing if each object is valid.
         Objects are valid if they have at least two consecutive passbands
         containing at least k.MINIMUM_POINTS observations.
 
+    Examples
+    --------
+    >>> df = uex.formated_unit
+    >>> expect1_transformed = uex.expect1_transformed
+    >>> expect2_transformed = uex.expect2_transformed
+    >>> assert_frame_equal(transform_data(df, 4)[0][0], expect1_transformed)
+    >>> assert_frame_equal(transform_data(df, 4)[0][2], expect2_transformed)
+    >>> transform_data(df, 4)[1][0]
+    True
     """
 
     all_transformed = []
@@ -363,6 +393,16 @@ def parametric_bump(ps, band):
     list
         List of best fitting parameter values [p1, p2, p3, p4]
         Returns [0.225, -2.5, 0.038, -1] if the fit didn't converge.
+
+    Examples
+    --------
+    >>> ps = pd.Series({"cjd_1":np.array([-20, 20, 40, 45, 50, 60]),\
+                "cflux_1":np.array([0, .1, 1, .7, .4, .1]),\
+                "csigflux_1":np.array([.01, .01, .01, .01, .01, .01])})
+    >>> res = parametric_bump(ps, 1)
+    >>> expected = np.array([  0.57463348, -10.94381434,   0.05843842,   0.05655547])
+    >>> np.array_equal(np.around(res, 4), np.around(expected, 4))
+    True
     """
 
     try:
@@ -392,6 +432,22 @@ def compute_color(ps, minimum=4):
     np.array
         Array of color blue-red at each point
 
+    Examples
+    --------
+    >>> ps = pd.Series({"cjd_blue":np.array([0, 10, 20, 30, 40]),\
+                "cjd_red":np.array([35, 40, 45, 50]),\
+                "cflux_blue":np.array([0, .1, .4, .7, 1]),\
+                "cflux_red":np.array([.7, 1, .3, 0]),\
+                "bump_blue":np.array([0.5, -10,   0.06,   0.07]),\
+                "bump_red":np.array([0.225, -2.5, 0.038, 10]),\
+                "peak_blue":80914,\
+                "peak_red":81780})
+    >>> res = compute_color(ps)
+    >>> expected = np.array([-820197.15423085, -822210.11468053, -823501.83859425,\
+           -822870.37878502, -808280.17878222,  -24123.45023986,\
+            -54721.61867977,  -12014.06603495,    6161.4019725 ])
+    >>> np.array_equal(np.around(res, 4), np.around(expected, 4))
+    True
     """
 
     # Compute fitted values at cjd from the other band
@@ -420,6 +476,13 @@ def compute_std(x):
     -------
     float
         Standard deviation of the array
+
+    Examples
+    --------
+    >>> compute_std(np.array([0, 1, 2, 3, 4])) == 1.4142135623730951
+    True
+    >>> compute_std(np.array([])) == -1
+    True
     """
 
     if len(x) == 0:
@@ -440,6 +503,13 @@ def compute_mean(x):
     -------
     float
         Mean of the array
+
+    Examples
+    --------
+    >>> compute_mean(np.array([0, 1, 2, 3, 4])) == 2
+    True
+    >>> compute_mean(np.array([])) == -1
+    True
     """
 
     if len(x) == 0:
@@ -476,7 +546,20 @@ def parametrise(all_transformed, target_col=""):
     df_parameters : pd.DataFrame
         DataFrame of parameters.
         Also adds columns of cjd, cflux and csigflux that
-        will be used to compute color later on.    """
+        will be used to compute color later on.
+
+    Example
+    -------
+    >>> df = uex.all_transformed_unit
+    >>> expect0 = uex.expect_all_features0
+    >>> expect2 = uex.expect_all_features2
+    >>> parametrised = parametrise(df)
+    >>> assert_frame_equal(parametrised[0], expect0)
+    >>> assert_frame_equal(parametrised[2], expect2)
+    >>> exec("for i in df: i['target']='AGN'")
+    >>> expect0.insert(10, "target", 'AGN')
+    >>> assert_frame_equal(parametrise(df, 'target')[0], expect0)
+    """
 
     all_features = []
 
@@ -511,7 +594,7 @@ def parametrise(all_transformed, target_col=""):
 
         if target_col != "":
             targets = transformed[target_col]
-            df_parameters["target"] = targets
+            df_parameters[target_col] = targets
 
         # The bump function is built to fit transient centered on 40
         transformed["cjd"] = transformed["cjd"].apply(lambda x: np.array(x) + 40)
@@ -560,6 +643,15 @@ def merge_features(all_features, minimum_points, target_col=""):
         "mean_snr_3","mean_snr_4","mean_snr_5","nb_points_0",
         "nb_points_1","nb_points_2","nb_points_3","nb_points_4",
         "nb_points_5","std_color", "max_color"]
+
+    Example
+    -------
+    >>> df = uex.all_features_unit
+    >>> expected = uex.features_unit
+    >>> assert_frame_equal(merge_features(df, 4), expected)
+    >>> exec("for i in df: i['target']='AGN'")
+    >>> expected['target'] = 'AGN'
+    >>> assert_frame_equal(merge_features(df, 4, target_col='target'), expected)
     """
 
     warnings.filterwarnings('ignore', '.*Covariance of the parameters could not be estimated.*')
@@ -638,15 +730,16 @@ def merge_features(all_features, minimum_points, target_col=""):
     ordered_features["std_color"] = features['color'].apply(compute_std)
     ordered_features["max_color"] = features['color'].apply(get_max, args=(True,))
 
-    if target_col != "":
-        ordered_features[target_col] = features[target_col]
-
     # Make sure that no value is above 2**32 (scipy uses float32)
     max_size = 2**30
     float_cols = ordered_features.columns[ordered_features.columns != 'object_id']
 
     ordered_features[float_cols] = ordered_features[float_cols].mask(ordered_features[float_cols] > max_size, max_size)
     ordered_features[float_cols] = ordered_features[float_cols].mask(ordered_features[float_cols] < -max_size, -max_size)
+
+    if target_col != "":
+        targets = features[target_col]
+        ordered_features[target_col] = targets
 
     return ordered_features
 
@@ -672,6 +765,14 @@ def get_probabilities(clf, features, valid):
     final_proba : np.array
         ordered probabilities of being an AGN
         Proba = 0 if the object is not valid.
+
+    Examples
+    --------
+    >>> res = get_probabilities(uex.clf_unit, uex.features_unit, [True])
+    >>> len(res)
+    1
+    >>> res[0]!=-1
+    True
     """
 
     final_proba = np.array([0.0] * len(valid)).astype(np.float64)
