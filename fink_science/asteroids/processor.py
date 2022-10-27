@@ -148,7 +148,7 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
         f_ndethist = ndethist <= 5
         f_nalerthist = nalerthist <= 5
 
-        mask_roid = f_distance1 & f_distance2 & f_relative_distance & f_ndethist
+        mask_roid = f_distance1 & f_distance2 & f_relative_distance & f_ndethist & f_nalerthist
         flags[mask_roid] = 3
 
     return pd.Series(flags)
