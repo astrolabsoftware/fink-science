@@ -21,13 +21,12 @@ import numpy as np
 import os
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
-
+import kernel as k
 
 @pandas_udf(DoubleType())
-def agn_spark(
+def agn_elasticc(
         diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName,
-        ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec,
-        model_path=None):
+        ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec):
     """High level spark wrapper for the AGN classifier on ELASTiCC data
 
     Parameters
@@ -65,12 +64,16 @@ def agn_spark(
         Return 0 if the minimum points number is not respected.
     """
 
-    # we want at least 2 bands and 4 points per band
-    nbands = cfilterName.apply(lambda x: len(np.unique(x)))
-    npoints = cfilterName.apply(lambda x: len(x))
-
-    mask = (nbands >= 2) & (npoints >= 8)
-
+    passbands = ['u', 'g', 'r', 'i', 'z', 'Y']
+    mask = [False] * len(diaObjectId)
+    valid_filters = []
+    
+    for band in range(len(passbands)):
+        valid_filters.append(cfilterName.apply(lambda x: np.sum(np.array(x) == passbands[band]) >= k.MINIMUM_POINTS))
+        
+    for band in range(len(passbands)-1):    
+        mask = mask | ((valid_filters[band]) & valid_filters[band+1])
+        
     if len(diaObjectId[mask]) == 0:
         return pd.Series(np.zeros(len(diaObjectId), dtype=float))
 
@@ -96,8 +99,65 @@ def agn_spark(
     # agn_classifier relies on index being a range from 0 to N
     data_sub = data[mask].reset_index()
 
-    proba = agn_classifier(data_sub, model_path)
+    proba = agn_classifier(data_sub, source='ELASTICC', model_path)
     to_return = np.zeros(len(cmidPoinTai), dtype=float)
+    to_return[mask] = proba
+    return pd.Series(to_return)
+
+
+@pandas_udf(DoubleType())
+def agn_ztf(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
+
+    """High level spark wrapper for the AGN classifier
+
+    Parameters
+    ----------
+
+    objectId: Spark DataFrame Column
+        Identification numbers of the objects
+    jd: Spark DataFrame Column
+        JD times (vectors of floats)
+    magpsf, sigmapsf: Spark DataFrame Columns
+        Magnitude from PSF-fit photometry,
+        and 1-sigma error (vectors of floats)
+    fid: Spark DataFrame Column
+        Filter IDs (vectors of ints)
+    ra: Spark DataFrame Column
+        Right ascension of the objects
+    dec: Spark DataFrame Column
+        Declination of the objects
+
+    Returns
+    -------
+    np.array
+        ordered probabilities of being an AGN
+        Return 0 if the minimum number of point per passband
+        (specified in kernel.py) if not respected.
+    """
+
+    ng = fid.apply(lambda x: np.sum(np.array(x) == 1))
+    nr = fid.apply(lambda x: np.sum(np.array(x) == 2))
+
+    mask = (ng >= 4) & (nr >= 4)
+
+    if len(objectId[mask]) == 0:
+        return pd.Series(np.zeros(len(objectId), dtype=float))
+
+    data = pd.DataFrame(
+        {
+            "objectId": objectId,
+            "cjd": jd,
+            "cmagpsf": magpsf,
+            "csigmapsf": sigmapsf,
+            "cfid": fid,
+            "ra": ra,
+            "dec": dec,
+        }
+    )
+
+    proba = agn_classifier(data[mask], source='ZTF')
+
+    to_return = np.zeros(len(jd), dtype=float)
     to_return[mask] = proba
     return pd.Series(to_return)
 

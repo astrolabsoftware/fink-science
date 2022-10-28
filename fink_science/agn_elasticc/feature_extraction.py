@@ -16,7 +16,7 @@
 import pandas as pd
 import fink_science.agn_elasticc.models as mod
 from pandas.testing import assert_frame_equal  # noqa: F401
-import fink_science.agn_elasticc.kernel as k  # noqa: F401
+import fink_science.agn_elasticc.kernel as k
 import numpy as np
 import pickle  # noqa: F401
 from scipy.optimize import curve_fit
@@ -46,6 +46,67 @@ def map_fid(ps):
 
     band_dict = {"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "Y": 5}
     return np.array(list(map(band_dict.get, ps)))
+
+
+def remove_nan(ps):
+    """
+    funtion that remove nan values from list contains in columns
+
+    Paramters
+    ---------
+    ps : pd.Series
+        each rows of the dataframe. each entries must be numeric list
+
+    Return
+    ------
+    list_without_nan : list
+        list of the same size as x, each entries is the original list from the
+        current rows without the nan values and the associated values from the other columns.
+
+    Examples
+    --------
+    >>> serie_example = pd.Series(data = {'cmagpsf':[0,1,np.nan],'cjd':[3, 4, np.nan],'cra':[95, -4, np.nan],'cdec':[58, 43, np.nan],'anything':[1,5,8]})
+    >>> remove_nan(serie_example)
+    [array([0, 1]), array([3, 4]), array([95, -4]), array([58, 43]), array([1, 5])]
+    """
+
+    mask = np.equal(ps["cmagpsf"], ps["cmagpsf"])
+
+    return [np.array(_col)[mask].astype(type(_col[0])) for _col in ps]
+
+
+def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
+    """Conversion from magnitude to Fluxcal from SNANA manual
+    Parameters
+    ----------
+    magpsf: float
+        PSF-fit magnitude from ZTF.
+    sigmapsf: float
+        Error on PSF-fit magnitude from ZTF.
+
+    Returns
+    ----------
+    fluxcal: float
+        Flux cal as used by SNANA
+    fluxcal_err: float
+        Absolute error on fluxcal (the derivative has a minus sign)
+
+    Examples
+    --------
+    >>> flux = mag2fluxcal_snana(18.9, 0.07)
+    >>> round(flux[0], 5), round(flux[1], 5)
+    (2754.2287, 177.5718)
+    >>> mag2fluxcal_snana(None, None)
+    (None, None)
+    """
+
+    if magpsf is None:
+        return None, None
+
+    fluxcal = 10 ** (-0.4 * magpsf) * 10 ** (11)
+    fluxcal_err = 9.21034 * 10**10 * np.exp(-0.921034 * magpsf) * sigmapsf
+
+    return fluxcal, fluxcal_err
 
 
 def compute_hostgal_dist(df):
@@ -84,7 +145,40 @@ def compute_hostgal_dist(df):
     return hostgal_dist
 
 
-def format_data(df):
+def convert_full_dataset(clean: pd.DataFrame):
+    """
+    Convert all mag and mag err to flux and flux err
+
+    Paramters
+    ---------
+    clean : pd.DataFrame
+        Dataframe of alerts from Fink with nan removed
+
+    Return
+    ------
+    pd.DataFrame
+         DataFrame with column cmagpsf replaced with cflux
+         and column csigmagpsf replaced with csigflux
+
+    Example
+    -------
+    >>> example = pd.DataFrame(data = {'cmagpsf':[20, 10.5],'csigmapsf':[1, 1.5], 'anything':['toto', 86]})
+    >>> converted = convert_full_dataset(example)
+    >>> converted.round(1).equals(pd.DataFrame(data = {'cflux':[1000.0, 6309573.4],'csigflux':[921.0, 8717000.9], 'anything':['toto', 86]}))
+    True
+
+    """
+
+    flux = clean[["cmagpsf", "csigmapsf"]].apply(
+        lambda x: mag2fluxcal_snana(x[0], x[1]), axis=1
+    )
+    clean[["cmagpsf", "csigmapsf"]] = pd.DataFrame(flux.to_list())
+    clean = clean.rename(columns={"cmagpsf": "cflux", "csigmapsf": "csigflux"})
+
+    return clean
+
+
+def format_data(df, source):
     """Transform filter names to ints and
     add distance to host galaxy column.
 
@@ -116,13 +210,21 @@ def format_data(df):
     >>> assert_frame_equal(format_data(df), expect)
     """
 
-    # Compute distance from host
-    df["hostgal_dist"] = df.apply(compute_hostgal_dist, axis=1)
-    df = df.drop(columns={"hostgal_ra", "hostgal_dec"})
+    if source == 'ELASTICC':
+        # Compute distance from host
+        df["hostgal_dist"] = df.apply(compute_hostgal_dist, axis=1)
+        df = df.drop(columns={"hostgal_ra", "hostgal_dec"})
+        
+        # Transform band str to int
+        df["cfid"] = df["cfid"].apply(map_fid)
 
-    # Transform band str to int
-    df["cfid"] = df["cfid"].apply(map_fid)
 
+    if source == 'ZTF':
+        df[["cfid", "cjd", "cmagpsf", "csigmapsf"]] = df[
+        ["cfid", "cjd", "cmagpsf", "csigmapsf"]
+    ].apply(remove_nan, axis=1, result_type="expand")
+        df = convert_full_dataset(df)
+        
     return df
 
 
@@ -306,7 +408,7 @@ def get_min(x, absolute=False):
         return x.min()
 
 
-def transform_data(formated, minimum_points):
+def transform_data(formated, minimum_points, source):
 
     """Apply transformations for each band on a flux formated dataset
             - Shift cjd so that the max flux point is at 0
@@ -347,7 +449,13 @@ def transform_data(formated, minimum_points):
 
     all_transformed = []
 
-    for band in range(6):
+    if source == 'ELASTICC':
+        passbands = [0, 1, 2, 3, 4, 5]
+
+    elif source == 'ZTF':
+        passbands = [1, 2]
+
+    for band in passbands:
         transformed = formated.copy()
         transformed[["cfid", "cjd", "cflux", "csigflux"]] = transformed[
             ["cfid", "cjd", "cflux", "csigflux"]
@@ -356,7 +464,7 @@ def transform_data(formated, minimum_points):
         all_transformed.append(transformed)
 
     condition = []
-    for pair in range(5):
+    for pair in range(len(passbands)-1):
         condition.append((all_transformed[pair]['cjd'].apply(len) >= minimum_points) & (all_transformed[pair + 1]['cjd'].apply(len) >= minimum_points))
 
     valid = np.array([False] * len(formated))
@@ -518,7 +626,7 @@ def compute_mean(x):
         return np.mean(x)
 
 
-def parametrise(all_transformed, target_col=""):
+def parametrise(all_transformed, source, target_col=""):
     """Extract parameters from a list of transformed dataset.
 
     Parameters are :
@@ -560,12 +668,18 @@ def parametrise(all_transformed, target_col=""):
     >>> expect0.insert(10, "target", 'AGN')
     >>> assert_frame_equal(parametrise(df, 'target')[0], expect0)
     """
+    
+    if source == 'ELASTICC':
+        passbands = [0, 1, 2, 3, 4, 5]
 
+    elif source == 'ZTF':
+        passbands = [1, 2]
+        
     all_features = []
 
-    for band in range(6):
+    for idx, band in enumerate(passbands):
 
-        transformed = all_transformed[band]
+        transformed = all_transformed[idx]
         nb_points = transformed["cflux"].apply(lambda x: len(x))
         peak = transformed["peak"]
         std = transformed["cflux"].apply(compute_std)
@@ -573,24 +687,39 @@ def parametrise(all_transformed, target_col=""):
         ids = transformed["objectId"]
         ra = transformed["ra"]
         dec = transformed["dec"]
-        hostgal_dist = transformed["hostgal_dist"]
-        hostgal_zphot = transformed["hostgal_zphot"]
-        hostgal_zphot_err = transformed["hostgal_zphot_err"]
+        
+        if source == 'ELASTICC':
+            hostgal_dist = transformed["hostgal_dist"]
+            hostgal_zphot = transformed["hostgal_zphot"]
+            hostgal_zphot_err = transformed["hostgal_zphot_err"]
 
-        df_parameters = pd.DataFrame(
-            data={
-                "object_id": ids,
-                "ra": ra,
-                "dec": dec,
-                "hostgal_dist": hostgal_dist,
-                "hostgal_zphot": hostgal_zphot,
-                "hostgal_zphot_err": hostgal_zphot_err,
-                f"std_{band}": std,
-                f"peak_{band}": peak,
-                f"mean_snr_{band}": mean_snr,
-                f"nb_points_{band}": nb_points,
-            }
-        )
+            df_parameters = pd.DataFrame(
+                data={
+                    "object_id": ids,
+                    "ra": ra,
+                    "dec": dec,
+                    "hostgal_dist": hostgal_dist,
+                    "hostgal_zphot": hostgal_zphot,
+                    "hostgal_zphot_err": hostgal_zphot_err,
+                    f"std_{band}": std,
+                    f"peak_{band}": peak,
+                    f"mean_snr_{band}": mean_snr,
+                    f"nb_points_{band}": nb_points,
+                }
+            )
+            
+        elif source == 'ZTF':
+            df_parameters = pd.DataFrame(
+                data={
+                    "object_id": ids,
+                    "ra": ra,
+                    "dec": dec,
+                    f"std_{band}": std,
+                    f"peak_{band}": peak,
+                    f"mean_snr_{band}": mean_snr,
+                    f"nb_points_{band}": nb_points,
+                }
+            )
 
         if target_col != "":
             targets = transformed[target_col]
@@ -608,7 +737,7 @@ def parametrise(all_transformed, target_col=""):
     return all_features
 
 
-def merge_features(all_features, minimum_points, target_col=""):
+def merge_features(all_features, minimum_points, source, target_col=""):
 
     """Merge feature tables of all filters.
     Additionnaly compute color parameters :
@@ -655,12 +784,20 @@ def merge_features(all_features, minimum_points, target_col=""):
     """
 
     warnings.filterwarnings('ignore', '.*Covariance of the parameters could not be estimated.*')
+    
+    if source == 'ELASTICC':
+        passbands = [0, 1, 2, 3, 4, 5]
+        pairs = [[1, 2], [2, 3], [4, 5], [0, 1], [3, 4]]
+
+    elif source == 'ZTF':
+        passbands = [1, 2]
+        pairs = [[1, 2]]
 
     features = all_features[0]
 
     # Avoid having twice the same column
 
-    for band in [1, 2, 3, 4, 5]:
+    for band in range(1, len(passbands)):
         all_features[band] = all_features[band].drop(
             columns={
                 "object_id",
@@ -674,38 +811,56 @@ def merge_features(all_features, minimum_points, target_col=""):
 
         features = features.join(all_features[band])
 
-    ordered_features = features[
+    if source == 'ELASTICC':
+        ordered_features = features[
+            [
+                "object_id",
+                "ra",
+                "dec",
+                "hostgal_dist",
+                "hostgal_zphot",
+                "hostgal_zphot_err",
+                "std_0",
+                "std_1",
+                "std_2",
+                "std_3",
+                "std_4",
+                "std_5",
+                "peak_0",
+                "peak_1",
+                "peak_2",
+                "peak_3",
+                "peak_4",
+                "peak_5",
+                "mean_snr_0",
+                "mean_snr_1",
+                "mean_snr_2",
+                "mean_snr_3",
+                "mean_snr_4",
+                "mean_snr_5",
+                "nb_points_0",
+                "nb_points_1",
+                "nb_points_2",
+                "nb_points_3",
+                "nb_points_4",
+                "nb_points_5",
+            ]
+        ].copy()
+        
+    elif source == 'ZTF':
+        ordered_features = features[
         [
             "object_id",
             "ra",
             "dec",
-            "hostgal_dist",
-            "hostgal_zphot",
-            "hostgal_zphot_err",
-            "std_0",
             "std_1",
             "std_2",
-            "std_3",
-            "std_4",
-            "std_5",
-            "peak_0",
             "peak_1",
             "peak_2",
-            "peak_3",
-            "peak_4",
-            "peak_5",
-            "mean_snr_0",
             "mean_snr_1",
             "mean_snr_2",
-            "mean_snr_3",
-            "mean_snr_4",
-            "mean_snr_5",
-            "nb_points_0",
             "nb_points_1",
-            "nb_points_2",
-            "nb_points_3",
-            "nb_points_4",
-            "nb_points_5",
+            "nb_points_2"
         ]
     ].copy()
 
@@ -713,7 +868,7 @@ def merge_features(all_features, minimum_points, target_col=""):
     features[['bump_blue', 'blue_band', 'cjd_blue', 'cflux_blue', 'peak_blue',
               'bump_red', 'cjd_red', 'cflux_red', 'peak_red']] = None
 
-    for pair in [[1, 2], [2, 3], [4, 5], [0, 1], [3, 4]]:
+    for pair in pairs:
         mask_color_compute = (features[f'cjd_{pair[0]}'].apply(len) >= k.MINIMUM_POINTS) & (features[f'cjd_{pair[1]}'].apply(len) >= k.MINIMUM_POINTS) & features['color_not_computed']
 
         for colo_idx, colo in enumerate(['blue', 'red']):

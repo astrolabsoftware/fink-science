@@ -1,7 +1,12 @@
 import pandas as pd
 import numpy as np
-import kernel as k
+import fink_science.agn_elasticc.kernel as k
 import pickle
+
+
+with open(k.CLASSIFIER_ELASTICC, "rb") as f:
+    clf_unit = pickle.load(f)
+
 
 formated_unit = pd.DataFrame(
     {
@@ -1076,6 +1081,3 @@ features_unit = pd.DataFrame(
         "max_color": {0: -53514.50876297413},
     }
 )
-
-with open(k.CLASSIFIER, "rb") as f:
-    clf_unit = pickle.load(f)
