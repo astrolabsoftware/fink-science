@@ -93,13 +93,10 @@ def agn_elasticc(
         }
     )
 
-    if model_path is not None:
-        model_path = model_path.values[0]
-
     # agn_classifier relies on index being a range from 0 to N
     data_sub = data[mask].reset_index()
 
-    proba = agn_classifier(data_sub, source='ELASTICC', model_path)
+    proba = agn_classifier(data_sub, source='ELASTICC')
     to_return = np.zeros(len(cmidPoinTai), dtype=float)
     to_return[mask] = proba
     return pd.Series(to_return)
