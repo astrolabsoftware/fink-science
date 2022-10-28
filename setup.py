@@ -45,7 +45,8 @@ setuptools.setup(
             'data/models/t2/*/*/variables*',
             'data/catalogs/*.parquet',
             'data/catalogs/*.fits',
-            'data/catalogs/*.csv'],
+            'data/catalogs/*.csv',
+            'data/alerts/datatest/*.parquet'],
     },
 
     classifiers=[

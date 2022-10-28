@@ -21,7 +21,7 @@ import numpy as np
 import pickle  # noqa: F401
 from scipy.optimize import curve_fit
 import warnings
-import unit_examples as uex  # noqa: F401
+import fink_science.agn_elasticc.unit_examples as uex  # noqa: F401
 
 
 def map_fid(ps):

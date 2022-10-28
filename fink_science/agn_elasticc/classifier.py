@@ -21,7 +21,7 @@ from fink_science import __file__
 from fink_science.tester import spark_unit_tests
 import pandas as pd  # noqa: F401
 import numpy as np  # noqa: F401
-import unit_examples as uex  # noqa: F401
+import fink_science.agn_elasticc.unit_examples as uex  # noqa: F401
 
 
 def load_classifier(source):

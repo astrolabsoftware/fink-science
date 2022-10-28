@@ -17,11 +17,9 @@ from fink_science.agn_elasticc.classifier import agn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 import pandas as pd
-import numpy as np
 import os
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
-import kernel as k
 
 
 @pandas_udf(DoubleType())
@@ -65,19 +63,6 @@ def agn_elasticc(
         Return 0 if the minimum points number is not respected.
     """
 
-    passbands = ['u', 'g', 'r', 'i', 'z', 'Y']
-    mask = [False] * len(diaObjectId)
-    valid_filters = []
-
-    for band in range(len(passbands)):
-        valid_filters.append(cfilterName.apply(lambda x: np.sum(np.array(x) == passbands[band]) >= k.MINIMUM_POINTS))
-
-    for band in range(len(passbands) - 1):
-        mask = mask | ((valid_filters[band]) & valid_filters[band + 1])
-
-    if len(diaObjectId[mask]) == 0:
-        return pd.Series(np.zeros(len(diaObjectId), dtype=float))
-
     data = pd.DataFrame(
         {
             "objectId": diaObjectId,
@@ -94,23 +79,16 @@ def agn_elasticc(
         }
     )
 
-    # agn_classifier relies on index being a range from 0 to N
-    data_sub = data[mask].reset_index()
-
-    proba = agn_classifier(data_sub, source='ELASTICC')
-    to_return = np.zeros(len(cmidPoinTai), dtype=float)
-    to_return[mask] = proba
-    return pd.Series(to_return)
+    proba = agn_classifier(data, source='ELASTICC')
+    return pd.Series(proba)
 
 
 @pandas_udf(DoubleType())
 def agn_ztf(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
-
-    """High level spark wrapper for the AGN classifier
+    """High level spark wrapper for the AGN classifier on ZTF data
 
     Parameters
     ----------
-
     objectId: Spark DataFrame Column
         Identification numbers of the objects
     jd: Spark DataFrame Column
@@ -131,15 +109,32 @@ def agn_ztf(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
         ordered probabilities of being an AGN
         Return 0 if the minimum number of point per passband
         (specified in kernel.py) if not respected.
+
+    Examples
+    --------
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+
+    # Required alert columns
+    >>> what = ['jd', 'magpsf', 'sigmapsf', 'fid']
+
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = ['objectId'] + [F.col(i) for i in what_prefix]
+    >>> args += ['candidate.ra', 'candidate.dec']
+    >>> df_agn = df.withColumn('proba', agn_ztf(*args))
+    >>> df_agn.filter(df_agn['proba'] != 0.0).count()
+    145
     """
-
-    ng = fid.apply(lambda x: np.sum(np.array(x) == 1))
-    nr = fid.apply(lambda x: np.sum(np.array(x) == 2))
-
-    mask = (ng >= 4) & (nr >= 4)
-
-    if len(objectId[mask]) == 0:
-        return pd.Series(np.zeros(len(objectId), dtype=float))
 
     data = pd.DataFrame(
         {
@@ -153,17 +148,18 @@ def agn_ztf(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
         }
     )
 
-    proba = agn_classifier(data[mask], source='ZTF')
+    proba = agn_classifier(data, source='ZTF')
 
-    to_return = np.zeros(len(jd), dtype=float)
-    to_return[mask] = proba
-    return pd.Series(to_return)
+    return pd.Series(proba)
 
 
 if __name__ == "__main__":
 
     globs = globals()
     path = os.path.dirname(__file__)
+
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
     spark_unit_tests(globs)
