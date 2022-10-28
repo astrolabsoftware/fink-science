@@ -115,7 +115,7 @@ def compute_hostgal_dist(df):
 
     Parameters
     ----------
-    ps: pd.Series
+    df: pd.DataFrame
        ELASTiCC alert data.
        Must contain "hostgal_ra","hostgal_dec", "ra", "dec" columns.
 
@@ -152,7 +152,7 @@ def convert_full_dataset(clean: pd.DataFrame):
     Paramters
     ---------
     clean : pd.DataFrame
-        Dataframe of alerts from Fink with nan removed
+        Dataframe of alerts with nan removed
 
     Return
     ------
@@ -185,7 +185,8 @@ def format_data(df, source):
     Parameters
     ----------
     df: pd.DataFrame
-       ELASTiCC alert data with columns :
+       Alerts data with columns :
+           For ELASTICC:
             "objectId": diaObjectId,
             "cjd": cmidPoinTai,
             "cflux": cpsFlux,
@@ -198,6 +199,19 @@ def format_data(df, source):
             "hostgal_ra": hostgal_ra,
             "hostgal_dec": hostgal_dec
 
+           For ZTF:
+            "objectId": objectId,
+            "cjd": cjd,
+            "cmagpsf": cmagpsf,
+            "csigmapsf": csigmapsf,
+            "cfid": cfid,
+            "ra": ra,
+            "dec": deccfid 	cra 	cdec
+
+    source: string
+        Origin of the data.
+        Currently accepts 'ZTF' or 'ELASTICC'.
+
     Returns
     -------
     pd.DataFrame
@@ -207,24 +221,23 @@ def format_data(df, source):
     --------
     >>> df = pd.DataFrame({"cfid":[['u', 'g', 'r', 'i', 'z', 'Y']], "hostgal_ra":[90], "hostgal_dec":[46], "ra":[89], "dec":[46.5]})
     >>> expect = pd.DataFrame({'cfid': {0: [0, 1, 2, 3, 4, 5]}, 'ra': {0: 89}, 'dec': {0: 46.5}, 'hostgal_dist': {0: 1118.033988749895}})
-    >>> assert_frame_equal(format_data(df), expect)
+    >>> assert_frame_equal(format_data(df, 'ELASTICC'), expect)
     """
 
     if source == 'ELASTICC':
         # Compute distance from host
         df["hostgal_dist"] = df.apply(compute_hostgal_dist, axis=1)
         df = df.drop(columns={"hostgal_ra", "hostgal_dec"})
-        
+
         # Transform band str to int
         df["cfid"] = df["cfid"].apply(map_fid)
 
-
     if source == 'ZTF':
         df[["cfid", "cjd", "cmagpsf", "csigmapsf"]] = df[
-        ["cfid", "cjd", "cmagpsf", "csigmapsf"]
-    ].apply(remove_nan, axis=1, result_type="expand")
+            ["cfid", "cjd", "cmagpsf", "csigmapsf"]
+        ].apply(remove_nan, axis=1, result_type="expand")
         df = convert_full_dataset(df)
-        
+
     return df
 
 
@@ -234,12 +247,14 @@ def keep_filter(ps, band):
 
     Parameters
     ---------
-    ps : pd.Series
-        each rows of the dataframe. each entries must be numeric list
+    ps: pd.Series
+        each rows of the dataframe. each entries must be numeric list.
+    band: int
+        Integer associated with the filter to keep.
 
     Return
     ------
-    list_with_oneband : list
+    list
         list of the same size as x, each entries is the original list from the
         current rows with only the wanted filter and the associated values from the other columns.
 
@@ -262,7 +277,6 @@ def keep_filter(ps, band):
 
 
 def translate(ps):
-
     """Translate a cjd list by substracting maxflux point
 
     Parameters
@@ -294,15 +308,12 @@ def translate(ps):
 
 
 def normalize(ps):
-
     """Normalize by dividing by a data frame of maximum
 
     Parameters
     ----------
     ps: pd.Series
         Must contain 'cflux', 'csigflux' and 'peak'
-    maxi: np.array
-        array of all maximum values. -1 if alert has no points
 
     Returns
     -------
@@ -341,13 +352,13 @@ def get_max(x, absolute=False):
     x: np.array
 
     absolute: bool
-        If true returns absolute maximum
-        Default is False
+        If true returns absolute maximum.
+        Default is False.
 
     Returns
     -------
     float
-        Maximum of the array or -1 if array is empty
+        Maximum of the array or -1 if array is empty.
 
     Example
     -------
@@ -357,7 +368,6 @@ def get_max(x, absolute=False):
     True
     >>> get_max(np.array([1, 8, -62]), absolute=True) == -62
     True
-
     """
 
     if len(x) == 0:
@@ -379,13 +389,13 @@ def get_min(x, absolute=False):
     x: np.array
 
     absolute: bool
-        If true returns absolute minimum
-        Default is False
+        If true returns absolute minimum.
+        Default is False.
 
     Returns
     -------
     float
-        Minimum of the array or -1 if array is empty
+        Minimum of the array or -1 if array is empty.
 
     Example
     -------
@@ -395,7 +405,6 @@ def get_min(x, absolute=False):
     True
     >>> get_min(np.array([1, 8, -62]), absolute=True) == 1
     True
-
     """
 
     if len(x) == 0:
@@ -409,28 +418,29 @@ def get_min(x, absolute=False):
 
 
 def transform_data(formated, minimum_points, source):
-
-    """Apply transformations for each band on a flux formated dataset
+    """Apply transformations for each filters on a flux formated dataset
             - Shift cjd so that the max flux point is at 0
             - Normalize by dividing flux and flux err by the maximum flux
             - Add a column with maxflux before normalization
 
-    Split the results into 6 dataframes each containing only one passband.
+    Split the results into multiple dataframes each containing only one passband.
 
 
     Parameters
     ----------
     formated : pd.DataFrame
-        Dataframe of alerts from ELASTiCC formated using "format_data" function.
+        Dataframe of alerts formated using "format_data" function.
     minimum_points: minimum number of points for a passband to be considered valid
         The classifier requires at least two consecutive valid passbands.
+    source: string
+        Origin of the data.
+        Currently accepts 'ZTF' or 'ELASTICC'.
 
     Returns
     -------
     all_transformed : list
-        List of 6 DataFrame. Each df is a transformed version of formated
+        List of DataFrame. Each df is a transformed version of formated
         that only contains observations from one passband and valid objects.
-
     valid: np.array
         Boolean array describing if each object is valid.
         Objects are valid if they have at least two consecutive passbands
@@ -441,9 +451,9 @@ def transform_data(formated, minimum_points, source):
     >>> df = uex.formated_unit
     >>> expect1_transformed = uex.expect1_transformed
     >>> expect2_transformed = uex.expect2_transformed
-    >>> assert_frame_equal(transform_data(df, 4)[0][0], expect1_transformed)
-    >>> assert_frame_equal(transform_data(df, 4)[0][2], expect2_transformed)
-    >>> transform_data(df, 4)[1][0]
+    >>> assert_frame_equal(transform_data(df, 4, 'ELASTICC')[0][0], expect1_transformed)
+    >>> assert_frame_equal(transform_data(df, 4, 'ELASTICC')[0][2], expect2_transformed)
+    >>> transform_data(df, 4, 'ELASTICC')[1][0]
     True
     """
 
@@ -464,7 +474,7 @@ def transform_data(formated, minimum_points, source):
         all_transformed.append(transformed)
 
     condition = []
-    for pair in range(len(passbands)-1):
+    for pair in range(len(passbands) - 1):
         condition.append((all_transformed[pair]['cjd'].apply(len) >= minimum_points) & (all_transformed[pair + 1]['cjd'].apply(len) >= minimum_points))
 
     valid = np.array([False] * len(formated))
@@ -488,13 +498,17 @@ def transform_data(formated, minimum_points, source):
 
 def parametric_bump(ps, band):
 
-    """Fit the lightcurves using the bump function. Extract the parameters
+    """Fit the lightcurves using the bump function.
+    Extract the minimized parameters of the fit.
+
     Parameters
     ----------
-    ps : pd.Series
+    ps: pd.Series
         Alerts that have been transformed using 'transform_data' function.
         Lightcurves's max flux must be centered on 40.
-        p4 guess is set to the minimum flux value
+        p4 guess is set to the minimum flux value.
+    band: int
+        Integer associated with the filter to fit.
 
     Returns
     -------
@@ -523,16 +537,14 @@ def parametric_bump(ps, band):
     return fit[0]
 
 
-def compute_color(ps, minimum=4):
-
+def compute_color(ps):
     """Compute the color of an alert by computing blue-red
     Proceed by virtually filling missing points of each band using the bump fit
 
     Parameters
     ----------
-    ps : pd.Series
-        Dataframe of alerts from Fink with nan removed and converted to flux.
-        Flux must be normalised with normalization factor inside column ['peak']
+    ps: pd.Series
+        Dataframe of alerts as outputed by the parametrise function.
         Lightcurves's max flux must be centered on 40
 
     Returns
@@ -573,8 +585,8 @@ def compute_color(ps, minimum=4):
 
 
 def compute_std(x):
-    """Compute standard deviation of an array
-    Return -1 if the array is empty
+    """Compute standard deviation of an array.
+    Return -1 if the array is empty.
 
     Parameters
     ----------
@@ -583,7 +595,7 @@ def compute_std(x):
     Returns
     -------
     float
-        Standard deviation of the array
+        Standard deviation of the array.
 
     Examples
     --------
@@ -600,8 +612,8 @@ def compute_std(x):
 
 
 def compute_mean(x):
-    """Compute mean of an array
-    Return -1 if the array is empty
+    """Compute mean of an array.
+    Return -1 if the array is empty.
 
     Parameters
     ----------
@@ -610,7 +622,7 @@ def compute_mean(x):
     Returns
     -------
     float
-        Mean of the array
+        Mean of the array.
 
     Examples
     --------
@@ -627,26 +639,34 @@ def compute_mean(x):
 
 
 def parametrise(all_transformed, source, target_col=""):
-    """Extract parameters from a list of transformed dataset.
+    """Extract parameters from a list of dataset outputed
+       by the transform_data function.
 
     Parameters are :
             - "ra" : right ascension
             - "dec" : declination
+
+            For each filter:
+                - 'std' : standard deviation of the flux for each filter
+                - 'peak' : maximum before normalization for each filter
+                - 'mean_snr' : mean signal over noise ratio for each filter
+                - 'nb_points' : number of points for each filter
+
+    Additionnaly if source is ELASTICC:
             - "hostgal_dist" : distance to host galaxy
             - "hostgal_zphot" : redshift of the host galaxy
             - "hostgal_zphot_err" : error on the redshift of the host galaxy
-            - 'std' : standard deviation of the flux for each filter
-            - 'peak' : maximum before normalization for each filter
-            - 'mean_snr' : mean signal over noise ratio for each filter
-            - 'nb_points' : number of points for each filter
 
     Parameters
     ----------
     all_transformed : list
-        List of transformed DataFrame using "transform_data" function
+        List of transformed DataFrame using "transform_data" function.
+    source: string
+        Origin of the data.
+        Currently accepts 'ZTF' or 'ELASTICC'.
     target_col: str
         If inputed a non empty str, add the corresponding
-        column as a target column to the final dataset
+        column as a target column to the final dataset.
         Default is ''
 
     Returns
@@ -661,20 +681,20 @@ def parametrise(all_transformed, source, target_col=""):
     >>> df = uex.all_transformed_unit
     >>> expect0 = uex.expect_all_features0
     >>> expect2 = uex.expect_all_features2
-    >>> parametrised = parametrise(df)
+    >>> parametrised = parametrise(df, 'ELASTICC')
     >>> assert_frame_equal(parametrised[0], expect0)
     >>> assert_frame_equal(parametrised[2], expect2)
     >>> exec("for i in df: i['target']='AGN'")
     >>> expect0.insert(10, "target", 'AGN')
-    >>> assert_frame_equal(parametrise(df, 'target')[0], expect0)
+    >>> assert_frame_equal(parametrise(df, 'ELASTICC', 'target')[0], expect0)
     """
-    
+
     if source == 'ELASTICC':
         passbands = [0, 1, 2, 3, 4, 5]
 
     elif source == 'ZTF':
         passbands = [1, 2]
-        
+
     all_features = []
 
     for idx, band in enumerate(passbands):
@@ -687,7 +707,7 @@ def parametrise(all_transformed, source, target_col=""):
         ids = transformed["objectId"]
         ra = transformed["ra"]
         dec = transformed["dec"]
-        
+
         if source == 'ELASTICC':
             hostgal_dist = transformed["hostgal_dist"]
             hostgal_zphot = transformed["hostgal_zphot"]
@@ -707,7 +727,7 @@ def parametrise(all_transformed, source, target_col=""):
                     f"nb_points_{band}": nb_points,
                 }
             )
-            
+
         elif source == 'ZTF':
             df_parameters = pd.DataFrame(
                 data={
@@ -738,7 +758,6 @@ def parametrise(all_transformed, source, target_col=""):
 
 
 def merge_features(all_features, minimum_points, source, target_col=""):
-
     """Merge feature tables of all filters.
     Additionnaly compute color parameters :
                                 - 'max_color' : absolute maximum of the color
@@ -746,45 +765,56 @@ def merge_features(all_features, minimum_points, source, target_col=""):
 
     It requires k.MINIMUM_POINTS points in two consecutive passbands.
     We compute only one color, the first that satistfies the requirement,
-    checked in the following order : g-r, r-i, z-Y, u-g, i-z
+    checked in the following order : g-r, r-i, z-Y, u-g, i-z.
 
 
     Parameters
     ----------
     all_features: DataFrame
-        Parameter dataframe, output of the "parametrise" function
-
+        Parameter dataframe, output of the "parametrise" function.
     minimum_points: int
-        Minimum number of point in a filter to be considered valid
+        Minimum number of point in a filter to be considered valid.
+    source: string
+        Origin of the data.
+        Currently accepts 'ZTF' or 'ELASTICC'.
     target_col: str
         If inputed a non empty str, add the corresponding
-        column as a target column to the final dataset
-        Default is ''
+        column as a target column to the final dataset.
+        Default is ''.
 
     Returns
     -------
-    ordered_features : pd.DataFrame
-        Final features dataset with ordered columns :
-        ["object_id","ra","dec","hostgal_dist","hostgal_zphot",
-        "hostgal_zphot_err","std_0","std_1","std_2","std_3",
-        "std_4","std_5","peak_0","peak_1","peak_2","peak_3",
-        "peak_4","peak_5","mean_snr_0","mean_snr_1","mean_snr_2",
-        "mean_snr_3","mean_snr_4","mean_snr_5","nb_points_0",
-        "nb_points_1","nb_points_2","nb_points_3","nb_points_4",
-        "nb_points_5","std_color", "max_color"]
+    if source == 'ELASTICC':
+        ordered_features : pd.DataFrame
+            Final features dataset with ordered columns :
+            ["object_id","ra","dec","hostgal_dist","hostgal_zphot",
+            "hostgal_zphot_err","std_0","std_1","std_2","std_3",
+            "std_4","std_5","peak_0","peak_1","peak_2","peak_3",
+            "peak_4","peak_5","mean_snr_0","mean_snr_1","mean_snr_2",
+            "mean_snr_3","mean_snr_4","mean_snr_5","nb_points_0",
+            "nb_points_1","nb_points_2","nb_points_3","nb_points_4",
+            "nb_points_5","std_color", "max_color"]
+
+    elif source == 'ZTF':
+        ordered_features : pd.DataFrame
+                Final features dataset with ordered columns :
+                ["object_id","ra","dec","std_1","std_2",
+                "peak_1","peak_2","mean_snr_1","mean_snr_2",
+                "nb_points_1","nb_points_2","std_color", "max_color"]
+
 
     Example
     -------
     >>> df = uex.all_features_unit
     >>> expected = uex.features_unit
-    >>> assert_frame_equal(merge_features(df, 4), expected)
+    >>> assert_frame_equal(merge_features(df, 4, 'ELASTICC'), expected)
     >>> exec("for i in df: i['target']='AGN'")
     >>> expected['target'] = 'AGN'
-    >>> assert_frame_equal(merge_features(df, 4, target_col='target'), expected)
+    >>> assert_frame_equal(merge_features(df, 4, 'ELASTICC', target_col='target'), expected)
     """
 
     warnings.filterwarnings('ignore', '.*Covariance of the parameters could not be estimated.*')
-    
+
     if source == 'ELASTICC':
         passbands = [0, 1, 2, 3, 4, 5]
         pairs = [[1, 2], [2, 3], [4, 5], [0, 1], [3, 4]]
@@ -846,23 +876,23 @@ def merge_features(all_features, minimum_points, source, target_col=""):
                 "nb_points_5",
             ]
         ].copy()
-        
+
     elif source == 'ZTF':
         ordered_features = features[
-        [
-            "object_id",
-            "ra",
-            "dec",
-            "std_1",
-            "std_2",
-            "peak_1",
-            "peak_2",
-            "mean_snr_1",
-            "mean_snr_2",
-            "nb_points_1",
-            "nb_points_2"
-        ]
-    ].copy()
+            [
+                "object_id",
+                "ra",
+                "dec",
+                "std_1",
+                "std_2",
+                "peak_1",
+                "peak_2",
+                "mean_snr_1",
+                "mean_snr_2",
+                "nb_points_1",
+                "nb_points_2"
+            ]
+        ].copy()
 
     features['color_not_computed'] = True
     features[['bump_blue', 'blue_band', 'cjd_blue', 'cflux_blue', 'peak_blue',
@@ -880,7 +910,7 @@ def merge_features(all_features, minimum_points, source, target_col=""):
         features.loc[mask_color_compute, 'color_not_computed'] = False
 
     # Add color features
-    features['color'] = features.apply(compute_color, axis=1, args=(minimum_points,))
+    features['color'] = features.apply(compute_color, axis=1)
 
     ordered_features["std_color"] = features['color'].apply(compute_std)
     ordered_features["max_color"] = features['color'].apply(get_max, args=(True,))
@@ -900,25 +930,22 @@ def merge_features(all_features, minimum_points, source, target_col=""):
 
 
 def get_probabilities(clf, features, valid):
-
-    """Returns probabilty of being an AGN predicted by the classfier
+    """Returns probabilty of being an AGN predicted by the classifier.
 
     Parameters
     ----------
     clf: RandomForestClassifier
-        Binary AGN vs non AGN classifier
-
+        Binary AGN vs non AGN classifier.
     features: pd.DataFrame
         Features extracted from the objects.
-        Outputed by merge_features
-
+        Outputed by merge_features.
     valid: np.array
-        Bool array, indicates if both passband respect the minimum number of points
+        Bool array, indicates if both passband respect the minimum number of points.
 
     Returns
     -------
     final_proba : np.array
-        ordered probabilities of being an AGN
+        ordered probabilities of being an AGN.
         Proba = 0 if the object is not valid.
 
     Examples

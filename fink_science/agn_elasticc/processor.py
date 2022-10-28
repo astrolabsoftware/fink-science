@@ -23,6 +23,7 @@ from fink_science import __file__
 from fink_science.tester import spark_unit_tests
 import kernel as k
 
+
 @pandas_udf(DoubleType())
 def agn_elasticc(
         diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName,
@@ -67,13 +68,13 @@ def agn_elasticc(
     passbands = ['u', 'g', 'r', 'i', 'z', 'Y']
     mask = [False] * len(diaObjectId)
     valid_filters = []
-    
+
     for band in range(len(passbands)):
         valid_filters.append(cfilterName.apply(lambda x: np.sum(np.array(x) == passbands[band]) >= k.MINIMUM_POINTS))
-        
-    for band in range(len(passbands)-1):    
-        mask = mask | ((valid_filters[band]) & valid_filters[band+1])
-        
+
+    for band in range(len(passbands) - 1):
+        mask = mask | ((valid_filters[band]) & valid_filters[band + 1])
+
     if len(diaObjectId[mask]) == 0:
         return pd.Series(np.zeros(len(diaObjectId), dtype=float))
 

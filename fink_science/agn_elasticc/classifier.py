@@ -21,6 +21,7 @@ from fink_science import __file__
 from fink_science.tester import spark_unit_tests
 import pandas as pd  # noqa: F401
 import numpy as np  # noqa: F401
+import unit_examples as uex  # noqa: F401
 
 
 def load_classifier(source):
@@ -30,7 +31,9 @@ def load_classifier(source):
 
     Parameters
     ----------
-
+    source: string
+        Origin of the data.
+        Currently accepts 'ZTF' or 'ELASTICC'.
 
     Returns
     -------
@@ -38,11 +41,16 @@ def load_classifier(source):
 
     Examples
     --------
-    >>> rf = load_classifier()
-    >>> rf.n_classes_
+    >>> rf_ELASTICC = load_classifier('ELASTICC')
+    >>> rf_ELASTICC.n_classes_
     2
-    >>> rf.n_features_
+    >>> rf_ELASTICC.n_features_
     31
+    >>> rf_ZTF = load_classifier('ZTF')
+    >>> rf_ZTF.n_classes_
+    2
+    >>> rf_ZTF.n_features_
+    12
     """
 
     if source == 'ELASTICC':
@@ -58,19 +66,30 @@ def load_classifier(source):
 
 def agn_classifier(data, source):
     """
-    call the agn_classifier
+    Call the agn_classifier
 
     Parameters
     ----------
     data : DataFrame
         alerts from fink with aggregated lightcurves
-
+    source: string
+        Origin of the data.
+        Currently accepts 'ZTF' or 'ELASTICC'.
 
     Returns
     -------
     np.array
         ordered probabilities of being an AGN
         Return 0 if the minimum number of point per passband is not respected
+
+    Examples
+    --------
+    >>> df = uex.raw_ztf_unit
+    >>> proba = agn_classifier(df, 'ZTF')
+    >>> proba[0] == 0
+    True
+    >>> proba[1] != 0
+    True
     """
 
     formated = fe.format_data(data, source)
