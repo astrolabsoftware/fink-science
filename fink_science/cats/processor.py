@@ -145,7 +145,7 @@ def predict_nn(
                             mwebv.values[i], z_final.values[i],
                             z_final_err.values[i], hostgal_zphot.values[i],
                             hostgal_zphot_err.values[i]
-                 ])
+                ])
 
     X = {
         'meta': np.array(meta),
