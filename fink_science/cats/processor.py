@@ -93,18 +93,18 @@ def predict_nn(
         17: 214,
         18: 221
     }
-        
+
     bands = []
     lcs = []
     meta = []
     frac = 10**(- (31.4 - 27.5) / 2.5)
-    
+
     for i, mjds in enumerate(midpointTai):
-        
+
         if len(mjds) > 0:
             bands.append(np.array(
                 [filter_dict[f] for f in filterName.values[i]]
-            ).astype(np.int16))        
+            ).astype(np.int16))
             lc = np.concatenate(
                 [
                     mjds[:,None],
@@ -112,17 +112,17 @@ def predict_nn(
                     frac * psFluxErr.values[i][:,None]
                 ], axis=-1
             )
-            
+
             if not np.isnan(mwebv.values[i]):
-                
+
                 lcs.append(normalize_lc(lc).astype(np.float32))
                 meta.append([
                             mwebv.values[i], z_final.values[i],
                             z_final_err.values[i], hostgal_zphot.values[i],
                             hostgal_zphot_err.values[i]
                         ])
-           
-    
+
+
     X = {
         'meta': np.array(meta),
         'band': tf.keras.preprocessing.sequence.pad_sequences(bands,
@@ -132,13 +132,13 @@ def predict_nn(
                                                             maxlen=243,
                                                             dtype='float32'),
     }
-                                                             
+
 
     for i, x in enumerate(X['meta'][:,3]):
         if x < 0:
-            X['meta'][i,1:] = -1
+            X['meta'][i, 1:] = -1
         else:
-            X['meta'][i,1:] = x
+            X['meta'][i, 1:] = x
 
     if model is None:
         # Load pre-trained model
@@ -153,7 +153,7 @@ def predict_nn(
         })
 
     preds = NN.predict(X)
-    
+
     return pd.Series([extract_max_prob(elem) for elem in preds])
 
 
