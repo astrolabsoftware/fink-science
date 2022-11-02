@@ -117,7 +117,7 @@ def predict_nn(
     1
     """
 
-    filter_dict = {'u':1, 'g':2, 'r':3, 'i':4, 'z':5, 'Y':6}
+    filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
 
     bands = []
     lcs = []
@@ -145,8 +145,7 @@ def predict_nn(
                             mwebv.values[i], z_final.values[i],
                             z_final_err.values[i], hostgal_zphot.values[i],
                             hostgal_zphot_err.values[i]
-                        ])
-
+                 ])
 
     X = {
         'meta': np.array(meta),
@@ -157,7 +156,6 @@ def predict_nn(
                                                             maxlen=243,
                                                             dtype='float32'),
     }
-
 
     for i, x in enumerate(X['meta'][:, 3]):
         if x < 0:
