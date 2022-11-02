@@ -483,6 +483,9 @@ def transform_data(formated, minimum_points, source):
 
     all_transformed = [x[valid].copy() for x in all_transformed]
 
+    if not valid.any():
+        return all_transformed, valid
+
     for df in all_transformed:
 
         df["cjd"] = df.apply(translate, axis=1)
