@@ -36,42 +36,10 @@ def predict_nn(
         filterName: pd.Series, mwebv: pd.Series, z_final: pd.Series,
         z_final_err: pd.Series, hostgal_zphot: pd.Series,
         hostgal_zphot_err: pd.Series,
-        model: pd.Series
-        ) -> pd.DataFrame:
-    """
-    Return predctions from a model given inputs as pd.Series
-
-    Parameters:
-    -----------
-    midpointTai: spark DataFrame Column
-        SNID JD Time (float)
-    psFlux: spark DataFrame Column
-        flux from LSST (float)
-    psFluxErr: spark DataFrame Column
-        flux error from LSST (float)
-    filterName:
-        (string)
-    mwebv:
-        (float)
-    z_final: spark DataFrame Column
-        redshift of a given event (float)
-    z_final_err: spark DataFrame Column
-        redshift error of a given event (float)       
-    hostgal_zphot: spark DataFrame Column
-        photometric redshift of host galaxy (float)
-    hostgal_zphot_err: spark DataFrame Column
-        error in photometric redshift of host galaxy (float)
-    model: spark DataFrame Column
-        path to pre-trained Hierarchical Classifier model. (string)
-
-    Returns:
-    --------
-    preds: pd.Series
-        predictions of a broad class in an pd.Series format (pd.Series[float])
-    """
-
-    filter_dict = {'u':1, 'g':2, 'r':3, 'i':4, 'z':5, 'Y':6}
-    
+        model=None
+) -> pd.DataFrame:
+    """ Return predctions from a CBPF classifier model (cats general) using Elasticc alert data.
+    For the default model, one has the following mapping:
     class_dict = {
         0: 111,
         1: 112,
@@ -93,6 +61,63 @@ def predict_nn(
         17: 214,
         18: 221
     }
+    Parameters:
+    -----------
+    midpointTai: spark DataFrame Column
+        SNID JD Time (float)
+    psFlux: spark DataFrame Column
+        flux from LSST (float)
+    psFluxErr: spark DataFrame Column
+        flux error from LSST (float)
+    filterName: spark DataFrame Column
+        observed filter (string)
+    mwebv: spark DataFrame Column
+        milk way extinction (float)
+    z_final: spark DataFrame Column
+        redshift of a given event (float)
+    z_final_err: spark DataFrame Column
+        redshift error of a given event (float)
+    hostgal_zphot: spark DataFrame Column
+        photometric redshift of host galaxy (float)
+    hostgal_zphot_err: spark DataFrame Column
+        error in photometric redshift of host galaxy (float)
+    model: spark DataFrame Column
+        path to pre-trained Hierarchical Classifier model. (string)
+    Returns:
+    --------
+    preds: pd.Series
+        preds is an pd.Series which contains a 'cats_general_preds' column
+        with probabilities for classes shown in Elasticc data challenge.
+    Examples
+    -----------
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+    >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
+    # Assuming random positions
+    >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
+    >>> df = df.withColumn('roid', F.lit(0))
+    # Required alert columns
+    >>> what = ['midPointTai', 'psFlux', 'psFluxErr', 'filterName']
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...     df = concat_col(
+    ...         df, colname, prefix=prefix,
+    ...         current='diaSource', history='prvDiaForcedSources')
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('diaObject.mwebv'), F.col('diaObject.z_final'), F.col('diaObject.z_final_err')]
+    >>> args += [F.col('diaObject.hostgal_zphot'), F.col('diaObject.hostgal_zphot_err')]
+    >>> df = df.withColumn('preds', predict_nn(*args))
+    >>> df = df.withColumn('cbpf_class', F.col('preds').getItem(0).astype('int'))
+    >>> df = df.withColumn('cbpf_max_prob', F.col('preds').getItem(1))
+    >>> df.filter(df['cbpf_class'] == 0).count()
+    1
+    """
+
+    filter_dict = {'u':1, 'g':2, 'r':3, 'i':4, 'z':5, 'Y':6}
 
     bands = []
     lcs = []
@@ -107,9 +132,9 @@ def predict_nn(
             ).astype(np.int16))
             lc = np.concatenate(
                 [
-                    mjds[:,None],
-                    frac * psFlux.values[i][:,None],
-                    frac * psFluxErr.values[i][:,None]
+                    mjds[:, None],
+                    frac * psFlux.values[i][:, None],
+                    frac * psFluxErr.values[i][:, None]
                 ], axis=-1
             )
 
@@ -134,7 +159,7 @@ def predict_nn(
     }
 
 
-    for i, x in enumerate(X['meta'][:,3]):
+    for i, x in enumerate(X['meta'][:, 3]):
         if x < 0:
             X['meta'][i, 1:] = -1
         else:
