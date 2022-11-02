@@ -141,10 +141,11 @@ def predict_nn(
             if not np.isnan(mwebv.values[i]):
 
                 lcs.append(normalize_lc(lc).astype(np.float32))
+
                 meta.append([
-                            mwebv.values[i], z_final.values[i],
-                            z_final_err.values[i], hostgal_zphot.values[i],
-                            hostgal_zphot_err.values[i]
+                    mwebv.values[i], z_final.values[i],
+                    z_final_err.values[i], hostgal_zphot.values[i],
+                    hostgal_zphot_err.values[i]
                 ])
 
     X = {
