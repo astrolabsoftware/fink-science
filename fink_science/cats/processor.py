@@ -39,9 +39,7 @@ def predict_nn(
         model=None
 ) -> pd.DataFrame:
     """ Return predctions from a CBPF classifier model (cats general) using Elasticc alert data.
-
     For the default model, one has the following mapping:
-
     class_dict = {
         0: 111,
         1: 112,
@@ -63,7 +61,6 @@ def predict_nn(
         17: 214,
         18: 221
     }
-
     Parameters:
     -----------
     midpointTai: spark DataFrame Column
@@ -96,24 +93,19 @@ def predict_nn(
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
-
     # Assuming random positions
     >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
     >>> df = df.withColumn('roid', F.lit(0))
-
     # Required alert columns
     >>> what = ['midPointTai', 'psFlux', 'psFluxErr', 'filterName']
-
     # Use for creating temp name
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
-
     # Append temp columns with historical + current measurements
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
     ...         current='diaSource', history='prvDiaForcedSources')
-
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += [F.col('diaObject.mwebv'), F.col('diaObject.z_final'), F.col('diaObject.z_final_err')]
@@ -158,16 +150,14 @@ def predict_nn(
 
     X = {
         'meta': np.array(meta),
-        'band': tf.RaggedTensor.from_row_lengths(
-            values=tf.concat(bands, axis=0),
-            row_lengths=[a.shape[0] for a in bands]
-        ),
-
-        'lc': tf.RaggedTensor.from_row_lengths(
-            values=tf.concat(lcs, axis=0),
-            row_lengths=[a.shape[0] for a in lcs]
-        )
+        'band': tf.keras.preprocessing.sequence.pad_sequences(bands,
+                                                              maxlen=243,
+                                                              dtype='int32'),
+        'lc': tf.keras.preprocessing.sequence.pad_sequences(lcs,
+                                                            maxlen=243,
+                                                            dtype='float32'),
     }
+
     for i, x in enumerate(X['meta'][:, 3]):
         if x < 0:
             X['meta'][i, 1:] = -1
@@ -177,7 +167,7 @@ def predict_nn(
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/cats_models/model_test_meta_ragged_alerts.h5'
+        model_path = curdir + '/data/models/cats_models/model_test_meta_alerts_tuner.h5'
     else:
         model_path = model.values[0]
 
