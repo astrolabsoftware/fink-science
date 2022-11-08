@@ -11,28 +11,84 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License
+# limitations under the License.
 
-import os
-import pandas as pd
-import numpy as np
-
+from fink_science.agn_elasticc.classifier import agn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
-
+import pandas as pd
+import os
 from fink_science import __file__
-from fink_science.agn.classifier import agn_classifier
 from fink_science.tester import spark_unit_tests
 
 
 @pandas_udf(DoubleType())
-def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
-
-    """High level spark wrapper for the AGN classifier
+def agn_elasticc(
+        diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName,
+        ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec):
+    """High level spark wrapper for the AGN classifier on ELASTiCC data
 
     Parameters
     ----------
 
+    diaObjectId: Spark DataFrame Column
+        Identification numbers of the objects
+    cmidPoinTai: Spark DataFrame Column
+        JD times (vectors of floats)
+    cpsFlux, cpsFluxErr: Spark DataFrame Columns
+        Flux and flux error from photometry (vectors of floats)
+    cfilterName: Spark DataFrame Column
+        Filter IDs (vectors of ints)
+    ra: Spark DataFrame Column
+        Right ascension of the objects
+    decl: Spark DataFrame Column
+        Declination of the objects
+    hostgal_zphot, hostgal_zphot_err: Spark DataFrame Column
+        Redshift and redshift error of the host galaxy
+        -9 if object is in the milky way
+    hostgal_ra: Spark DataFrame Column
+        Right ascension of the host galaxy
+        -999 if object is in the milky way
+    hostgal_dec: Spark DataFrame Column
+        Declination ascension of the host galaxy
+        -999 if object is in the milky way
+    model_path: Spark DataFrame Column, optional
+        Path to the model. If None (default), it is
+        taken from `k.CLASSIFIER`.
+
+    Returns
+    -------
+    np.array
+        ordered probabilities of being an AGN
+        Return 0 if the minimum points number is not respected.
+    """
+
+    data = pd.DataFrame(
+        {
+            "objectId": diaObjectId,
+            "cjd": cmidPoinTai,
+            "cflux": cpsFlux,
+            "csigflux": cpsFluxErr,
+            "cfid": cfilterName,
+            "ra": ra,
+            "dec": decl,
+            "hostgal_zphot": hostgal_zphot,
+            "hostgal_zphot_err": hostgal_zphot_err,
+            "hostgal_ra": hostgal_ra,
+            "hostgal_dec": hostgal_dec
+        }
+    )
+
+    proba = agn_classifier(data, source='ELASTICC')
+    return pd.Series(proba)
+
+
+@pandas_udf(DoubleType())
+def agn_ztf(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
+    """High level spark wrapper for the AGN classifier on ZTF data
+
+    Parameters
+    ----------
     objectId: Spark DataFrame Column
         Identification numbers of the objects
     jd: Spark DataFrame Column
@@ -54,16 +110,15 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
         Return 0 if the minimum number of point per passband
         (specified in kernel.py) if not respected.
 
-
     Examples
     --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
-    >>> df = spark.read.load(ztf_alert_sample)
-
     # Required alert columns
     >>> what = ['jd', 'magpsf', 'sigmapsf', 'fid']
+
+    >>> df = spark.read.load(ztf_alert_sample)
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -76,27 +131,10 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     # Perform the fit + classification (default model)
     >>> args = ['objectId'] + [F.col(i) for i in what_prefix]
     >>> args += ['candidate.ra', 'candidate.dec']
-    >>> df_agn = df.withColumn('proba', agn_spark(*args))
-
+    >>> df_agn = df.withColumn('proba', agn_ztf(*args))
     >>> df_agn.filter(df_agn['proba'] != 0.0).count()
     145
-
-    >>> df_agn.filter(df_agn['proba'] == 0.0).count()
-    175
-
-    >>> df_agn.filter(df_agn['proba'] > 0.5).count()
-    26
     """
-    # we want at least 2 bands and 4 points per band
-    nbands = fid.apply(lambda x: len(np.unique(x)))
-
-    ng = fid.apply(lambda x: np.sum(np.array(x) == 1))
-    nr = fid.apply(lambda x: np.sum(np.array(x) == 2))
-
-    mask = (nbands == 2) & (ng >= 4) & (nr >= 4)
-
-    if len(objectId[mask]) == 0:
-        return pd.Series(np.zeros(len(objectId), dtype=float))
 
     data = pd.DataFrame(
         {
@@ -110,11 +148,9 @@ def agn_spark(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
         }
     )
 
-    proba = agn_classifier(data[mask])
+    proba = agn_classifier(data, source='ZTF')
 
-    to_return = np.zeros(len(jd), dtype=float)
-    to_return[mask] = proba
-    return pd.Series(to_return)
+    return pd.Series(proba)
 
 
 if __name__ == "__main__":
