@@ -14,14 +14,14 @@
 # limitations under the License.
 
 import pickle
-import fink_science.agn_elasticc.kernel as k
-import fink_science.agn_elasticc.feature_extraction as fe
+import fink_science.agn.kernel as k
+import fink_science.agn.feature_extraction as fe
 import os
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
 import pandas as pd  # noqa: F401
 import numpy as np  # noqa: F401
-import fink_science.agn_elasticc.unit_examples as uex  # noqa: F401
+import fink_science.agn.unit_examples as uex  # noqa: F401
 
 
 def load_classifier(source):

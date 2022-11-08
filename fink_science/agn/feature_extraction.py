@@ -14,14 +14,14 @@
 # limitations under the License.
 
 import pandas as pd
-import fink_science.agn_elasticc.models as mod
+import fink_science.agn.models as mod
 from pandas.testing import assert_frame_equal  # noqa: F401
-import fink_science.agn_elasticc.kernel as k
+import fink_science.agn.kernel as k
 import numpy as np
 import pickle  # noqa: F401
 from scipy.optimize import curve_fit
 import warnings
-import fink_science.agn_elasticc.unit_examples as uex  # noqa: F401
+import fink_science.agn.unit_examples as uex  # noqa: F401
 
 
 def map_fid(ps):
