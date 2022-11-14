@@ -40,6 +40,7 @@ def predict_nn(
 ) -> pd.DataFrame:
     """ Return predctions from a CBPF classifier model (cats general) using Elasticc alert data.
     For the default model, one has the following mapping:
+
     class_dict = {
         0: 111,
         1: 112,
@@ -61,6 +62,7 @@ def predict_nn(
         17: 214,
         18: 221
     }
+
     Parameters:
     -----------
     midpointTai: spark DataFrame Column
@@ -83,29 +85,36 @@ def predict_nn(
         error in photometric redshift of host galaxy (float)
     model: spark DataFrame Column
         path to pre-trained Hierarchical Classifier model. (string)
+
     Returns:
     --------
     preds: pd.Series
         preds is an pd.Series which contains a 'cats_general_preds' column
         with probabilities for classes shown in Elasticc data challenge.
+
     Examples
     -----------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
+
     # Assuming random positions
     >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
     >>> df = df.withColumn('roid', F.lit(0))
+
     # Required alert columns
     >>> what = ['midPointTai', 'psFlux', 'psFluxErr', 'filterName']
+
     # Use for creating temp name
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
+
     # Append temp columns with historical + current measurements
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
     ...         current='diaSource', history='prvDiaForcedSources')
+
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += [F.col('diaObject.mwebv'), F.col('diaObject.z_final'), F.col('diaObject.z_final_err')]
@@ -114,7 +123,7 @@ def predict_nn(
     >>> df = df.withColumn('cbpf_class', F.col('preds').getItem(0).astype('int'))
     >>> df = df.withColumn('cbpf_max_prob', F.col('preds').getItem(1))
     >>> df.filter(df['cbpf_class'] == 0).count()
-    1
+    0
     """
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
