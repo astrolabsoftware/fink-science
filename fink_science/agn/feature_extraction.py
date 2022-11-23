@@ -540,7 +540,7 @@ def parametric_bump(ps, band):
     return fit[0]
 
 
-def compute_color(ps):
+def compute_color(ps, fit_func):
     """Compute the color of an alert by computing blue-red
     Proceed by virtually filling missing points of each band using the bump fit
 
@@ -549,6 +549,8 @@ def compute_color(ps):
     ps: pd.Series
         Dataframe of alerts as outputed by the parametrise function.
         Lightcurves's max flux must be centered on 40
+    fit_func: python function
+        Function used for the parametric fit
 
     Returns
     -------
@@ -557,15 +559,16 @@ def compute_color(ps):
 
     Examples
     --------
+    >>> import fink_science.agn.models as mod
     >>> ps = pd.Series({"cjd_blue":np.array([0, 10, 20, 30, 40]),\
                 "cjd_red":np.array([35, 40, 45, 50]),\
                 "cflux_blue":np.array([0, .1, .4, .7, 1]),\
                 "cflux_red":np.array([.7, 1, .3, 0]),\
-                "bump_blue":np.array([0.5, -10,   0.06,   0.07]),\
-                "bump_red":np.array([0.225, -2.5, 0.038, 10]),\
+                "func_blue":np.array([0.5, -10,   0.06,   0.07]),\
+                "func_red":np.array([0.225, -2.5, 0.038, 10]),\
                 "peak_blue":80914,\
                 "peak_red":81780})
-    >>> res = compute_color(ps)
+    >>> res = compute_color(ps, mod.bump)
     >>> expected = np.array([-820197.15423085, -822210.11468053, -823501.83859425,\
            -822870.37878502, -808280.17878222,  -24123.45023986,\
             -54721.61867977,  -12014.06603495,    6161.4019725 ])
@@ -574,8 +577,8 @@ def compute_color(ps):
     """
 
     # Compute fitted values at cjd from the other band
-    add_from_1 = mod.bump(ps["cjd_red"], *ps["bump_blue"])
-    add_from_0 = mod.bump(ps["cjd_blue"], *ps["bump_red"])
+    add_from_1 = fit_func(ps["cjd_red"], *ps["func_blue"])
+    add_from_0 = fit_func(ps["cjd_blue"], *ps["func_red"])
 
     # Add to the flux list : maintain the same order : cjd from 0 then cjd from 1
     new_cflux_0 = np.append(ps["cflux_blue"], add_from_1)
@@ -898,14 +901,14 @@ def merge_features(all_features, minimum_points, source, target_col=""):
         ].copy()
 
     features['color_not_computed'] = True
-    features[['bump_blue', 'blue_band', 'cjd_blue', 'cflux_blue', 'peak_blue',
-              'bump_red', 'cjd_red', 'cflux_red', 'peak_red']] = None
+    features[['func_blue', 'blue_band', 'cjd_blue', 'cflux_blue', 'peak_blue',
+              'func_red', 'cjd_red', 'cflux_red', 'peak_red']] = None
 
     for pair in pairs:
         mask_color_compute = (features[f'cjd_{pair[0]}'].apply(len) >= k.MINIMUM_POINTS) & (features[f'cjd_{pair[1]}'].apply(len) >= k.MINIMUM_POINTS) & features['color_not_computed']
 
         for colo_idx, colo in enumerate(['blue', 'red']):
-            features.loc[mask_color_compute, f'bump_{colo}'] = features[mask_color_compute].apply(parametric_bump, axis=1, args=(pair[colo_idx],))
+            features.loc[mask_color_compute, f'func_{colo}'] = features[mask_color_compute].apply(parametric_bump, axis=1, args=(pair[colo_idx],))
             for colname in ['cjd', 'cflux', 'peak']:
                 features.loc[mask_color_compute, f'{colname}_{colo}'] = features.loc[mask_color_compute, f'{colname}_{pair[colo_idx]}']
 
@@ -913,7 +916,7 @@ def merge_features(all_features, minimum_points, source, target_col=""):
         features.loc[mask_color_compute, 'color_not_computed'] = False
 
     # Add color features
-    features['color'] = features.apply(compute_color, axis=1)
+    features['color'] = features.apply(compute_color, axis=1, args=(mod.bump,))
 
     ordered_features["std_color"] = features['color'].apply(compute_std)
     ordered_features["max_color"] = features['color'].apply(get_max, args=(True,))
