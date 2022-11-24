@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pickle
+import joblib
 import fink_science.pisn.kernel as k
 import fink_science.agn.feature_extraction as fe_agn
 import fink_science.pisn.feature_extraction as fe_pisn
@@ -27,7 +27,7 @@ import numpy as np  # noqa: F401
 def load_classifier():
     """
     load the random forest classifier trained to recognize the PISN
-    on binary cases : PISN vs non-PISN  (pickle format).
+    on binary cases : PISN vs non-PISN  (joblib format).
 
     Returns
     -------
@@ -36,10 +36,9 @@ def load_classifier():
     Examples
     --------
     """
-    model_path = k.CLASSIFIER_ELASTICC
 
-    with open(model_path, "rb") as f:
-        clf = pickle.load(f)
+    model_path = k.CLASSIFIER_ELASTICC
+    clf = joblib.load(k.CLASSIFIER_ELASTICC)
 
     return clf
 
