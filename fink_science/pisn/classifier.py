@@ -37,7 +37,6 @@ def load_classifier():
     --------
     """
 
-    model_path = k.CLASSIFIER_ELASTICC
     clf = joblib.load(k.CLASSIFIER_ELASTICC)
 
     return clf

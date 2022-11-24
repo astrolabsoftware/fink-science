@@ -17,8 +17,6 @@ from fink_science.pisn.classifier import pisn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 import pandas as pd
-import os
-from fink_science import __file__
 from fink_science.tester import spark_unit_tests
 
 
@@ -86,6 +84,6 @@ def pisn_elasticc(
 if __name__ == "__main__":
 
     globs = globals()
-    
+
     # Run the test suite
     spark_unit_tests(globs)
