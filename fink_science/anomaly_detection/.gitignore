@@ -1,0 +1,6 @@
+*
+!processor.py
+!*.pickle
+!*.csv
+!*.parquet
+!.gitignore
