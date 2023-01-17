@@ -23,6 +23,7 @@ It currently contains:
 | [fink_science/nalerthist](fink_science/nalerthist)| `nalerthist` | int | Number of detections contained in each alert (current+history). Upper limits are not taken into account. |
 | [fink_science/ad_features](fink_science/ad_features)| `lc_*` | dict[int, array<double>] | Numerous [light curve features](https://arxiv.org/pdf/2012.01419.pdf#section.A1) used in astrophysics. |
 | [fink_science/agn](fink_science/agn)| `rf_agn_vs_nonagn` | float | Probability to be an AGN based on Random Forest classifier (1 is AGN). |
+| [fink_science/anomaly_detection](fink_science/anomaly_detection)| `anomaly_score` | float | Anomaly score (lower values mean more anomalous observations) |
 
 You will find README in each subfolder describing the module.
 

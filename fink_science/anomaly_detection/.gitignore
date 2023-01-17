@@ -1,0 +1,5 @@
+*
+!processor.py
+!README.md
+!*.parquet
+!.gitignore
