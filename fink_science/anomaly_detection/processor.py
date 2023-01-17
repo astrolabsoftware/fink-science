@@ -15,6 +15,7 @@
 import logging
 import os
 import pickle
+import zipfile
 
 from pyspark.sql.functions import udf
 from pyspark.sql.types import DoubleType
@@ -47,13 +48,20 @@ class TwoBandModel:
         return (scores_g + scores_r) / 2
 
 
-path = os.path.dirname(__file__)
-with open(f"{path}/anomaly_detection/forest_r.pickle", 'rb') as forest_file:
+path = os.path.dirname(os.path.abspath(__file__))
+model_path = f"{path}/data/models/anomaly_detection"
+g_model_path = f"{model_path}/forest_g.pickle"
+r_model_path = f"{model_path}/forest_r.pickle"
+if not (os.path.exists(r_model_path) and os.path.exists(g_model_path)):
+    with zipfile.ZipFile(f"{model_path}/anomaly_detection_forest.zip", 'r') as zip_ref:
+        zip_ref.extractall(model_path)
+
+with open(r_model_path, 'rb') as forest_file:
     forest_r = pickle.load(forest_file)
-with open(f"{path}/anomaly_detection/forest_g.pickle", 'rb') as forest_file:
+with open(g_model_path, 'rb') as forest_file:
     forest_g = pickle.load(forest_file)
-r_means = pd.read_csv(f"{path}/anomaly_detection/r_means.csv", header=None, index_col=0, squeeze=True)
-g_means = pd.read_csv(f"{path}/anomaly_detection/g_means.csv", header=None, index_col=0, squeeze=True)
+r_means = pd.read_csv(f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True)
+g_means = pd.read_csv(f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True)
 
 model = TwoBandModel(forest_g, forest_r)
 

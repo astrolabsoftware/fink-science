@@ -1,6 +1,5 @@
 *
 !processor.py
-!*.pickle
-!*.csv
+!README.md
 !*.parquet
 !.gitignore
