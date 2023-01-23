@@ -3,3 +3,4 @@
 !README.md
 !*.parquet
 !.gitignore
+!__init__.py
