@@ -43,6 +43,8 @@ setuptools.setup(
             'data/models/cats_models/*.h5',
             'data/models/t2/*/*.pb',
             'data/models/t2/*/*/variables*',
+            'data/models/anomaly_detection/*.csv',
+            'data/models/anomaly_detection/*.zip',
             'data/catalogs/*.parquet',
             'data/catalogs/*.fits',
             'data/catalogs/*.csv'],
