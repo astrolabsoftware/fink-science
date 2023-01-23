@@ -14,7 +14,7 @@
 # limitations under the License.
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StringType
+from pyspark.sql.types import StringType, MapType
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -26,9 +26,11 @@ import requests
 import pandas as pd
 import numpy as np
 
+from fink_science.xmatch.utils import cross_match_astropy
 from fink_science.xmatch.utils import generate_csv
 from fink_science.xmatch.utils import extract_vsx, extract_gcvs
 from fink_science.xmatch.utils import extract_3hsp, extract_4lac
+from fink_science.xmatch.utils import extract_mangrove
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
@@ -384,51 +386,116 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
 
     # create catalogs
     catalog_ztf = SkyCoord(
-        ra=np.array(ra.values, dtype=np.float) * u.degree,
-        dec=np.array(dec.values, dtype=np.float) * u.degree
+        ra=np.array(ra.values, dtype=float) * u.degree,
+        dec=np.array(dec.values, dtype=float) * u.degree
     )
 
     catalog_other = SkyCoord(
-        ra=np.array(ra2.values, dtype=np.float) * u.degree,
-        dec=np.array(dec2.values, dtype=np.float) * u.degree
+        ra=np.array(ra2.values, dtype=float) * u.degree,
+        dec=np.array(dec2.values, dtype=float) * u.degree
     )
 
-    # cross-match
-    idx, d2d, d3d = catalog_other.match_to_catalog_sky(catalog_ztf)
-
-    # set separation length
-    if radius_arcsec is None:
-        radius_arcsec = 1.5
-    else:
-        radius_arcsec = float(radius_arcsec.values[0])
-
-    sep_constraint = d2d.degree < radius_arcsec / 3600.0
-
-    catalog_matches = np.unique(pdf['candid'].values[idx[sep_constraint]])
-
-    # identify position of matches in the input dataframe
-    pdf_matches = pd.DataFrame(
-        {
-            'candid': np.array(catalog_matches, dtype=np.int64),
-            'match': True
-        }
+    pdf_merge, mask, idx2 = cross_match_astropy(
+        pdf, catalog_ztf, catalog_other, radius_arcsec=None
     )
-    pdf_merge = pd.merge(pdf, pdf_matches, how='left', on='candid')
-
-    m = pdf_merge['match'].apply(lambda x: x is True)
-
-    # Now get types for these
-    catalog_ztf_merge = SkyCoord(
-        ra=np.array(pdf_merge.loc[m, 'ra'].values, dtype=np.float) * u.degree,
-        dec=np.array(pdf_merge.loc[m, 'dec'].values, dtype=np.float) * u.degree
-    )
-
-    # cross-match
-    idx2, d2d2, d3d2 = catalog_ztf_merge.match_to_catalog_sky(catalog_other)
 
     pdf_merge['Type'] = 'Unknown'
-    pdf_merge.loc[m, 'Type'] = [
+    pdf_merge.loc[mask, 'Type'] = [
         str(i).strip() for i in type2.astype(str).values[idx2]
+    ]
+
+    return pdf_merge['Type']
+
+@pandas_udf(MapType(StringType(), StringType()), PandasUDFType.SCALAR)
+def crossmatch_mangrove(candid, ra, dec, radius_arcsec=None):
+    """ Crossmatch alerts with the Mangrove catalog
+
+    Parameters
+    ----------
+    candid: long
+        ZTF candidate ID
+    ra: float
+        ZTF Right ascension
+    dec: float
+        ZTF declinations
+    radius_arcsec: float, optional
+        Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
+
+    Returns
+    ----------
+    type: str
+        Object type from the catalog. `Unknown` if no match.
+
+    Examples
+    ----------
+    >>> from pyspark.sql.functions import lit
+
+    Simulate fake data
+    >>> ra = [198.955536, 101.3520545, 0.3126, 0.31820833]
+    >>> dec = [42.029289, 24.5421872, 47.6859, 29.59277778]
+    >>> id = ["1", "2", "3", "4"]
+
+    Wrap data into a Spark DataFrame
+    >>> rdd = spark.sparkContext.parallelize(zip(id, ra, dec))
+    >>> df = rdd.toDF(['id', 'ra', 'dec'])
+    >>> df.show() # doctest: +NORMALIZE_WHITESPACE
+    +---+-----------+-----------+
+    | id|         ra|        dec|
+    +---+-----------+-----------+
+    |  1| 198.955536|  42.029289|
+    |  2|101.3520545| 24.5421872|
+    |  3|     0.3126|    47.6859|
+    |  4| 0.31820833|29.59277778|
+    +---+-----------+-----------+
+    <BLANKLINE>
+
+    Test the processor by adding a new column with the result of the xmatch
+    >>> df.withColumn(
+    ...     'mangrove',
+    ...     crossmatch_mangrove(df['id'], df['ra'], df['dec'], lit(60.0))
+    ... ).toPandas() # doctest: +NORMALIZE_WHITESPACE
+      id          ra        dec                                           mangrove
+    0  1  198.955536  42.029289  {'HyperLEDA_name': 'NGC5055', '2MASS_name': '1...
+    1  2  101.352054  24.542187  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
+    2  3    0.312600  47.685900  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
+    3  4    0.318208  29.592778  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
+    """
+    pdf = pd.DataFrame(
+        {
+            'ra': ra.values,
+            'dec': dec.values,
+            'candid': range(len(ra))
+        }
+    )
+
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    catalog = curdir + '/data/catalogs/mangrove_filtered.parquet'
+    ra2, dec2, payload = extract_mangrove(catalog)
+
+    # create catalogs
+    catalog_ztf = SkyCoord(
+        ra=np.array(ra.values, dtype=float) * u.degree,
+        dec=np.array(dec.values, dtype=float) * u.degree
+    )
+
+    catalog_other = SkyCoord(
+        ra=np.array(ra2.values, dtype=float) * u.degree,
+        dec=np.array(dec2.values, dtype=float) * u.degree
+    )
+
+    pdf_merge, mask, idx2 = cross_match_astropy(
+        pdf, catalog_ztf, catalog_other, radius_arcsec=None
+    )
+
+    default = {
+        'HyperLEDA_name': 'None',
+        '2MASS_name': 'None',
+        'lum_dist': 'None',
+        'ang_dist': 'None'
+    }
+    pdf_merge['Type'] = [default for i in range(len(pdf_merge))]
+    pdf_merge.loc[mask, 'Type'] = [
+        i for i in np.array(payload)[idx2]
     ]
 
     return pdf_merge['Type']
