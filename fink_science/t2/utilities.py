@@ -156,6 +156,8 @@ def extract_maxclass(dic: dict) -> str:
     vals = list(dic.values())
     if None in vals:
         return ""
+    elif len(vals) == 0:
+        return ""
     else:
         keys = list(dic.keys())
         return keys[np.argmax(vals)]
