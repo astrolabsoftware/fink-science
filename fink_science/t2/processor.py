@@ -15,7 +15,7 @@
 import os
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StringType
+from pyspark.sql.types import StringType, FloatType
 
 import pandas as pd
 import numpy as np
@@ -31,8 +31,16 @@ from fink_science.t2.utilities import get_lite_model, apply_selection_cuts_ztf
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
-def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name=None) -> pd.Series:
-    """ Return max prob from T2
+def maxclass(dic):
+    """ Extract the class with max probability
+    """
+    max_class_series = dic.apply(lambda x: list(x.keys())[np.argmax(list(x.values()))])
+    return max_class_series
+
+
+@pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
+def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name=None) -> pd.Series:
+    """ Return vector of probabilities from T2
 
     Parameters
     ----------
@@ -50,7 +58,7 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
 
     Returns
     ----------
-    probabilities: 1D np.array of float
+    probabilities: dictionnary (class>str, prob>float)
         Probability between 0 (non-Ia) and 1 (Ia).
 
     Examples
@@ -86,9 +94,11 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
     # Perform the fit + classification (default t2 model)
     >>> args = ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']
     >>> args += [F.col('roid'), F.col('cdsxmatch'), F.col('candidate.jdstarthist')]
-    >>> df = df.withColumn('t2_maxclass', t2_max_prob(*args))
+    >>> df = df.withColumn('t2', t2(*args))
 
-    >>> df.filter(df['t2_maxclass'] == 'SNIa').count()
+    >>> df = df.withColumn('maxClass', maxclass('t2'))
+
+    >>> df.filter(df['maxClass'] == 'SNIa').count()
     4
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
@@ -132,6 +142,22 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
         # Load default pre-trained model
         model = get_lite_model()
 
+    class_names = [
+        "mu-Lens-Single",
+        "TDE",
+        "EB",
+        "SNII",
+        "SNIax",
+        "Mira",
+        "SNIbc",
+        "KN",
+        "M-dwarf",
+        "SNIa-91bg",
+        "AGN",
+        "SNIa",
+        "RRL",
+        "SLSN-I",
+    ]
     vals = []
     for candid_ in candid[mask].values:
 
@@ -156,37 +182,14 @@ def t2_max_prob(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist,
 
         y_preds = model.predict(X)
 
-        class_names = [
-            "mu-Lens-Single",
-            "TDE",
-            "EB",
-            "SNII",
-            "SNIax",
-            "Mira",
-            "SNIbc",
-            "KN",
-            "M-dwarf",
-            "SNIa-91bg",
-            "AGN",
-            "SNIa",
-            "RRL",
-            "SLSN-I",
-        ]
-
-        keys = class_names
         values = y_preds.tolist()
-        predictions = dict(zip(keys, values[0]))
+        vals.append({k: v for k, v in zip(class_names, values)})
 
-        idx = np.where(np.array(list(predictions.values())) == np.max(list(predictions.values())))[0][0]
-        snia_val = list(predictions.keys())[idx]
-        vals.append(str(snia_val))
-
-    # Take only probabilities to be Ia
-    # to_return = np.zeros(len(jd), dtype=float)
-    to_return = np.array(['None'] * len(jd), dtype=np.str)
+    default = {k: None for k in class_names}
+    to_return = np.array([default for i in range(len(jd))])
     to_return[mask] = vals
 
-    # return probabilities to be Ia
+    # return vector of probabilities
     return pd.Series(to_return)
 
 
