@@ -15,7 +15,7 @@
 import os
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StringType, FloatType
+from pyspark.sql.types import StringType, FloatType, MapType
 
 import pandas as pd
 import numpy as np
