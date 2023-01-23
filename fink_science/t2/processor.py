@@ -96,6 +96,8 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
     >>> args += [F.col('roid'), F.col('cdsxmatch'), F.col('candidate.jdstarthist')]
     >>> df = df.withColumn('t2', t2(*args))
 
+    >>> df.select('t2').toPandas()
+
     >>> df = df.withColumn('maxClass', maxclass('t2'))
 
     >>> df.filter(df['maxClass'] == 'SNIa').count()
