@@ -26,15 +26,15 @@ from astronet.preprocess import robust_scale
 from fink_utils.data.utils import format_data_as_snana
 
 from fink_science import __file__
-from fink_science.t2.utilities import get_lite_model, apply_selection_cuts_ztf
+from fink_science.t2.utilities import get_lite_model, apply_selection_cuts_ztf, extract_maxclass
 
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def maxclass(dic):
-    """ Extract the class with max probability
+    """ Extract t-he class with max probability
     """
-    max_class_series = dic.apply(lambda x: list(x.keys())[np.argmax(list(x.values()))])
+    max_class_series = dic.apply(lambda x: extract_maxclass(x))
     return max_class_series
 
 

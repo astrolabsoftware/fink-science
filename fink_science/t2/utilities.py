@@ -149,3 +149,13 @@ def apply_selection_cuts_ztf(
     # Add cuts on having exactly 2 filters
 
     return mask
+
+def extract_maxclass(dic: dict) -> str:
+    """ Extract the class with max probability
+    """
+    vals = list(dic.values())
+    if None in vals:
+        return ""
+    else:
+        keys = list(dic.keys())
+        return keys[np.argmax(vals)]
