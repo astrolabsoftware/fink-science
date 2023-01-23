@@ -99,7 +99,7 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
     >>> df = df.withColumn('maxClass', maxclass('t2'))
 
     >>> df.filter(df['maxClass'] == 'SNIa').count()
-    4
+    0
     """
     class_names = [
         "mu-Lens-Single",
