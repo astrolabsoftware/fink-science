@@ -78,7 +78,7 @@ def extract_mangrove(filename):
     ----------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> filename = curdir + '/../data/catalogs/mangrove_filtered.parquet''
+    >>> filename = curdir + '/../data/catalogs/mangrove_filtered.parquet'
     >>> ra, dec, payload = extract_mangrove(filename)
     """
     pdf = pd.read_parquet(filename)
