@@ -154,7 +154,7 @@ def extract_maxclass(dic: dict) -> str:
     """ Extract the class with max probability
     """
     vals = list(dic.values())
-    if None in vals:
+    if -1.0 in vals:
         return ""
     elif len(vals) == 0:
         return ""

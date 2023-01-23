@@ -187,7 +187,7 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
         values = y_preds.tolist()
         vals.append({k: v for k, v in zip(class_names, values)})
 
-    default = {k: None for k in class_names}
+    default = {k: -1.0 for k in class_names}
     to_return = np.array([default for i in range(len(jd))])
     to_return[mask] = vals
 
