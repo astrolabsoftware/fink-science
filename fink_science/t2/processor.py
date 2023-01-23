@@ -96,17 +96,34 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
     >>> args += [F.col('roid'), F.col('cdsxmatch'), F.col('candidate.jdstarthist')]
     >>> df = df.withColumn('t2', t2(*args))
 
-    >>> print(df.select('t2').toPandas())
-
     >>> df = df.withColumn('maxClass', maxclass('t2'))
 
     >>> df.filter(df['maxClass'] == 'SNIa').count()
     4
     """
+    class_names = [
+        "mu-Lens-Single",
+        "TDE",
+        "EB",
+        "SNII",
+        "SNIax",
+        "Mira",
+        "SNIbc",
+        "KN",
+        "M-dwarf",
+        "SNIa-91bg",
+        "AGN",
+        "SNIa",
+        "RRL",
+        "SLSN-I",
+    ]
+    default = {k: -1.0 for k in class_names}
+    to_return = np.array([default for i in range(len(jd))])
+
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 
     if len(jd[mask]) == 0:
-        return pd.Series(np.array(['None'] * len(jd), dtype=np.str))
+        return pd.Series(to_return)
 
     ZTF_FILTER_MAP = {1: "ztfg", 2: "ztfr", 3: "ztfi"}
 
@@ -144,22 +161,6 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
         # Load default pre-trained model
         model = get_lite_model()
 
-    class_names = [
-        "mu-Lens-Single",
-        "TDE",
-        "EB",
-        "SNII",
-        "SNIax",
-        "Mira",
-        "SNIbc",
-        "KN",
-        "M-dwarf",
-        "SNIa-91bg",
-        "AGN",
-        "SNIa",
-        "RRL",
-        "SLSN-I",
-    ]
     vals = []
     for candid_ in candid[mask].values:
 
@@ -168,7 +169,7 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
 
         # Need all filters
         if len(np.unique(sub['filter'])) != 2:
-            vals.append('None')
+            vals.append(default)
             continue
 
         # one object at a time
@@ -185,10 +186,9 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
         y_preds = model.predict(X)
 
         values = y_preds.tolist()
-        vals.append({k: v for k, v in zip(class_names, values)})
+        predictions = dict(zip(class_names, values[0]))
+        vals.append(predictions)
 
-    default = {k: -1.0 for k in class_names}
-    to_return = np.array([default for i in range(len(jd))])
     to_return[mask] = vals
 
     # return vector of probabilities
