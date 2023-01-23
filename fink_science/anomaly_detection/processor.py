@@ -84,8 +84,18 @@ def anomaly_score(lc_features) -> float:
     ---------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
+    >>> from fink_science.ad_features.processor import extract_features_ad
 
     >>> df = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns, concatenated with historical data
+    >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid']
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    >>> df = df.withColumn('lc_features', extract_features_ad(*what_prefix, 'objectId'))
     >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
 
     >>> df.filter(df["anomaly_score"] < -0.5).count()
@@ -109,7 +119,7 @@ def anomaly_score(lc_features) -> float:
         logger.exception(f"Unsupported 'lc_features' format in '{__file__}/{anomaly_score.__name__}'")
 
     data_r, data_g = (
-        pd.DataFrame.from_dict({k: [v] for k, v in lc_features[i].asDict().items()})[MODEL_COLUMNS]
+        pd.DataFrame.from_dict({k: [v] for k, v in lc_features[i].items()})[MODEL_COLUMNS]
         for i in (1, 2)
     )
     for data, means in ((data_r, r_means), (data_g, g_means)):
@@ -122,7 +132,7 @@ if __name__ == "__main__":
     """ Execute the test suite """
     globs = globals()
 
-    ztf_alert_sample = 'file://{}/anomaly_detection/test_data.parquet'.format(path)
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
