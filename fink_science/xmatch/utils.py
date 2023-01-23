@@ -15,12 +15,83 @@
 import io
 import csv
 import pandas as pd
+import numpy as np
 
 from astropy.coordinates import SkyCoord
 from astropy.table import Table
 import astropy.units as u
 
 from fink_science.tester import regular_unit_tests
+
+def cross_match_astropy(pdf, catalog_ztf, catalog_other, radius_arcsec=None):
+    """
+    """
+    # cross-match
+    idx, d2d, d3d = catalog_other.match_to_catalog_sky(catalog_ztf)
+
+    # set separation length
+    if radius_arcsec is None:
+        radius_arcsec = 1.5
+    else:
+        radius_arcsec = float(radius_arcsec.values[0])
+
+    sep_constraint = d2d.degree < radius_arcsec / 3600.0
+
+    catalog_matches = np.unique(pdf['candid'].values[idx[sep_constraint]])
+
+    # identify position of matches in the input dataframe
+    pdf_matches = pd.DataFrame(
+        {
+            'candid': np.array(catalog_matches, dtype=np.int64),
+            'match': True
+        }
+    )
+    pdf_merge = pd.merge(pdf, pdf_matches, how='left', on='candid')
+
+    mask = pdf_merge['match'].apply(lambda x: x is True)
+
+    # Now get types for these
+    catalog_ztf_merge = SkyCoord(
+        ra=np.array(pdf_merge.loc[mask, 'ra'].values, dtype=np.float) * u.degree,
+        dec=np.array(pdf_merge.loc[mask, 'dec'].values, dtype=np.float) * u.degree
+    )
+
+    # cross-match
+    idx2, d2d2, d3d2 = catalog_ztf_merge.match_to_catalog_sky(catalog_other)
+
+    return pdf_merge, mask, idx2
+
+def extract_mangrove(filename):
+    """ Read the Mangrove catalog and extract useful columns
+
+    Parameters
+    ----------
+    filename: str
+        Path to the Mangrove catalog (parquet file)
+
+    Returns
+    ----------
+    out: pd.Series, pd.Series, pd.Series
+        (ra, dec, Source Name )from the catalog
+
+    Examples
+    ----------
+    >>> import os
+    >>> curdir = os.path.dirname(os.path.abspath(__file__))
+    >>> filename = curdir + '/../data/catalogs/mangrove_filtered.parquet''
+    >>> ra, dec, payload = extract_mangrove(filename)
+    """
+    pdf = pd.read_parquet(filename)
+
+    cols = ['HyperLEDA_name', '2MASS_name', 'lum_dist', 'ang_dist']
+
+    for col_ in cols:
+        # stringify
+        pdf[col_] = pdf[col_].astype(str)
+
+    payload = pdf[cols].to_dict(orient='records')
+
+    return pdf['ra'], pdf['dec'], payload
 
 def extract_4lac(filename_h, filename_l):
     """ Read the 4LAC DR3 catalogs and extract useful columns
