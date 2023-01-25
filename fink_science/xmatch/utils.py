@@ -31,7 +31,18 @@ MANGROVE_COLS = [
 ]
 
 def cross_match_astropy(pdf, catalog_ztf, catalog_other, radius_arcsec=None):
-    """
+    """ Crossmatch two catalogs
+
+    Parameters
+    ----------
+    pdf: pd.DataFrame
+        Input alert dataframe
+    catalog_ztf: SkyCoord
+        Catalog of ZTF objects
+    catalog_other: SkyCoord
+        Catalog of other objects
+    radius_arcsec: pd.Series or None
+        If None, default is 1.5 arcsec
     """
     # cross-match
     idx, d2d, d3d = catalog_other.match_to_catalog_sky(catalog_ztf)
