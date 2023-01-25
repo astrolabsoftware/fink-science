@@ -30,7 +30,7 @@ from fink_science.xmatch.utils import cross_match_astropy
 from fink_science.xmatch.utils import generate_csv
 from fink_science.xmatch.utils import extract_vsx, extract_gcvs
 from fink_science.xmatch.utils import extract_3hsp, extract_4lac
-from fink_science.xmatch.utils import extract_mangrove
+from fink_science.xmatch.utils import extract_mangrove, MANGROVE_COLS
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
@@ -487,12 +487,7 @@ def crossmatch_mangrove(candid, ra, dec, radius_arcsec=None):
         pdf, catalog_ztf, catalog_other, radius_arcsec=None
     )
 
-    default = {
-        'HyperLEDA_name': 'None',
-        '2MASS_name': 'None',
-        'lum_dist': 'None',
-        'ang_dist': 'None'
-    }
+    default = {name: 'None' for name in MANGROVE_COLS}
     pdf_merge['Type'] = [default for i in range(len(pdf_merge))]
     pdf_merge.loc[mask, 'Type'] = [
         i for i in np.array(payload)[idx2]
