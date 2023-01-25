@@ -25,6 +25,23 @@ from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 import tensorflow as tf
 
+T2_COLS = [
+        "mu-Lens-Single",
+        "TDE",
+        "EB",
+        "SNII",
+        "SNIax",
+        "Mira",
+        "SNIbc",
+        "KN",
+        "M-dwarf",
+        "SNIa-91bg",
+        "AGN",
+        "SNIa",
+        "RRL",
+        "SLSN-I",
+    ]
+
 class LiteModel:
     @classmethod
     def from_file(cls, model_path):

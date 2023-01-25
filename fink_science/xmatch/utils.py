@@ -23,6 +23,13 @@ import astropy.units as u
 
 from fink_science.tester import regular_unit_tests
 
+MANGROVE_COLS = [
+    'HyperLEDA_name',
+    '2MASS_name',
+    'lum_dist',
+    'ang_dist'
+]
+
 def cross_match_astropy(pdf, catalog_ztf, catalog_other, radius_arcsec=None):
     """
     """

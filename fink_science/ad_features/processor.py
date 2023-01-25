@@ -69,8 +69,8 @@ def create_extractor():
 
 # 'lc.Extrator' can not be pickled, and thus needs to be created inside the udf,
 # but we also need the list of names outside the udf
-column_names = create_extractor().names
-columns_count = len(column_names)
+FEATURES_COLS = create_extractor().names
+columns_count = len(FEATURES_COLS)
 
 
 def extract_features_ad_raw(
@@ -169,7 +169,7 @@ def extract_features_ad_raw(
         except Exception:
             logger.exception(f"Unknown exception for {oId} in processor '{__file__}/{extract_features_ad.__name__}'")
             continue
-        full_result[int(passband_id)] = dict(zip(column_names, [float(v) for v in result]))
+        full_result[int(passband_id)] = dict(zip(FEATURES_COLS, [float(v) for v in result]))
 
     return full_result
 
@@ -179,7 +179,7 @@ extract_features_ad = udf(
     returnType=MapType(
         IntegerType(),  # passband_id
         StructType([  # features name -> value
-            StructField(name, DoubleType(), True) for name in column_names
+            StructField(name, DoubleType(), True) for name in FEATURES_COLS
         ])
     ),
 )

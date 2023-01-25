@@ -26,7 +26,10 @@ from astronet.preprocess import robust_scale
 from fink_utils.data.utils import format_data_as_snana
 
 from fink_science import __file__
-from fink_science.t2.utilities import get_lite_model, apply_selection_cuts_ztf, extract_maxclass
+from fink_science.t2.utilities import get_lite_model
+from fink_science.t2.utilities import apply_selection_cuts_ztf
+from fink_science.t2.utilities import extract_maxclass
+from fink_science.t2.utilities import T2_COLS
 
 from fink_science.tester import spark_unit_tests
 
@@ -101,23 +104,7 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
     >>> df.filter(df['maxClass'] == 'SNIa').count()
     0
     """
-    class_names = [
-        "mu-Lens-Single",
-        "TDE",
-        "EB",
-        "SNII",
-        "SNIax",
-        "Mira",
-        "SNIbc",
-        "KN",
-        "M-dwarf",
-        "SNIa-91bg",
-        "AGN",
-        "SNIa",
-        "RRL",
-        "SLSN-I",
-    ]
-    default = {k: -1.0 for k in class_names}
+    default = {k: -1.0 for k in T2_COLS}
     to_return = np.array([default for i in range(len(jd))])
 
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
@@ -186,7 +173,7 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
         y_preds = model.predict(X)
 
         values = y_preds.tolist()
-        predictions = dict(zip(class_names, values[0]))
+        predictions = dict(zip(T2_COLS, values[0]))
         vals.append(predictions)
 
     to_return[mask] = vals
