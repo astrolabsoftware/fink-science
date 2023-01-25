@@ -55,10 +55,12 @@ r_model_path = f"{model_path}/forest_r.pickle"
 if not (os.path.exists(r_model_path) and os.path.exists(g_model_path)):
     # unzip in a tmp place
     tmp_path = '/tmp'
-    with zipfile.ZipFile(f"{model_path}/anomaly_detection_forest.zip", 'r') as zip_ref:
-        zip_ref.extractall(tmp_path)
     g_model_path = f"{tmp_path}/forest_g.pickle"
     r_model_path = f"{tmp_path}/forest_r.pickle"
+    # check it does not exist to avoid concurrent write
+    if not (os.path.exists(r_model_path) and os.path.exists(g_model_path)):
+        with zipfile.ZipFile(f"{model_path}/anomaly_detection_forest.zip", 'r') as zip_ref:
+            zip_ref.extractall(tmp_path)
 
 with open(r_model_path, 'rb') as forest_file:
     forest_r = pickle.load(forest_file)
