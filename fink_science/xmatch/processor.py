@@ -396,7 +396,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
     )
 
     pdf_merge, mask, idx2 = cross_match_astropy(
-        pdf, catalog_ztf, catalog_other, radius_arcsec=None
+        pdf, catalog_ztf, catalog_other, radius_arcsec=radius_arcsec
     )
 
     pdf_merge['Type'] = 'Unknown'
@@ -484,7 +484,7 @@ def crossmatch_mangrove(candid, ra, dec, radius_arcsec=None):
     )
 
     pdf_merge, mask, idx2 = cross_match_astropy(
-        pdf, catalog_ztf, catalog_other, radius_arcsec=None
+        pdf, catalog_ztf, catalog_other, radius_arcsec=radius_arcsec
     )
 
     default = {name: 'None' for name in MANGROVE_COLS}
