@@ -534,7 +534,8 @@ def parametric_bump(ps, band):
         fit = curve_fit(mod.bump, ps[f"cjd_{band}"], ps[f"cflux_{band}"], sigma=ps[f"csigflux_{band}"],
                         p0=[0.225, -2.5, 0.038, get_min(ps[f"cflux_{band}"])], maxfev=k.MAXFEV)
 
-    except RuntimeError:
+    except (RuntimeError, ValueError) as err:
+        print(type(err), err)
         fit = [[0.225, -2.5, 0.038, -1]]
 
     return fit[0]
