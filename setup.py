@@ -37,6 +37,7 @@ setuptools.setup(
             'data/models/*.pkl',
             'data/models/*.csv',
             'data/models/*.tflite',
+            'data/models/*.joblib',
             'data/models/snn_models/*/*.pt',
             'data/models/snn_models/*/*.json',
             'data/models/snn_models/*/*.txt',
