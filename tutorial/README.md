@@ -2,7 +2,26 @@
 
 ## Before starting
 
-In order to design a Fink Science module, you will need to have Apache Spark installed (2.4.x), and fink-broker cloned somewhere, with `$FINK_HOME` defined in your path.
+In order to design a Fink Science module, you will need to have Apache Spark installed (3.x), and fink-utils installed:
+
+```bash\
+# Install fink-utils
+pip install fink-utils --upgrade
+
+# Install Apache Spark
+SPARK_VERSION=3.1.3
+wget --quiet https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-${HADOOP_VERSION}.tgz
+tar -xf spark-${SPARK_VERSION}-bin-${HADOOP_VERSION}.tgz
+rm spark-${SPARK_VERSION}-bin-${HADOOP_VERSION}.tgz
+```
+
+and put these lines in your ~/.bash_profile:
+
+```bash
+export SPARK_HOME=/path/to/spark-${SPARK_VERSION}-bin-${HADOOP_VERSION}
+export PATH=$PATH:$SPARK_HOME/bin
+export PYTHONPATH=$PYTHONPATH:$SPARK_HOME/python
+```
 
 ## Structure of a science module
 
@@ -22,20 +41,10 @@ Fink science modules are contained in `fink_science/`. They all have the same st
 
 ## Testing your module (tutorial)
 
-You can copy and edit this tutorial to create your own science module. Then edit the configuration file provided in this folder for the shell in Fink to use jupyter:
+Just launch:
 
 ```bash
-# in fink.conf.shell
-# Pyspark driver: None, Ipython, or Jupyter-notebook
-# Note: for Jupyter on a cluster, you might need to specify the options
-# --no-browser --port=<PORT>, and perform port redirection when ssh-ing.
-PYSPARK_DRIVER_PYTHON=`which jupyter-notebook`
-```
-
-Finally launch it using the `fink_shell`:
-
-```bash
-$FINK_HOME/bin/fink_shell -c fink.conf.shell
+PYSPARK_DRIVER_PYTHON=`which jupyter-notebook` `which pyspark`
 ```
 
 You should have access to jupyter notebooks with Spark inside! In the current tutorial, we just aggregate magnitude measurements contained in alerts, and compute the difference between measurements. Probably meaningless (we do not split by filter bands), the purpose of the tutorial is to show you basic tools to build your module.
