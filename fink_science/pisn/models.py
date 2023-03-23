@@ -21,10 +21,12 @@ def mvsr_right_transient(X, p1, p2, p3):
     protec = np.where(p1 * newX < 100, p1 * newX, 100)
     return p2 * newX * np.exp(protec)
 
+
 def mvsr_left_transient(X, p1, p2, p3):
     newX = -X + p3
     protec = np.where(p1 * newX < 100, p1 * newX, 100)
     return p2 * newX * np.exp(protec)
+
 
 if __name__ == "__main__":
 
