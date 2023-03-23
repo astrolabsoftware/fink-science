@@ -18,13 +18,13 @@ import numpy as np
 
 def mvsr_right_transient(X, p1, p2, p3):
     newX = X + p3
-    protec = min(100, p1 * newX)
+    protec = np.where(p1 * newX<100, p1 * newX, 100)
     return p2 * newX * np.exp(protec)
 
 
 def mvsr_left_transient(X, p1, p2, p3):
     newX = -X + p3
-    protec = min(100, p1 * newX)
+    protec = np.where(p1 * newX<100, p1 * newX, 100)
     return p2 * newX * np.exp(protec)
 
 

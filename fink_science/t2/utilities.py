@@ -25,6 +25,23 @@ from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 import tensorflow as tf
 
+T2_COLS = [
+    "mu-Lens-Single",
+    "TDE",
+    "EB",
+    "SNII",
+    "SNIax",
+    "Mira",
+    "SNIbc",
+    "KN",
+    "M-dwarf",
+    "SNIa-91bg",
+    "AGN",
+    "SNIa",
+    "RRL",
+    "SLSN-I",
+]
+
 class LiteModel:
     @classmethod
     def from_file(cls, model_path):
@@ -149,3 +166,15 @@ def apply_selection_cuts_ztf(
     # Add cuts on having exactly 2 filters
 
     return mask
+
+def extract_maxclass(dic: dict) -> str:
+    """ Extract the class with max probability
+    """
+    vals = list(dic.values())
+    if -1.0 in vals:
+        return ""
+    elif len(vals) == 0:
+        return ""
+    else:
+        keys = list(dic.keys())
+        return keys[np.argmax(vals)]

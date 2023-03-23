@@ -8,7 +8,7 @@ import pandas as pd
 
 import processor
 
-lc_columns = processor.column_names
+lc_columns = processor.FEATURES_COLS
 
 names = (
     "536106200014286",
