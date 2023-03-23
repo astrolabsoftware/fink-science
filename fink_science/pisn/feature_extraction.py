@@ -109,7 +109,7 @@ def parametric_func(ps, band):
     try:
         fit = curve_fit(mod.mvsr_right_transient, ps[f"cjd_{band}"], ps[f"cflux_{band}"], sigma=ps[f"csigflux_{band}"], p0=[-0.005, 0.015, 15], bounds=([-10, 0, 0], [0, 200, 500]), maxfev=k.MAXFEV)
 
-    except RuntimeError:
+    except (RuntimeError, ValueError):
         fit = [[0, 0, 0]]
 
     return fit[0]
