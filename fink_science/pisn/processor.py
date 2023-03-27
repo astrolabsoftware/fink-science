@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fink_science.pisn.classifier import pisn_classifier
+from fink_science.slsn.classifier import slsn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 import pandas as pd
@@ -21,10 +21,10 @@ from fink_science.tester import spark_unit_tests
 
 
 @pandas_udf(DoubleType())
-def pisn_elasticc(
+def slsn_elasticc(
         diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName,
         ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec):
-    """High level spark wrapper for the PISN classifier on ELASTiCC data
+    """High level spark wrapper for the slsn classifier on ELASTiCC data
 
     Parameters
     ----------
@@ -57,7 +57,7 @@ def pisn_elasticc(
     Returns
     -------
     np.array
-        ordered probabilities of being a PISN
+        ordered probabilities of being a slsn
         Return 0 if the minimum points number is not respected.
     """
 
@@ -77,7 +77,7 @@ def pisn_elasticc(
         }
     )
 
-    proba = pisn_classifier(data)
+    proba = slsn_classifier(data)
     return pd.Series(proba)
 
 
