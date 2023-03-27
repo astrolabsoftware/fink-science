@@ -14,10 +14,10 @@
 # limitations under the License.
 
 import pandas as pd
-import fink_science.pisn.models as mod
+import fink_science.slsn.models as mod
 import fink_science.agn.feature_extraction as fe_agn
 from pandas.testing import assert_frame_equal  # noqa: F401
-import fink_science.pisn.kernel as k
+import fink_science.slsn.kernel as k
 import numpy as np
 import pickle  # noqa: F401
 from scipy.optimize import curve_fit

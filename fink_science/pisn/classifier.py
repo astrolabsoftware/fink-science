@@ -14,9 +14,9 @@
 # limitations under the License.
 
 import joblib
-import fink_science.pisn.kernel as k
+import fink_science.slsn.kernel as k
 import fink_science.agn.feature_extraction as fe_agn
-import fink_science.pisn.feature_extraction as fe_pisn
+import fink_science.slsn.feature_extraction as fe_slsn
 import os
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
@@ -26,8 +26,8 @@ import numpy as np  # noqa: F401
 
 def load_classifier():
     """
-    load the random forest classifier trained to recognize the PISN
-    on binary cases : PISN vs non-PISN  (joblib format).
+    load the random forest classifier trained to recognize the slsn
+    on binary cases : slsn vs non-slsn  (joblib format).
 
     Returns
     -------
@@ -42,9 +42,9 @@ def load_classifier():
     return clf
 
 
-def pisn_classifier(data):
+def slsn_classifier(data):
     """
-    Call the pisn_classifier
+    Call the slsn_classifier
 
     Parameters
     ----------
@@ -54,7 +54,7 @@ def pisn_classifier(data):
     Returns
     -------
     np.array
-        ordered probabilities of being an PISN
+        ordered probabilities of being an slsn
         Return 0 if the minimum number of point per passband is not respected
 
     Examples
@@ -63,14 +63,14 @@ def pisn_classifier(data):
 
     formated = fe_agn.format_data(data, 'ELASTICC')
 
-    all_transformed, valid = fe_pisn.transform_data(formated)
+    all_transformed, valid = fe_slsn.transform_data(formated)
 
     if not valid.any():
         return np.zeros(len(data), dtype=np.float)
 
-    all_features = fe_pisn.parametrise(all_transformed)
+    all_features = fe_slsn.parametrise(all_transformed)
 
-    features = fe_pisn.merge_features(all_features)
+    features = fe_slsn.merge_features(all_features)
 
     clf = load_classifier()
 
