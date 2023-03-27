@@ -17,7 +17,7 @@ import os
 from fink_science import __file__
 
 curdir = os.path.dirname(os.path.abspath(__file__))
-CLASSIFIER_ELASTICC = curdir + "/data/models/SLSN_elasticc_fphot.joblib"
+CLASSIFIER_ELASTICC = curdir + "/data/models/SLSN_elasticc_alerts.joblib"
 MINIMUM_POINTS = 3
 COLOR_PAIR = [2, 3]
 NORMALIZING_BAND = COLOR_PAIR[0]
