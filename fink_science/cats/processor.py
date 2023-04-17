@@ -21,10 +21,11 @@ from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import ArrayType, FloatType
 
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow_addons import optimizers
 
 from fink_science import __file__
-from fink_science.cats.utilities import normalize_lc, extract_max_prob
+from fink_science.cats.utilities import norm_column, extract_max_prob
 from fink_science.tester import spark_unit_tests
 
 tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
@@ -32,35 +33,27 @@ tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
 
 @pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 def predict_nn(
-        midpointTai: pd.Series, psFlux: pd.Series, psFluxErr: pd.Series,
-        filterName: pd.Series, mwebv: pd.Series, z_final: pd.Series,
-        z_final_err: pd.Series, hostgal_zphot: pd.Series,
+        midpointTai: pd.Series,
+        psFlux: pd.Series,
+        psFluxErr: pd.Series,
+        filterName: pd.Series,
+        mwebv: pd.Series,
+        z_final: pd.Series,
+        z_final_err: pd.Series,
+        hostgal_zphot: pd.Series,
         hostgal_zphot_err: pd.Series,
         model=None
-) -> pd.DataFrame:
-    """ Return predctions from a CBPF classifier model (cats general) using Elasticc alert data.
-    For the default model, one has the following mapping:
+) -> pd.Series:
+    """
+    Return broad predctions from a CBPF classifier model (cats general) using
+    Elasticc alert data. For the default model, one has the following mapping:
 
     class_dict = {
-        0: 111,
-        1: 112,
-        2: 113,
-        3: 114,
-        4: 115,
-        5: 121,
-        6: 122,
-        7: 123,
-        8: 124,
-        9: 131,
-        10: 132,
-        11: 133,
-        12: 134,
-        13: 135,
-        14: 211,
-        15: 212,
-        16: 213,
-        17: 214,
-        18: 221
+        0: 'SN-like',
+        1: 'Fast',
+        2: 'Long',
+        3: 'Periodic',
+        4: 'non-Periodic (AGN),
     }
 
     Parameters:
@@ -89,8 +82,8 @@ def predict_nn(
     Returns:
     --------
     preds: pd.Series
-        preds is an pd.Series which contains a 'cats_general_preds' column
-        with probabilities for classes shown in Elasticc data challenge.
+        preds is an pd.Series which contains a column
+        with probabilities for broad classes shown in Elasticc data challenge.
 
     Examples
     -----------
@@ -126,68 +119,85 @@ def predict_nn(
     0
     """
 
-    filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
-
-    bands = []
-    lcs = []
+    filter_dict = {'u':1, 'g':2, 'r':3, 'i':4, 'z':5, 'Y':6}
+    
+    mjd = []
+    filters = []
     meta = []
-    frac = 10**(- (31.4 - 27.5) / 2.5)
 
     for i, mjds in enumerate(midpointTai):
-
+        
         if len(mjds) > 0:
-            bands.append(np.array(
+            filters.append(np.array(
                 [filter_dict[f] for f in filterName.values[i]]
             ).astype(np.int16))
-            lc = np.concatenate(
-                [
-                    mjds[:, None],
-                    frac * psFlux.values[i][:, None],
-                    frac * psFluxErr.values[i][:, None]
-                ], axis=-1
-            )
-
+            
+            
+            mjd.append(mjds - mjds[0])
+            
             if not np.isnan(mwebv.values[i]):
+                
+                meta.append([mwebv.values[i],
+                             hostgal_zphot.values[i],
+                             hostgal_zphot_err.values[i],
+                             z_final.values[i],
+                             z_final_err.values[i]])
+    
+    
+    flux = psFlux.apply(lambda x: norm_column(x))
+    mjd = midpointTai.apply(lambda x: norm_column(x))
+    error = psFluxErr.apply(lambda x: norm_column(x))
 
-                lcs.append(normalize_lc(lc).astype(np.float32))
-
-                meta.append([
-                    mwebv.values[i], z_final.values[i],
-                    z_final_err.values[i], hostgal_zphot.values[i],
-                    hostgal_zphot_err.values[i]
-                ])
-
-    X = {
-        'meta': np.array(meta),
-        'band': tf.keras.preprocessing.sequence.pad_sequences(bands,
-                                                              maxlen=243,
-                                                              dtype='int32'),
-        'lc': tf.keras.preprocessing.sequence.pad_sequences(lcs,
-                                                            maxlen=243,
-                                                            dtype='float32'),
-    }
-
-    for i, x in enumerate(X['meta'][:, 3]):
-        if x < 0:
-            X['meta'][i, 1:] = -1
-        else:
-            X['meta'][i, 1:] = x
-
+    flux  = keras.utils.pad_sequences(flux,
+                                      maxlen=140,
+                                      value=-999.0,
+                                      padding='post',
+                                      dtype=np.float32)
+    
+    mjd = keras.utils.pad_sequences(mjd,
+                                    maxlen=140,
+                                    value=-999.0,
+                                    padding='post',
+                                    dtype=np.float32)
+    
+    error = keras.utils.pad_sequences(error,
+                                      maxlen=140,
+                                      value=-999.0,
+                                      padding='post',
+                                      dtype=np.float32)
+    
+    band = keras.utils.pad_sequences(filters,
+                                     maxlen=140,
+                                     value=0.0,
+                                     padding='post',
+                                     dtype=np.uint8)
+    
+    
+    
+    lc = np.concatenate([mjd[..., None],
+                         flux[..., None],
+                         error[..., None],
+                         band[..., None]],
+                        axis=-1)
+    
+    meta = np.array(meta)
+    meta[meta<0] = -1
+    
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/cats_models/model_test_meta_alerts_tuner.h5'
+        model_path = curdir + '/data/models/cats_models/model_cut_meta'
     else:
         model_path = model.values[0]
 
     NN = tf.keras.models.load_model(
         model_path, custom_objects={
-            'RectifiedAdam': optimizers.RectifiedAdam
-        })
+        'RectifiedAdam': optimizers.RectifiedAdam
+    })
 
-    preds = NN.predict(X)
-
-    return pd.Series([extract_max_prob(elem) for elem in preds])
+    preds = NN.predict([lc, meta])
+    
+    return pd.Series([p for p in preds])
 
 
 if __name__ == "__main__":
