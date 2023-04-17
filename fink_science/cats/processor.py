@@ -186,9 +186,10 @@ def predict_nn(
     else:
         model_path = model.values[0]
 
-    NN = tf.keras.models.load_model(model_path,
-                                    custom_objects={
-        'RectifiedAdam': optimizers.RectifiedAdam
+    NN = tf.keras.models.load_model(
+        model_path,
+        custom_objects={
+            'RectifiedAdam': optimizers.RectifiedAdam
         }
     )
 
