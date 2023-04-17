@@ -10,7 +10,7 @@ def extract_max_prob(arr: list) -> list:
     return [index, array[index]]
 
 def norm_column(col: list) -> np.array:
-    
+
     col = np.array(col)
 
     if len(col) == 1:
