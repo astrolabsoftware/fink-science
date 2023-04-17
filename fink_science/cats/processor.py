@@ -25,7 +25,7 @@ from tensorflow import keras
 from tensorflow_addons import optimizers
 
 from fink_science import __file__
-from fink_science.cats.utilities import norm_column, extract_max_prob
+from fink_science.cats.utilities import norm_column
 from fink_science.tester import spark_unit_tests
 
 tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
@@ -119,61 +119,57 @@ def predict_nn(
     0
     """
 
-    filter_dict = {'u':1, 'g':2, 'r':3, 'i':4, 'z':5, 'Y':6}
-    
+    filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
+
     mjd = []
     filters = []
     meta = []
 
     for i, mjds in enumerate(midpointTai):
-        
+
         if len(mjds) > 0:
             filters.append(np.array(
                 [filter_dict[f] for f in filterName.values[i]]
             ).astype(np.int16))
-            
-            
+
             mjd.append(mjds - mjds[0])
-            
+
             if not np.isnan(mwebv.values[i]):
-                
+
                 meta.append([mwebv.values[i],
                              hostgal_zphot.values[i],
                              hostgal_zphot_err.values[i],
                              z_final.values[i],
                              z_final_err.values[i]])
-    
-    
+
     flux = psFlux.apply(lambda x: norm_column(x))
     mjd = midpointTai.apply(lambda x: norm_column(x))
     error = psFluxErr.apply(lambda x: norm_column(x))
 
-    flux  = keras.utils.pad_sequences(flux,
+    flux = keras.utils.pad_sequences(flux,
                                       maxlen=140,
                                       value=-999.0,
                                       padding='post',
                                       dtype=np.float32)
-    
+
     mjd = keras.utils.pad_sequences(mjd,
                                     maxlen=140,
                                     value=-999.0,
                                     padding='post',
                                     dtype=np.float32)
-    
+
     error = keras.utils.pad_sequences(error,
                                       maxlen=140,
                                       value=-999.0,
                                       padding='post',
                                       dtype=np.float32)
-    
+
     band = keras.utils.pad_sequences(filters,
                                      maxlen=140,
                                      value=0.0,
                                      padding='post',
                                      dtype=np.uint8)
-    
-    
-    
+
     lc = np.concatenate([mjd[..., None],
                          flux[..., None],
                          error[..., None],
@@ -181,7 +177,7 @@ def predict_nn(
                         axis=-1)
     
     meta = np.array(meta)
-    meta[meta<0] = -1
+    meta[meta < 0] = -1
     
     if model is None:
         # Load pre-trained model
@@ -196,7 +192,7 @@ def predict_nn(
     })
 
     preds = NN.predict([lc, meta])
-    
+
     return pd.Series([p for p in preds])
 
 
