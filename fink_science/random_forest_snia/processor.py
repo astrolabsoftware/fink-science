@@ -272,8 +272,14 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
 
     return pd.Series(concatenated_features)
 
+
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, maxduration=None, model=None) -> pd.Series:
+def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr,
+                             cdsxmatch, nobs,
+                             meta=['RA', 'DEC', 'HOSTGAL_RA', 'HOSTGAL_DEC',
+                                   'HOSTGAL_ZPHOT', 'HOSTGAL_ZPHOT_ERR',
+                                   'MWEBV'], maxduration=None,
+                             model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
@@ -291,8 +297,11 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         Type of object found in Simbad (string)
     nobs: Spark DataFrame Column
         Column containing the number of detections by LSST
+    meta: list
+        Additional features using metadata from ELaSTICC
     maxduration: Spark DataFrame Column
-        Integer for the maximum duration (in days) of the lightcurve to be classified.
+        Integer for the maximum duration (in days) of the lightcurve to be
+        classified.
         Default is None, i.e. no maximum duration
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
@@ -357,7 +366,7 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/default-model_sigmoid_elasticc.obj'
+        model = curdir + '/data/models/default-model_sigmoid_elasticc_meta.obj'
         clf = load_scikit_model(model)
 
     test_features = []
