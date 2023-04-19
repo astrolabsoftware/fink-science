@@ -381,7 +381,7 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr,
         nfeat_per_band = 6
         nbands = 6
         for m in meta:
-            feats.append(pdf[m])
+            feats.append(pdf['diaObject'].values[0][m])
 
         for i in range(nbands):
             feats.append(features[i * nfeat_per_band])
