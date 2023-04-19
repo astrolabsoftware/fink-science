@@ -184,7 +184,7 @@ def img_labelisation(stamp, noise_threshold=3.5):
                         # the enhanced image is then processed by the chan vese algorithm.
                         # the image is segmented between high intensity region and low intensity region.
                         # source: https://arxiv.org/abs/1107.2782
-                        cv = chan_vese(norm_img, mu=0, lambda1=1, lambda2=2, tol=1e-9, max_iter=600,
+                        cv = chan_vese(norm_img, mu=0, lambda1=1, lambda2=2, tol=1e-9, max_num_iter=600,
                                        dt=100, init_level_set="checkerboard").astype(np.bool)
 
                         # the segmented region is then labeled in order to compute some information
