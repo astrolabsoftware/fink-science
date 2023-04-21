@@ -337,8 +337,8 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr,
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
-    >>> args += [F.col('diaObject.hostgal_zphot'),
-                F.col('diaObject.hostgal_zphot_err'), F.col('diaObject.mwebv')]
+    >>> args += [F.col('diaObject.hostgal_zphot')]
+    >>> args += [F.col('diaObject.hostgal_zphot_err'), F.col('diaObject.mwebv')]
     >>> args += [F.col('cdsxmatch'), F.col('diaSource.nobs')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
