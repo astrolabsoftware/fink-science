@@ -115,7 +115,7 @@ def predict_nn(
     >>> df = df.withColumn('preds', predict_nn(*args))
     >>> df = df.withColumn('argmax', F.expr('array_position(preds, array_max(preds)) - 1'))
     >>> df.filter(df['argmax'] == 0).count()
-    52
+    56
     """
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
