@@ -100,7 +100,7 @@ def predict_nn(
 
     # Use for creating temp name
     >>> prefix = 'c'
-    >>> what_prefix = [prefix + i for i in what]
+    >p>> what_prefix = [prefix + i for i in what]
 
     # Append temp columns with historical + current measurements
     >>> for colname in what:
@@ -113,10 +113,9 @@ def predict_nn(
     >>> args += [F.col('diaObject.mwebv'), F.col('diaObject.z_final'), F.col('diaObject.z_final_err')]
     >>> args += [F.col('diaObject.hostgal_zphot'), F.col('diaObject.hostgal_zphot_err')]
     >>> df = df.withColumn('preds', predict_nn(*args))
-    >>> df = df.withColumn('cbpf_class', F.col('preds').getItem(0).astype('int'))
-    >>> df = df.withColumn('cbpf_max_prob', F.col('preds').getItem(1))
-    >>> df.filter(df['cbpf_class'] == 0).count()
-    0
+    >>> df = df.withColumn('argmax', F.expr('array_position(preds, array_max(preds)) - 1'))
+    >>> df.filter(df['argmax'] == 0).count()
+    52
     """
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
