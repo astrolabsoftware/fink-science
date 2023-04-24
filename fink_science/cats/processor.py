@@ -100,7 +100,7 @@ def predict_nn(
 
     # Use for creating temp name
     >>> prefix = 'c'
-    >p>> what_prefix = [prefix + i for i in what]
+    >>> what_prefix = [prefix + i for i in what]
 
     # Append temp columns with historical + current measurements
     >>> for colname in what:
