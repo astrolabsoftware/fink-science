@@ -42,8 +42,5 @@ jobs:
 
     - name: Run test suites
       run: |
-        pip uninstall -y supernnova
-        pip install git+https://github.com/supernnova/SuperNNova.git@7765ac51843997a9e6df4ff866f416ab48010fa2
-        pip install tensorflow==2.9.2
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
