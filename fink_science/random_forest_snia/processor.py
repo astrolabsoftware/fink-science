@@ -276,7 +276,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_sigmoid_elasticc(
         midPointTai, filterName, psFlux, psFluxErr,
-        cdsxmatch, nobs, hostgal_ra, hostgal_dec,
+        cdsxmatch, nobs, ra, dec, hostgal_ra, hostgal_dec,
         hostgal_zphot, hostgal_zphot_err,
         mwebv, maxduration=None,
         model=None) -> pd.Series:
@@ -338,6 +338,7 @@ def rfscore_sigmoid_elasticc(
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += [F.col('cdsxmatch'), F.col('diaSource.nobs')]
+    >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
     >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
     >>> args += [F.col('diaObject.hostgal_zphot_err'), F.col('diaObject.mwebv')]
@@ -385,6 +386,8 @@ def rfscore_sigmoid_elasticc(
 
         # Julien added `id`
         meta_feats = [
+            ra.values[id],
+            dec.values[id],
             hostgal_ra.values[id],
             hostgal_dec.values[id],
             hostgal_zphot.values[id],
@@ -410,7 +413,6 @@ def rfscore_sigmoid_elasticc(
     flag = np.array(flag, dtype=np.bool)
 
     # Make predictions
-    print(test_features)
     probabilities = clf.predict_proba(test_features)
     probabilities[~flag] = 0.0
 
