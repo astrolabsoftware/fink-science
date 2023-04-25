@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
-import utils as u
 from pyspark.sql.types import *
 
 from pyspark.sql.functions import pandas_udf
 import pyspark.sql.functions as F
 
-from fast_transient_rate import rate_module_output_schema
+import fink_science.fast_transient_rate.utils as u
+from fink_science.fast_transient_rate import rate_module_output_schema
 from fink_utils.spark.utils import concat_col
 
 def get_last_alert(fid, cfid, cmagpsf, csigmapsf, cdiffmaglim, cjd):
@@ -158,7 +158,7 @@ def fast_transient_rate(df, N):
         upper_rate,
         dt,
         (~mask_finite_mag) & mask_finite_upper
-    ]).T, columns = list(rate_module_output_schema.keys())[1:])
+    ]).T, columns = list(rate_module_output_schema.keys()))
 
 
 ft_schema = StructType(
