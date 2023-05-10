@@ -78,6 +78,7 @@ def extract_features_ad_raw(
     jd,
     sigmapsf,
     cfid,
+    isdiffpos,
     oId
 ) -> pd.Series:
     """ Returns many features, extracted from measurments using light_curve package (https://github.com/light-curve/light-curve-python).
@@ -91,6 +92,9 @@ def extract_features_ad_raw(
         Magnitude from PSF-fit photometry, and 1-sigma error
     fid: Spark DataFrame Column
         Filter IDs (int)
+    isdiffpos: Spark DataFrame Column
+        't' or '1' => candidate is from positive (sci minus ref) subtraction;
+        'f' or '0' => candidate is from negative (ref minus sci) subtraction
     oId: Spark DataFrame Column
         Object IDs (str)
 
@@ -107,7 +111,7 @@ def extract_features_ad_raw(
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns, concatenated with historical data
-    >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid']
+    >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid', 'isdiffpos']
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
     >>> for colname in what:
@@ -131,7 +135,10 @@ def extract_features_ad_raw(
 
     # Select only valid measurements (not upper limits)
     maskNotNone = magpsf == magpsf
-    mask = ~(np.isnan(magpsf) | np.isnan(sigmapsf)) & maskNotNone
+
+    # Select only positive subtraction (alert brighter than the template)
+    maskPosSub = np.array([i in ['t', '1'] for i in isdiffpos])
+    mask = ~(np.isnan(magpsf) | np.isnan(sigmapsf)) & maskNotNone & maskPosSub
 
     magpsf = magpsf[mask]
     sigmapsf = sigmapsf[mask]
