@@ -42,7 +42,5 @@ jobs:
 
     - name: Run test suites
       run: |
-        pip uninstall -y supernnova
-        pip install git+https://github.com/supernnova/SuperNNova.git@2f7f293606abb84d8e2bb515ae9238a08815ddfb
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
