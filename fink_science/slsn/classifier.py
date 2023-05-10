@@ -66,7 +66,7 @@ def slsn_classifier(data):
     all_transformed, valid = fe_slsn.transform_data(formated)
 
     if not valid.any():
-        return np.zeros(len(data), dtype=np.float)
+        return np.zeros(len(data), dtype=float)
 
     all_features = fe_slsn.parametrise(all_transformed)
 
