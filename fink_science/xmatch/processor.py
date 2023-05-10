@@ -101,8 +101,8 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog
     +---+----------+-----------+---------+
     | id|        ra|        dec|cdsxmatch|
     +---+----------+-----------+---------+
-    |  a|26.8566983|-26.9677112|   Galaxy|
-    |  b|  26.24497|-26.7569436|  Unknown|
+    |  a|26.8566983|-26.9677112|     LPV*|
+    |  b|  26.24497|-26.7569436|     Star|
     +---+----------+-----------+---------+
     <BLANKLINE>
     """

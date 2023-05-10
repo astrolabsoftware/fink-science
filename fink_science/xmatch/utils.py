@@ -70,8 +70,8 @@ def cross_match_astropy(pdf, catalog_ztf, catalog_other, radius_arcsec=None):
 
     # Now get types for these
     catalog_ztf_merge = SkyCoord(
-        ra=np.array(pdf_merge.loc[mask, 'ra'].values, dtype=np.float) * u.degree,
-        dec=np.array(pdf_merge.loc[mask, 'dec'].values, dtype=np.float) * u.degree
+        ra=np.array(pdf_merge.loc[mask, 'ra'].values, dtype=float) * u.degree,
+        dec=np.array(pdf_merge.loc[mask, 'dec'].values, dtype=float) * u.degree
     )
 
     # cross-match
