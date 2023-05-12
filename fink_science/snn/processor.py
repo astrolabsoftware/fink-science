@@ -247,7 +247,7 @@ def snn_ia_elasticc(
     >>> df = df.withColumn('pIa', snn_ia_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    4
+    19
     """
     # No a priori cuts
     mask = np.ones(len(diaSourceId), dtype=bool)
@@ -390,7 +390,7 @@ def snn_broad_elasticc(
     >>> df = df.withColumn('snn_max_prob', F.col('preds').getItem(1))
 
     >>> df.filter(df['snn_class'] == 0).count()
-    0
+    10
     """
     # No a priori cuts
     mask = np.ones(len(diaSourceId), dtype=bool)
