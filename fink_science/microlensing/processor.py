@@ -35,7 +35,7 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def mulens(
         fid, magpsf, sigmapsf, magnr, sigmagnr,
-        magzpsci, isdiffpos, ndethist):
+        isdiffpos, ndethist):
     """ Returns the predicted class (among microlensing, variable star,
     cataclysmic event, and constant event) & probability of an alert to be
     a microlensing event in each band using a Random Forest Classifier.
@@ -49,8 +49,6 @@ def mulens(
     magnr, sigmagnr: Spark DataFrame Columns
         Magnitude of nearest source in reference image PSF-catalog
         within 30 arcsec and 1-sigma error
-    magzpsci: Spark DataFrame Column
-        Magnitude zero point for photometry estimates
     isdiffpos: Spark DataFrame Column
         t => candidate is from positive (sci minus ref) subtraction
         f => candidate is from negative (ref minus sci) subtraction
@@ -71,7 +69,7 @@ def mulens(
     # Required alert columns
     >>> what = [
     ...    'fid', 'magpsf', 'sigmapsf',
-    ...    'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+    ...    'magnr', 'sigmagnr', 'isdiffpos']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -125,14 +123,12 @@ def mulens(
 
             # Compute DC mag
             mag, err = np.array([
-                dc_mag(i[0], i[1], i[2], i[3], i[4], i[5], i[6])
+                dc_mag(i[0], i[1], i[2], i[3], i[4])
                 for i in zip(
-                    np.array(fid.values[index])[m],
                     np.array(magpsf.values[index])[m],
                     np.array(sigmapsf.values[index])[m],
                     np.array(magnr.values[index])[m],
                     np.array(sigmagnr.values[index])[m],
-                    np.array(magzpsci.values[index])[m],
                     np.array(isdiffpos.values[index])[m])
             ]).T
 
@@ -156,7 +152,7 @@ def mulens(
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def extract_features_mulens(
         fid, magpsf, sigmapsf, magnr, sigmagnr,
-        magzpsci, isdiffpos):
+        isdiffpos):
     """ Returns the predicted class (among microlensing, variable star,
     cataclysmic event, and constant event) & probability of an alert to be
     a microlensing event in each band using a Random Forest Classifier.
@@ -170,8 +166,6 @@ def extract_features_mulens(
     magnr, sigmagnr: Spark DataFrame Columns
         Magnitude of nearest source in reference image PSF-catalog
         within 30 arcsec and 1-sigma error
-    magzpsci: Spark DataFrame Column
-        Magnitude zero point for photometry estimates
     isdiffpos: Spark DataFrame Column
         t => candidate is from positive (sci minus ref) subtraction
         f => candidate is from negative (ref minus sci) subtraction
@@ -191,7 +185,7 @@ def extract_features_mulens(
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns
-    >>> what = ['fid', 'magpsf', 'sigmapsf', 'magnr', 'sigmagnr', 'magzpsci', 'isdiffpos']
+    >>> what = ['fid', 'magpsf', 'sigmapsf', 'magnr', 'sigmagnr', 'isdiffpos']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -234,14 +228,12 @@ def extract_features_mulens(
 
             # Compute DC mag
             mag, err = np.array([
-                dc_mag(i[0], i[1], i[2], i[3], i[4], i[5], i[6])
+                dc_mag(i[0], i[1], i[2], i[3], i[4])
                 for i in zip(
-                    np.array(fid.values[index])[m],
                     np.array(magpsf.values[index])[m],
                     np.array(sigmapsf.values[index])[m],
                     np.array(magnr.values[index])[m],
                     np.array(sigmagnr.values[index])[m],
-                    np.array(magzpsci.values[index])[m],
                     np.array(isdiffpos.values[index])[m])
             ]).T
 
