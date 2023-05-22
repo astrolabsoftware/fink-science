@@ -247,10 +247,10 @@ def snn_ia_elasticc(
     >>> df = df.withColumn('pIa', snn_ia_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    4
+    15
     """
-    mask = apply_selection_cuts_ztf(
-        psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=180)
+    # No a priori cuts
+    mask = np.ones(len(diaSourceId), dtype=bool)
 
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
@@ -390,10 +390,10 @@ def snn_broad_elasticc(
     >>> df = df.withColumn('snn_max_prob', F.col('preds').getItem(1))
 
     >>> df.filter(df['snn_class'] == 0).count()
-    0
+    20
     """
-    mask = apply_selection_cuts_ztf(
-        psFlux, cdsxmatch, midPointTai, jdstarthist, roid, maxndethist=1e6)
+    # No a priori cuts
+    mask = np.ones(len(diaSourceId), dtype=bool)
 
     if len(midPointTai[mask]) == 0:
         snn_class = np.ones(len(midPointTai), dtype=float) * -1

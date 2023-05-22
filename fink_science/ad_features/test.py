@@ -35,7 +35,6 @@ for index, dataset in enumerate(test_datasets):
         dataset.mjd,
         dataset.magerr,
         np.ones(len(dataset.mag)),
-        np.ones(len(dataset.mag), dtype=str),
         index
     )
     result_features.append({
