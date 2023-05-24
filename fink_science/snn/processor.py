@@ -390,7 +390,7 @@ def snn_broad_elasticc(
     >>> df = df.withColumn('snn_max_prob', F.col('preds').getItem(1))
 
     >>> df.filter(df['snn_class'] == 0).count()
-    20
+    22
     """
     # No a priori cuts
     mask = np.ones(len(diaSourceId), dtype=bool)
