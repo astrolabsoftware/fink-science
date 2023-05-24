@@ -440,4 +440,3 @@ if __name__ == "__main__":
 
     # Run the test suite
     spark_unit_tests(globs)
-
