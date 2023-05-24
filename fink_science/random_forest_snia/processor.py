@@ -274,11 +274,20 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
 
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+<<<<<<< HEAD
 def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr,
                              cdsxmatch, nobs, hostgal_ra, hostgal_dec,
                              hostgal_zphot, hostgal_zphot_err,
                              mwebv, maxduration=None,
                              model=None) -> pd.Series:
+=======
+def rfscore_sigmoid_elasticc(
+        midPointTai, filterName, psFlux, psFluxErr,
+        cdsxmatch, nobs, ra, dec, hostgal_ra, hostgal_dec,
+        hostgal_zphot, hostgal_zphot_err,
+        mwebv, maxduration=None,
+        model=None) -> pd.Series:
+>>>>>>> 0684f25986c5088dba48f0da0af5e1c4c532d24e
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
@@ -337,6 +346,10 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr,
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += [F.col('cdsxmatch'), F.col('diaSource.nobs')]
+<<<<<<< HEAD
+=======
+    >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
+>>>>>>> 0684f25986c5088dba48f0da0af5e1c4c532d24e
     >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
     >>> args += [F.col('diaObject.hostgal_zphot_err'), F.col('diaObject.mwebv')]
@@ -378,26 +391,48 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr,
         pdf_sub = pdf[f1]
         features = get_sigmoid_features_elasticc(pdf_sub)
 
-        # Do not classify if less than 2 bands
         feats = []
         nfeat_per_band = 6
         nbands = 6
+<<<<<<< HEAD
         meta_feats = []
         meta = [hostgal_ra, hostgal_dec, hostgal_zphot,
                 hostgal_zphot_err, mwebv]
         for m in meta:
             meta_feats.append(m)
+=======
+
+        # Julien added `id`
+        meta_feats = [
+            ra.values[id],
+            dec.values[id],
+            hostgal_ra.values[id],
+            hostgal_dec.values[id],
+            hostgal_zphot.values[id],
+            hostgal_zphot_err.values[id],
+            mwebv.values[id]
+        ]
+>>>>>>> 0684f25986c5088dba48f0da0af5e1c4c532d24e
 
         for i in range(nbands):
             feats.append(features[i * nfeat_per_band])
         n_nonzero_feats = np.sum(np.array(feats) != 0)
 
+        # Do not classify if less than 2 bands
         if n_nonzero_feats < 2:
             flag.append(False)
         else:
             flag.append(True)
+<<<<<<< HEAD
         test_features.append(features)
         test_features.append(meta_feats)
+=======
+        test_features.append(np.concatenate((features, meta_feats)))
+
+        # From Marco
+        # test_features.append(features)
+        # test_features.append(meta_feats)
+>>>>>>> 0684f25986c5088dba48f0da0af5e1c4c532d24e
 
     flag = np.array(flag, dtype=np.bool)
 
@@ -421,7 +456,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_parquet'.format(path)
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_sample_seed0.parquet'.format(path)
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
