@@ -379,11 +379,7 @@ def rfscore_sigmoid_elasticc(
         f1 = pdf['SNID'] == id
         pdf_sub = pdf[f1]
         features = get_sigmoid_features_elasticc_perfilter(pdf_sub, list_filters=['u', 'g', 'r', 'i', 'z', 'Y'])
-
-        feats = []
-        nfeat_per_band = 6
-        nbands = 6
-
+        
         # Julien added `id`
         meta_feats = [
             hostgal_dec.values[id],
@@ -395,22 +391,8 @@ def rfscore_sigmoid_elasticc(
             ra.values[id],
             dec.values[id]
         ]
-        ## the new function returns a list with features in the correct order
-        #for i in range(nbands):
-        #    feats.append(features[i * nfeat_per_band])
-        #n_nonzero_feats = np.sum(np.array(feats) != 0)
-
-        ## [From Emille] model was trained without this restriction
-        ## Do not classify if less than 2 bands
-        #if n_nonzero_feats < 2:
-        #    flag.append(False)
-        #else:
-        #    flag.append(True)
+        
         test_features.append(np.concatenate((meta_feats, features)))
-
-        # From Marco
-        # test_features.append(features)
-        # test_features.append(meta_feats)
 
     flag = np.array(flag, dtype=np.bool)
 
