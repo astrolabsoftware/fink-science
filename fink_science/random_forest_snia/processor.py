@@ -379,7 +379,7 @@ def rfscore_sigmoid_elasticc(
         f1 = pdf['SNID'] == id
         pdf_sub = pdf[f1]
         features = get_sigmoid_features_elasticc_perfilter(pdf_sub, list_filters=['u', 'g', 'r', 'i', 'z', 'Y'])
-        
+
         # Julien added `id`
         meta_feats = [
             hostgal_dec.values[id],
@@ -391,7 +391,7 @@ def rfscore_sigmoid_elasticc(
             ra.values[id],
             dec.values[id]
         ]
-        
+
         test_features.append(np.concatenate((meta_feats, features)))
 
     flag = np.array(flag, dtype=np.bool)
