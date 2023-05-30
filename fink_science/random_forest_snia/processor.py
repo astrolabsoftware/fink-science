@@ -276,9 +276,9 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_sigmoid_elasticc(
         midPointTai, filterName, psFlux, psFluxErr,
-        cdsxmatch, nobs, ra, dec, hostgal_ra, hostgal_dec,
-        hostgal_zphot, hostgal_zphot_err,
-        mwebv, maxduration=None,
+        cdsxmatch, nobs, ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
+        hostgal_zphot, hostgal_zphot_err, 
+        mwebv, mwebv_err, maxduration=None,
         model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
@@ -378,7 +378,7 @@ def rfscore_sigmoid_elasticc(
     for id in np.unique(pdf['SNID']):
         f1 = pdf['SNID'] == id
         pdf_sub = pdf[f1]
-        features = get_sigmoid_features_elasticc(pdf_sub)
+        features = get_sigmoid_features_elasticc_perfilter(pdf_sub, list_filters=['u', 'g', 'r', 'i', 'z', 'Y'])
 
         feats = []
         nfeat_per_band = 6
@@ -386,25 +386,27 @@ def rfscore_sigmoid_elasticc(
 
         # Julien added `id`
         meta_feats = [
-            ra.values[id],
-            dec.values[id],
-            hostgal_ra.values[id],
             hostgal_dec.values[id],
+            hostgal_ra.values[id],
+            hostgal_snsep.values[id],
             hostgal_zphot.values[id],
             hostgal_zphot_err.values[id],
-            mwebv.values[id]
+            mwebv_err.values[id],
+            ra.values[id],
+            dec.values[id]
         ]
+        ## the new function returns a list with features in the correct order
+        #for i in range(nbands):
+        #    feats.append(features[i * nfeat_per_band])
+        #n_nonzero_feats = np.sum(np.array(feats) != 0)
 
-        for i in range(nbands):
-            feats.append(features[i * nfeat_per_band])
-        n_nonzero_feats = np.sum(np.array(feats) != 0)
-
-        # Do not classify if less than 2 bands
-        if n_nonzero_feats < 2:
-            flag.append(False)
-        else:
-            flag.append(True)
-        test_features.append(np.concatenate((features, meta_feats)))
+        ## [From Emille] model was trained without this restriction
+        ## Do not classify if less than 2 bands
+        #if n_nonzero_feats < 2:
+        #    flag.append(False)
+        #else:
+        #    flag.append(True)
+        test_features.append(np.concatenate((meta_feats, features)))
 
         # From Marco
         # test_features.append(features)
