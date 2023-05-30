@@ -27,7 +27,7 @@ from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
-from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc
+from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc_perfilter
 
 from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
