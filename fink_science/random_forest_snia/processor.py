@@ -374,7 +374,6 @@ def rfscore_sigmoid_elasticc(
         clf = load_scikit_model(model)
 
     test_features = []
-    flag = []
     for id in np.unique(pdf['SNID']):
         f1 = pdf['SNID'] == id
         pdf_sub = pdf[f1]
@@ -393,8 +392,6 @@ def rfscore_sigmoid_elasticc(
         ]
 
         test_features.append(np.concatenate((meta_feats, features)))
-
-    flag = np.array(flag, dtype=np.bool)
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
