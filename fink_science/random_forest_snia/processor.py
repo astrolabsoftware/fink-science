@@ -278,7 +278,7 @@ def rfscore_sigmoid_elasticc(
         midPointTai, filterName, psFlux, psFluxErr,
         cdsxmatch, nobs, ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
         hostgal_zphot, hostgal_zphot_err, 
-        mwebv, mwebv_err, maxduration=None,
+        mwebv_err, maxduration=None,
         model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
@@ -337,11 +337,11 @@ def rfscore_sigmoid_elasticc(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('cdsxmatch'), F.col('diaSource.nobs')]
-    >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
-    >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
+    >>> args += [ F.col('diaObject.hostgal_dec'), F.col('diaObject.hostgal_ra')]
+    >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
-    >>> args += [F.col('diaObject.hostgal_zphot_err'), F.col('diaObject.mwebv')]
+    >>> args += [F.col('diaObject.hostgal_zphot_err'), F.col('diaObject.mwebv_err')]
+    >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
