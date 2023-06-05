@@ -44,5 +44,6 @@ jobs:
       run: |
         pip uninstall -y supernnova
         pip install git+https://github.com/supernnova/SuperNNova.git@6cfcb72009a734b26caa46eacb54d3e2dde9e2c3#egg=supernnova 
+        pip install fink-utils==0.13.3
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
