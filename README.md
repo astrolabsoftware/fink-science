@@ -9,8 +9,16 @@ This repository contains science modules used to generate added values to alert 
 
 ## Installation
 
-If you want to install the package (broker deployment), you can just pip it:
+Until version 3.13, you can install the package from pypi:
+
 
 ```bash
 pip install fink_science --upgrade
+```
+
+For later versions, you will need to install from sources directly using a release tag (see [here](https://github.com/astrolabsoftware/fink-science/releases)):
+
+```
+# e.g. installing version 4.2.0
+pip install --upgrade --no-dependencies git+https://github.com/astrolabsoftware/fink-science@4.2.0
 ```
