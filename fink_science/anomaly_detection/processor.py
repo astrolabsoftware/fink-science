@@ -95,17 +95,18 @@ def anomaly_score(lc_features) -> float:
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns, concatenated with historical data
-    >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid']
+    >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid', 'distnr', 'magnr', 'sigmagnr', 'isdiffpos']
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
-    >>> df = df.withColumn('lc_features', extract_features_ad(*what_prefix, 'objectId'))
+    >>> cols = ['cmagpsf', 'cjd', 'csigmapsf', 'cfid', 'objectId', 'cdistnr', 'cmagnr', 'csigmagnr', 'cisdiffpos']
+    >>> df = df.withColumn('lc_features', extract_features_ad(*cols))
     >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
 
     >>> df.filter(df["anomaly_score"] < -0.5).count()
-    5
+    8
 
     >>> df.filter(df["anomaly_score"] == 0).count()
     84
