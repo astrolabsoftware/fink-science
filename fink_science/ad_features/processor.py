@@ -1,5 +1,5 @@
-# Copyright 2020-2022 AstroLab Software
-# Author: Igor Beschastnov
+# Copyright 2020-2023 AstroLab Software
+# Author: Igor Beschastnov, Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ import light_curve as lc
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
 
+from fink_utils.photometry.utils import is_source_behind
+from fink_utils.photometry.vect_conversion import vect_dc_mag
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +80,11 @@ def extract_features_ad_raw(
     jd,
     sigmapsf,
     cfid,
-    oId
+    oId,
+    distnr,
+    magnr=None,
+    sigmagnr=None,
+    isdiffpos=None
 ) -> pd.Series:
     """ Returns many features, extracted from measurments using light_curve package (https://github.com/light-curve/light-curve-python).
     Reference - https://arxiv.org/pdf/2012.01419.pdf#section.A1
@@ -93,6 +99,14 @@ def extract_features_ad_raw(
         Filter IDs (int)
     oId: Spark DataFrame Column
         Object IDs (str)
+    distnr: float
+        distance to nearest source in reference image PSF-catalog within 30 arcsec [pixels]
+    magnr,sigmagnr
+        magnitude of nearest source in reference image PSF-catalog
+        within 30 arcsec and 1-sigma error
+    isdiffpos
+        t or 1 => candidate is from positive (sci minus ref) subtraction
+        f or 0 => candidate is from negative (ref minus sci) subtraction
 
     Returns
     ----------
@@ -107,13 +121,14 @@ def extract_features_ad_raw(
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns, concatenated with historical data
-    >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid']
+    >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid', 'distnr', 'magnr', 'sigmagnr', 'isdiffpos']
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
-    >>> df = df.withColumn('lc_features', extract_features_ad(*what_prefix, 'objectId'))
+    >>> cols = ['cmagpsf', 'cjd', 'csigmapsf', 'cfid', 'objectId', 'cdistnr', 'cmagnr', 'csigmagnr', 'cisdiffpos']
+    >>> df = df.withColumn('lc_features', extract_features_ad(*cols))
 
     >>> for row in df.take(10):
     ...    assert len(row['lc_features']) == len(np.unique(row['cfid']))
@@ -124,6 +139,7 @@ def extract_features_ad_raw(
     magpsf = np.asarray(magpsf, "float64")
     jd = np.asarray(jd, "float64")
     sigmapsf = np.asarray(sigmapsf, "float64")
+    distnr = np.asarray(distnr, "float64")
 
     extractor = create_extractor()
 
@@ -135,8 +151,25 @@ def extract_features_ad_raw(
 
     magpsf = magpsf[mask]
     sigmapsf = sigmapsf[mask]
-    jd = jd[mask]
-    cfid = cfid[mask]
+
+    # Compute DC mag if need be
+    flag = is_source_behind(distnr[mask])
+    maskDC = np.ones(len(magpsf), dtype=bool)
+    if np.sum(flag) > 0:
+        magnr = np.asarray(magnr, "float64")[mask]
+        sigmagnr = np.asarray(sigmagnr, "float64")[mask]
+        isdiffpos = np.asarray(isdiffpos, "str")[mask]
+
+        # in-place replacement
+        magpsf, sigmapsf = vect_dc_mag(
+            magpsf, sigmapsf, magnr, sigmagnr, isdiffpos
+        )
+        maskDC = ~(np.isnan(magpsf) | np.isnan(sigmapsf))
+        magpsf = magpsf[maskDC]
+        sigmapsf = sigmapsf[maskDC]
+
+    jd = jd[mask][maskDC]
+    cfid = cfid[mask][maskDC]
 
     sub = pd.DataFrame(
         {
