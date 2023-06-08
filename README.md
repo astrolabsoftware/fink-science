@@ -20,5 +20,6 @@ For later versions, you will need to install from sources directly using a relea
 
 ```
 # e.g. installing version 4.2.0
-pip install --upgrade --no-dependencies git+https://github.com/astrolabsoftware/fink-science@4.2.0
+export TMPDIR=somewhere_with_disk_space
+pip install --no-dependencies --cache-dir=$TMPDIR --build $TMPDIR https://github.com/astrolabsoftware/fink-science/archive/4.2.0.zip
 ```
