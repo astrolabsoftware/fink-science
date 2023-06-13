@@ -35,7 +35,8 @@ for index, dataset in enumerate(test_datasets):
         dataset.mjd,
         dataset.magerr,
         np.ones(len(dataset.mag)),
-        index
+        index,
+        np.ones(len(dataset.mag)) * 10.0  # extra-galactic
     )
     result_features.append({
         lc_columns[i]: result[1][lc_columns[i]] for i in range(len(lc_columns))
