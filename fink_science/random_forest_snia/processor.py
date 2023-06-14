@@ -272,8 +272,14 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
 
     return pd.Series(concatenated_features)
 
+
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmatch, nobs, maxduration=None, model=None) -> pd.Series:
+def rfscore_sigmoid_elasticc(
+        midPointTai, filterName, psFlux, psFluxErr,
+        cdsxmatch, nobs, ra, dec, hostgal_ra, hostgal_dec,
+        hostgal_zphot, hostgal_zphot_err,
+        mwebv, maxduration=None,
+        model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
@@ -291,8 +297,11 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         Type of object found in Simbad (string)
     nobs: Spark DataFrame Column
         Column containing the number of detections by LSST
+    meta: list
+        Additional features using metadata from ELaSTICC
     maxduration: Spark DataFrame Column
-        Integer for the maximum duration (in days) of the lightcurve to be classified.
+        Integer for the maximum duration (in days) of the lightcurve to be
+        classified.
         Default is None, i.e. no maximum duration
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
@@ -329,6 +338,10 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += [F.col('cdsxmatch'), F.col('diaSource.nobs')]
+    >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
+    >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
+    >>> args += [F.col('diaObject.hostgal_zphot')]
+    >>> args += [F.col('diaObject.hostgal_zphot_err'), F.col('diaObject.mwebv')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
@@ -357,7 +370,7 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/default-model_sigmoid_elasticc.obj'
+        model = curdir + '/data/models/default-model_sigmoid_elasticc_meta.obj'
         clf = load_scikit_model(model)
 
     test_features = []
@@ -367,20 +380,35 @@ def rfscore_sigmoid_elasticc(midPointTai, filterName, psFlux, psFluxErr, cdsxmat
         pdf_sub = pdf[f1]
         features = get_sigmoid_features_elasticc(pdf_sub)
 
-        # Do not classify if less than 2 bands
         feats = []
         nfeat_per_band = 6
         nbands = 6
+
+        # Julien added `id`
+        meta_feats = [
+            ra.values[id],
+            dec.values[id],
+            hostgal_ra.values[id],
+            hostgal_dec.values[id],
+            hostgal_zphot.values[id],
+            hostgal_zphot_err.values[id],
+            mwebv.values[id]
+        ]
+
         for i in range(nbands):
             feats.append(features[i * nfeat_per_band])
-
         n_nonzero_feats = np.sum(np.array(feats) != 0)
 
+        # Do not classify if less than 2 bands
         if n_nonzero_feats < 2:
             flag.append(False)
         else:
             flag.append(True)
-        test_features.append(features)
+        test_features.append(np.concatenate((features, meta_feats)))
+
+        # From Marco
+        # test_features.append(features)
+        # test_features.append(meta_feats)
 
     flag = np.array(flag, dtype=np.bool)
 
@@ -404,7 +432,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_parquet'.format(path)
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_sample_seed0.parquet'.format(path)
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)

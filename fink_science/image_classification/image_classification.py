@@ -154,7 +154,7 @@ def img_labelisation(stamp, noise_threshold=3.5):
                 # remove background of the image and keep only high value signal
                 threshold = threshold_triangle(img)
                 # binarize the image with the threshold
-                thresh_img = np.where(img < threshold, 0, 1).astype(np.bool)
+                thresh_img = np.where(img < threshold, 0, 1).astype(bool)
                 # labeled segmented part and create region
                 labeled_img = label(thresh_img, connectivity=1).astype(np.byte)
 
@@ -184,8 +184,8 @@ def img_labelisation(stamp, noise_threshold=3.5):
                         # the enhanced image is then processed by the chan vese algorithm.
                         # the image is segmented between high intensity region and low intensity region.
                         # source: https://arxiv.org/abs/1107.2782
-                        cv = chan_vese(norm_img, mu=0, lambda1=1, lambda2=2, tol=1e-9, max_iter=600,
-                                       dt=100, init_level_set="checkerboard").astype(np.bool)
+                        cv = chan_vese(norm_img, mu=0, lambda1=1, lambda2=2, tol=1e-9, max_num_iter=600,
+                                       dt=100, init_level_set="checkerboard").astype(bool)
 
                         # the segmented region is then labeled in order to compute some information
                         labeled_img_cv = label(cv, connectivity=1).astype(np.byte)
