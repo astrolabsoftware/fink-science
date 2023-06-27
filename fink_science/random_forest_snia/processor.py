@@ -277,7 +277,7 @@ def rfscore_sigmoid_elasticc(
         midPointTai, filterName, psFlux, psFluxErr,
         cdsxmatch, nobs, ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
         hostgal_zphot, hostgal_zphot_err,
-        mwebv_err, maxduration=None,
+        maxduration=None,
         model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
