@@ -339,7 +339,7 @@ def rfscore_sigmoid_elasticc(
     >>> args += [ F.col('diaObject.hostgal_dec'), F.col('diaObject.hostgal_ra')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
-    >>> args += [F.col('diaObject.hostgal_zphot_err'), F.col('diaObject.mwebv_err')]
+    >>> args += [F.col('diaObject.hostgal_zphot_err')]
     >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc_perfilter(*args))
 
