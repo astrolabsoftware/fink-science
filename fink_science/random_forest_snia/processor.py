@@ -341,7 +341,7 @@ def rfscore_sigmoid_elasticc(
     >>> args += [F.col('diaObject.hostgal_zphot')]
     >>> args += [F.col('diaObject.hostgal_zphot_err'), F.col('diaObject.mwebv_err')]
     >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
-    >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
+    >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc_perfilter(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
     0
