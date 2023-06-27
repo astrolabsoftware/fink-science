@@ -385,7 +385,6 @@ def rfscore_sigmoid_elasticc(
             hostgal_snsep.values[id],
             hostgal_zphot.values[id],
             hostgal_zphot_err.values[id],
-            mwebv_err.values[id],
             ra.values[id],
             dec.values[id]
         ]
