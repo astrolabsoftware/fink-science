@@ -115,7 +115,7 @@ def predict_nn(
     >>> df = df.withColumn('preds', predict_nn(*args))
     >>> df = df.withColumn('argmax', F.expr('array_position(preds, array_max(preds)) - 1'))
     >>> df.filter(df['argmax'] == 0).count()
-    56
+    55
     """
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
@@ -142,7 +142,6 @@ def predict_nn(
                              z_final_err.values[i]])
 
     flux = psFlux.apply(lambda x: norm_column(x))
-    mjd = midpointTai.apply(lambda x: norm_column(x))
     error = psFluxErr.apply(lambda x: norm_column(x))
 
     flux = keras.utils.pad_sequences(flux,
@@ -181,7 +180,7 @@ def predict_nn(
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/cats_models/model_cut_meta'
+        model_path = curdir + '/data/models/cats_models/model_meta_0'
     else:
         model_path = model.values[0]
 
