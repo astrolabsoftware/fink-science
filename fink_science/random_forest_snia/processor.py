@@ -414,10 +414,10 @@ if __name__ == "__main__":
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
-    globs["model_path_sigmoid"] = model_path_sigmoid
+    #globs["model_path_sigmoid"] = model_path_sigmoid
 
     model_path_elasticc = '{}/data/models/earlysnia_elastic_test.pkl'.format(path)
-    globs['model_path_elasticc'] = model_path_elasticc
+    globs['model_path_sigmoid'] = model_path_elasticc
 
     # Run the test suite
     spark_unit_tests(globs)
