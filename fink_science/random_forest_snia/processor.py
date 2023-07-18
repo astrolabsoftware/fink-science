@@ -275,7 +275,7 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_sigmoid_elasticc(
         midPointTai, filterName, psFlux, psFluxErr,
-        cdsxmatch, nobs, ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
+        ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
         hostgal_zphot, hostgal_zphot_err,
         maxduration=None,
         model=None) -> pd.Series:
@@ -292,10 +292,6 @@ def rfscore_sigmoid_elasticc(
         Filter IDs (vectors of str)
     psFlux, psFluxErr: Spark DataFrame Columns
         SNANA calibrated flux, and 1-sigma error (vectors of floats)
-    cdsxmatch: Spark DataFrame Column
-        Type of object found in Simbad (string)
-    nobs: Spark DataFrame Column
-        Column containing the number of detections by LSST
     meta: list
         Additional features using metadata from ELaSTICC
     maxduration: Spark DataFrame Column
@@ -346,7 +342,6 @@ def rfscore_sigmoid_elasticc(
     >>> df.filter(df['pIa'] > 0.5).count()
     0
     """
-    mask = apply_selection_cuts_ztf(psFlux, nobs, cdsxmatch, maxndethist=100)
 
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
@@ -357,13 +352,9 @@ def rfscore_sigmoid_elasticc(
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
-    # candid = pd.Series(range(len(midPointTai)))
-    pdf = pd.DataFrame()
-    pdf['MJD'] = dt
-    pdf['FLT'] = filterName
-    pdf['FLUXCAL'] = psFlux
-    pdf['FLUXCALERR'] = psFluxErr
-
+    candid = pd.Series(range(len(midPointTai)))
+    ids = candid[mask]
+                
     # Load pre-trained model `clf`
     if model is not None:
         clf = load_scikit_model(model.values[0])
@@ -373,20 +364,25 @@ def rfscore_sigmoid_elasticc(
         clf = load_scikit_model(model)
 
     test_features = []
-    for id in np.unique(pdf['SNID']):
-        f1 = pdf['SNID'] == id
-        pdf_sub = pdf[f1]
-        features = get_sigmoid_features_elasticc_perfilter(pdf_sub, list_filters=['u', 'g', 'r', 'i', 'z', 'Y'])
+    for j in ids:
+        pdf = pd.DataFrame.from_dict(
+                 {'MJD': midPointTai[j].explode().astype(float),
+                  'FLT': filterName[j].explode().astype('str'),
+                  'FLUXCAL': psFlux[j].explode().astype('float'),
+                  'FLUXCALERR': psFluxErr[j].explode().astype('float')
+                 }
+            )
+        features = get_sigmoid_features_elasticc_perfilter(pdf, list_filters=['u', 'g', 'r', 'i', 'z', 'Y'])
 
         # Julien added `id`
         meta_feats = [
-            hostgal_dec.values[id],
-            hostgal_ra.values[id],
-            hostgal_snsep.values[id],
-            hostgal_zphot.values[id],
-            hostgal_zphot_err.values[id],
-            ra.values[id],
-            dec.values[id]
+            hostgal_dec.values[j],
+            hostgal_ra.values[j],
+            hostgal_snsep.values[j],
+            hostgal_zphot.values[j],
+            hostgal_zphot_err.values[j],
+            ra.values[j],
+            dec.values[j]
         ]
 
         test_features.append(np.concatenate((meta_feats, features)))
