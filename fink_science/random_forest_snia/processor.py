@@ -366,12 +366,14 @@ def rfscore_sigmoid_elasticc(
     test_features = []
     for j in ids:
         pdf = pd.DataFrame.from_dict(
-                 {'MJD': midPointTai[j].explode().astype(float),
-                  'FLT': filterName[j].explode().astype('str'),
-                  'FLUXCAL': psFlux[j].explode().astype('float'),
-                  'FLUXCALERR': psFluxErr[j].explode().astype('float')
-                 }
-            )
+            {
+                'MJD': midPointTai[j].explode().astype(float),
+                'FLT': filterName[j].explode().astype('str'),
+                'FLUXCAL': psFlux[j].explode().astype('float'),
+                'FLUXCALERR': psFluxErr[j].explode().astype('float')
+            }
+        )
+
         features = get_sigmoid_features_elasticc_perfilter(pdf, list_filters=['u', 'g', 'r', 'i', 'z', 'Y'])
 
         # Julien added `id`
