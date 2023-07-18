@@ -337,6 +337,7 @@ def rfscore_sigmoid_elasticc(
     >>> args += [F.col('diaObject.hostgal_zphot')]
     >>> args += [F.col('diaObject.hostgal_zphot_err')]
     >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
+    >>> args += [None, 'test']
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
@@ -360,7 +361,7 @@ def rfscore_sigmoid_elasticc(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/default-model_sigmoid_elasticc_meta.obj'
+        model = curdir + '/data/models/earlysnia_elastic_test.pkl'
         clf = load_scikit_model(model)
 
     test_features = []
@@ -412,10 +413,7 @@ if __name__ == "__main__":
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
-    # globs["model_path_sigmoid"] = model_path_sigmoid
-
-    model_path_elasticc = '{}/data/models/earlysnia_elastic_test.pkl'.format(path)
-    globs['model_path_sigmoid'] = model_path_elasticc
+    globs["model_path_sigmoid"] = model_path_sigmoid
 
     # Run the test suite
     spark_unit_tests(globs)
