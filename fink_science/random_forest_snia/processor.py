@@ -348,6 +348,8 @@ def rfscore_sigmoid_elasticc(
     # Maximum days in the history
     if maxduration is not None:
         mask = (dt <= maxduration.values[0])
+    else:
+        mask = np.repeat(True, len(midPointTai))
 
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
