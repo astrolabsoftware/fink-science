@@ -354,7 +354,7 @@ def rfscore_sigmoid_elasticc(
 
     candid = pd.Series(range(len(midPointTai)))
     ids = candid[mask]
-                
+
     # Load pre-trained model `clf`
     if model is not None:
         clf = load_scikit_model(model.values[0])
