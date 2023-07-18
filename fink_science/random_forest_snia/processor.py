@@ -358,11 +358,11 @@ def rfscore_sigmoid_elasticc(
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
     candid = pd.Series(range(len(midPointTai)))
-    pdf = format_data_as_snana(
-        midPointTai, psFlux, psFluxErr,
-        filterName, candid, mask,
-        transform_to_flux=False
-    )
+    pdf = pd.DataFrame()
+    pdf['MJD'] = dt
+    pdf['FLT'] = filterName
+    pdf['FLUXCAL'] = psFlux
+    pdf['FLUXCALERR'] = psFluxErr
 
     # Load pre-trained model `clf`
     if model is not None:
