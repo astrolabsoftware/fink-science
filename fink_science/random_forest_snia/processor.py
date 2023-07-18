@@ -337,7 +337,6 @@ def rfscore_sigmoid_elasticc(
     >>> args += [F.col('diaObject.hostgal_zphot')]
     >>> args += [F.col('diaObject.hostgal_zphot_err')]
     >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
-    >>> args += [None, 'test']
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
@@ -369,7 +368,7 @@ def rfscore_sigmoid_elasticc(
         pdf = pd.DataFrame.from_dict(
             {
                 'MJD': midPointTai[j].explode().astype(float),
-                'FLT': filterName[j].explode().astype('str'),
+                'FLT': filterName[j].explode(),
                 'FLUXCAL': psFlux[j].explode().astype('float'),
                 'FLUXCALERR': psFluxErr[j].explode().astype('float')
             }
