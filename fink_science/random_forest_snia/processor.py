@@ -357,7 +357,7 @@ def rfscore_sigmoid_elasticc(
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
-    candid = pd.Series(range(len(midPointTai)))
+    # candid = pd.Series(range(len(midPointTai)))
     pdf = pd.DataFrame()
     pdf['MJD'] = dt
     pdf['FLT'] = filterName
