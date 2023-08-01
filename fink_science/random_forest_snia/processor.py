@@ -362,7 +362,7 @@ def rfscore_sigmoid_elasticc(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/earlysnia_elastic_test.pkl'
+        model = curdir + '/data/models/earlysnia_elastic_01AGO2023.pkl'
         clf = load_scikit_model(model)
 
     test_features = []
