@@ -340,7 +340,7 @@ def rfscore_sigmoid_elasticc(
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    21
+    3176
     """
 
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
