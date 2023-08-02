@@ -17,8 +17,56 @@ from fink_fat.kalman.kalman_prediction import kalmanDf_prediction
 from fink_fat.associations.associations import angle_three_point_vect
 
 
-def roid_mask(ra, dec, jd, magpsf, fid, flags, real_sso):
-    if real_sso:
+def roid_mask(
+    ra: np.ndarray,
+    dec: np.ndarray,
+    jd: np.ndarray,
+    magpsf: np.ndarray,
+    fid: np.ndarray,
+    flags: np.ndarray,
+    confirmed_sso: bool,
+):
+    """
+    Return the inputs masked as solar sytem objects (confirmed or canddiates depending of confirmed_sso)
+
+    Parameters
+    ----------
+    ra : np.ndarray
+        right ascension
+    dec : np.ndarray
+        declination
+    jd : np.ndarray
+        julian date
+    magpsf : np.ndarray
+        estimated magnitude of the psf
+    fid : np.ndarray
+        filter identifier
+    flags : np.ndarray
+        roid flags
+    confirmed_sso : bool
+        if true, used confirmed solar system object,
+        used candidates otherwise
+
+    Returns
+    -------
+    ra_mask : np.ndarray
+        sso masked right ascension
+    dec_mask : np.ndarray
+        sso masked declination
+    coord_alerts : np.ndarray
+        sso masked coordinates
+    mag_mask : np.ndarray
+        sso masked magpsf
+    fid_mask : np.ndarray
+        sso masked filter id
+    jd_mask : np.ndarray
+        sso masked julian date
+    jd_unique : np.ndarray
+        sso masked unique julian date
+    idx_keep_mask : np.ndarray
+        idx in the non masked array of the masked data
+    """
+    if confirmed_sso:
         keep_mask = flags == 3
     else:
         mask_first_time = flags == 1
@@ -50,8 +98,7 @@ def roid_mask(ra, dec, jd, magpsf, fid, flags, real_sso):
     )
 
 
-def df_to_orb(df_orb):
-
+def df_to_orb(df_orb: pd.DataFrame) -> sso_py.Orbit:
     df_orb["targetname"] = df_orb["ssoCandId"]
     df_orb["orbtype"] = "KEP"
 
@@ -72,9 +119,24 @@ def df_to_orb(df_orb):
     return ast_orb_db
 
 
-def compute_ephem(orbits, epochs, location="I41"):
-    """
-    epochs in jd
+def compute_ephem(
+    orbits: pd.DataFrame, epochs: float, location: str = "I41"
+) -> pd.DataFrame:
+    """_summary_
+
+    Parameters
+    ----------
+    orbits : pd.DataFrame
+        _description_
+    epochs : float
+        _description_
+    location : str, optional
+        _description_, by default "I41"
+
+    Returns
+    -------
+    pd.DataFrame
+        _description_
     """
     orb_table = df_to_orb(orbits)
 
@@ -83,10 +145,12 @@ def compute_ephem(orbits, epochs, location="I41"):
     ).table.to_pandas()
 
 
-def orbit_window(orbit_pdf: pd.DataFrame, coord_alerts: SkyCoord, jd: np.ndarray, orbit_tw: int) -> pd.DataFrame:
+def orbit_window(
+    orbit_pdf: pd.DataFrame, coord_alerts: SkyCoord, jd: np.ndarray, orbit_tw: int
+) -> pd.DataFrame:
     """
-    Filter the orbits in orbit_pdf to keep only those close to the alert 
-    and those that are the most recently updated (within orbit_tw). 
+    Filter the orbits in orbit_pdf to keep only those close to the alert
+    and those that are the most recently updated (within orbit_tw).
 
     Parameters
     ----------
@@ -110,9 +174,9 @@ def orbit_window(orbit_pdf: pd.DataFrame, coord_alerts: SkyCoord, jd: np.ndarray
     min_night_jd = Time(math.modf(jd_min)[1], format="jd").jd
     max_night_jd = Time(math.modf(jd_max)[1], format="jd").jd
     last_orbits = orbit_pdf[
-            (orbit_pdf["ref_epoch"] <= max_night_jd)
-            & (orbit_pdf["ref_epoch"] >= (min_night_jd - orbit_tw))
-        ]
+        (orbit_pdf["ref_epoch"] <= max_night_jd)
+        & (orbit_pdf["ref_epoch"] >= (min_night_jd - orbit_tw))
+    ]
 
     coord_kalman = SkyCoord(
         last_orbits["last_ra"].values,
@@ -131,9 +195,7 @@ def orbit_window(orbit_pdf: pd.DataFrame, coord_alerts: SkyCoord, jd: np.ndarray
     )
 
     orbit_to_keep = orbit_pdf[
-        orbit_pdf["ssoCandId"].isin(
-            orbit_pdf.iloc[orbit_pdf]["ssoCandId"].unique()
-        )
+        orbit_pdf["ssoCandId"].isin(orbit_pdf.iloc[idx_orbit]["ssoCandId"].unique())
     ]
     return orbit_to_keep
 
@@ -145,12 +207,12 @@ def orbit_association(
     magpsf: np.ndarray,
     fid: np.ndarray,
     flags: np.ndarray,
-    real_sso: bool,
+    confirmed_sso: bool,
     estimator_id: pd.Series,
     ffdistnr: pd.Series,
     mag_criterion_same_fid: float,
     mag_criterion_diff_fid: float,
-    orbit_tw: int
+    orbit_tw: int,
 ):
     (
         ra_mask,
@@ -161,8 +223,8 @@ def orbit_association(
         jd_mask,
         jd_unique,
         idx_keep_mask,
-    ) = roid_mask(ra, dec, jd, magpsf, fid, flags, real_sso)
-    
+    ) = roid_mask(ra, dec, jd, magpsf, fid, flags, confirmed_sso)
+
     # get latest detected orbit
     orbit_pdf = pd.read_parquet(SparkFiles.get("orbital.parquet"))
     orbit_to_keep = orbit_window(orbit_pdf, coord_alerts, jd_unique)
@@ -177,7 +239,7 @@ def orbit_association(
     # return the closest alerts of each ephemerides
     res_search = coord_alerts.match_to_catalog_sky(ephem_coord)
 
-    #TODO Match idx_mask with idx_keep_mask to get the associated alerts
+    # TODO Match idx_mask with idx_keep_mask to get the associated alerts
 
     # return the distance to the ephem and the associated orbit id
     return flags, estimator_id, ffdistnr
@@ -235,7 +297,7 @@ def kalman_association(
     magpsf: np.ndarray,
     fid: np.ndarray,
     flags: np.ndarray,
-    real_sso: bool,
+    confirmed_sso: bool,
     estimator_id: pd.Series,
     ffdistnr: pd.Series,
     mag_criterion_same_fid: float,
@@ -259,7 +321,7 @@ def kalman_association(
         _description_
     flags : _type_
         _description_
-    real_sso : _type_
+    confirmed_sso : _type_
         _description_
     t_estimator : _type_
         _description_
@@ -289,7 +351,7 @@ def kalman_association(
         jd_mask,
         jd_unique,
         idx_keep_mask,
-    ) = roid_mask(ra, dec, jd, magpsf, fid, flags, real_sso)
+    ) = roid_mask(ra, dec, jd, magpsf, fid, flags, confirmed_sso)
 
     # path where are stored the kalman filters
     kalman_pdf = pd.read_pickle(SparkFiles.get("kalman.pkl"))
@@ -417,7 +479,7 @@ def fink_fat_association(
     jd,
     ndethist,
     flags,
-    real_sso,
+    confirmed_sso,
     mag_criterion_same_fid,
     mag_criterion_diff_fid,
     angle_criterion,
@@ -441,7 +503,7 @@ def fink_fat_association(
         Spark DataFrame Column
     flags : _type_
         Spark DataFrame Column
-    real_sso : _type_
+    confirmed_sso : _type_
         Spark DataFrame Column
     mag_criterion_same_fid : _type_
         Spark DataFrame Column
@@ -467,7 +529,7 @@ def fink_fat_association(
     fid = fid.values
     jd = jd.values
 
-    real_sso = real_sso.values[0]
+    confirmed_sso = confirmed_sso.values[0]
     mag_criterion_same_fid = mag_criterion_same_fid.values[0]
     mag_criterion_diff_fid = mag_criterion_diff_fid.values[0]
     angle_criterion = angle_criterion.values[0]
@@ -480,7 +542,7 @@ def fink_fat_association(
         magpsf,
         fid,
         flags,
-        real_sso,
+        confirmed_sso,
         estimator_id,
         ffdistnr,
         mag_criterion_same_fid,

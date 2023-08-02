@@ -12,8 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import IntegerType
+from pyspark.sql.functions import pandas_udf
 
 from fink_science import __file__
 import os
@@ -21,15 +20,7 @@ import os
 import pandas as pd
 import numpy as np
 
-from pyspark.sql.types import (
-    IntegerType,
-    ArrayType,
-    FloatType,
-    StructType,
-    StringType,
-    StructField,
-    StringType,
-)
+from pyspark.sql.types import IntegerType, ArrayType, FloatType, StructType, StructField
 
 from fink_science.tester import spark_unit_tests
 from fink_science.asteroids.associations import fink_fat_association
@@ -70,7 +61,7 @@ def roid_catcher(
     angle_criterion,
     mag_criterion_same_fid,
     mag_criterion_diff_fid,
-    real_sso,
+    confirmed_sso,
 ):
     """Determine if an alert is a potential Solar System object (SSO) using two criteria:
 
@@ -126,7 +117,7 @@ def roid_catcher(
     mag_criterion_diff_fid: Spark DataFrame Column
         keep the association where the difference of magnitude
         between two measurements of differents filter are below this threshold.
-    real_sso: Spark DataFrame Column
+    confirmed_sso: Spark DataFrame Column
         if true, associates alerts with a flag equals to 3,
         choose alerts with a flag equals to 1 or 2 otherwise.
 
@@ -228,7 +219,7 @@ def roid_catcher(
             jd,
             ndethist,
             flags,
-            real_sso,
+            confirmed_sso,
             mag_criterion_same_fid,
             mag_criterion_diff_fid,
             angle_criterion,
