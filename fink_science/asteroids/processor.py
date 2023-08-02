@@ -23,7 +23,7 @@ import numpy as np
 from pyspark.sql.types import IntegerType, ArrayType, FloatType, StructType, StructField
 
 from fink_science.tester import spark_unit_tests
-from fink_science.asteroids.associations import fink_fat_association
+from fink_science.asteroids.fink_fat_associations import fink_fat_association
 
 
 roid_schema = StructType(
@@ -124,6 +124,8 @@ def roid_catcher(
     Returns
     ----------
     out: integer
+        5 if the alert has been associated with a candidate trajectory using an orbit estimator
+        4 if the alert has been associated with a candidate trajectory using a kalman estimator
         3 if the alert has been flagged by ZTF as SSO
         2 if the alert has been flagged by Fink as SSO
         1 if it is the first time ZTF sees this object

@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
+from fink_science import __file__
+import os
 import doctest
 import numpy as np
 
@@ -105,6 +107,11 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
         .appName("fink_science_test")\
         .config(conf=conf)\
         .getOrCreate()
+
+
+    path = os.path.dirname(__file__)
+    orbit_sample = "file://{}/data/orbital.parquet".format(path)
+    spark.sparkContext.addFile(orbit_sample)
 
     global_args["spark"] = spark
 
