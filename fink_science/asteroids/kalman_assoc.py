@@ -15,6 +15,7 @@ from fink_fat.others.utils import init_logging
 
 from fink_science.tester import spark_unit_tests
 
+
 def roid_mask(
     ra: np.ndarray,
     dec: np.ndarray,
@@ -334,7 +335,7 @@ def kalman_association(
         # path where are stored the kalman filters
         kalman_pdf = pd.read_pickle(SparkFiles.get("kalman.pkl"))
     except FileNotFoundError:
-        logger.warning(f"files containing the kalman filters not found", exc_info=1)
+        logger.warning("files containing the kalman filters not found", exc_info=1)
         return flags, estimator_id, ffdistnr
 
     # filter the kalman estimators to keep only those inside the current exposures.

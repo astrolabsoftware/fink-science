@@ -312,7 +312,7 @@ def orbit_association(
         # get latest detected orbit
         orbit_pdf = pd.read_parquet(SparkFiles.get("orbital.parquet"))
     except FileNotFoundError:
-        logger.warning(f"files containing the orbits not found", exc_info=1)
+        logger.warning("files containing the orbits not found", exc_info=1)
         return flags, estimator_id, ffdistnr
 
     orbit_to_keep = orbit_window(orbit_pdf, coord_alerts, jd_unique, orbit_tw)
