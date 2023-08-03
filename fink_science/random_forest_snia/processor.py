@@ -364,7 +364,7 @@ def rfscore_sigmoid_elasticc(
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/earlysnia_elasticc_01AGO2023.pkl'
         clf = load_scikit_model(model)
-            
+
     test_features = []
     for j in ids:
         pdf = pd.DataFrame.from_dict(
