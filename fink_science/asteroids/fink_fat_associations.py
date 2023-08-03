@@ -18,7 +18,7 @@ def fink_fat_association(
     mag_criterion_same_fid,
     mag_criterion_diff_fid,
     angle_criterion,
-    orbit_tw
+    orbit_tw,
 ):
     """
     Find the alerts close to the predictions made by the kalman filters.
@@ -71,20 +71,19 @@ def fink_fat_association(
     angle_criterion = angle_criterion.values[0]
 
     flags, estimator_id, ffdistnr = orbit_association(
-        ra, 
-        dec, 
-        jd, 
-        magpsf, 
-        fid, 
-        flags, 
-        confirmed_sso, 
+        ra,
+        dec,
+        jd,
+        magpsf,
+        fid,
+        flags,
+        confirmed_sso,
         estimator_id,
-        ffdistnr, 
-        mag_criterion_same_fid, 
-        mag_criterion_diff_fid, 
-        orbit_tw
+        ffdistnr,
+        mag_criterion_same_fid,
+        mag_criterion_diff_fid,
+        orbit_tw,
     )
-
 
     # associates the alerts with the kalman filters
     flags, estimator_id, ffdistnr = kalman_association(
