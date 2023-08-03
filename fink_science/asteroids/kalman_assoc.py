@@ -236,7 +236,87 @@ def kalman_association(
 
     Examples
     --------
+    >>> flags, estimator_id, ffdistnr = kalman_association(
+    ...     np.array([0.254, 48.147, 34.741, 0.198, 0.192]),
+    ...     np.array([1.036, 65.036, -0.214, 0.987, 0.943]),
+    ...     np.array(
+    ...         [
+    ...             0.597,
+    ...             5.612,
+    ...             3.214,
+    ...             0.594,
+    ...             0.745
+    ...         ]
+    ...     ),
+    ...     np.array([14.234, 18.3, 21.4, 14.429, 14.231]),
+    ...     np.array([1, 1, 2, 2, 1]),
+    ...     np.array([3, 3, 1, 2, 2]),
+    ...     False,
+    ...     pd.Series([[], [], [], [], []]),
+    ...     pd.Series([[], [], [], [], []]),
+    ...     2,
+    ...     2,
+    ...     30,
+    ... )
 
+    >>> flags
+    array([3, 3, 1, 4, 4])
+
+    >>> estimator_id
+    0        []
+    1        []
+    2        []
+    3       [0]
+    4    [0, 3]
+    dtype: object
+
+    >>> ffdistnr
+    0                                    []
+    1                                    []
+    2                                    []
+    3                     [0.0559329459625]
+    4    [0.0310152252103, 0.0507620767336]
+    dtype: object
+
+
+    >>> flags, estimator_id, ffdistnr = kalman_association(
+    ...     np.array([0.254, 48.147, 34.741, 0.198]),
+    ...     np.array([1.036, 65.036, -0.214, 0.987]),
+    ...     np.array(
+    ...         [
+    ...             0.597,
+    ...             5.612,
+    ...             3.214,
+    ...             0.594,
+    ...         ]
+    ...     ),
+    ...     np.array([14.234, 18.3, 21.4, 14.429]),
+    ...     np.array([1, 1, 2, 2]),
+    ...     np.array([3, 3, 1, 2]),
+    ...     True,
+    ...     pd.Series([[], [], [], []]),
+    ...     pd.Series([[], [], [], []]),
+    ...     2,
+    ...     2,
+    ...     30,
+    ... )
+
+    >>> flags
+    array([4, 4, 1, 2])
+
+    >>> estimator_id
+    0    [0]
+    1    [2]
+    2     []
+    3     []
+    dtype: object
+
+    >>> ffdistnr
+    0    [0.148383935172]
+    1    [0.158894187548]
+    2                  []
+    3                  []
+    dtype: object
     """
     logger = init_logging()
     (
@@ -320,8 +400,10 @@ def kalman_association(
             "fid",
         ],
     )
-
     # compute the separation between the predictions and the alerts
+    # WARNING: the separation is computed between all the predictions and the matched alerts
+    # The prediction time does not necessarily correspond to the alerts time
+    # however, the separation return by the module is sufficiently close to the true separation
     results_pdf["sep"] = (
         coord_masked_alerts[results_pdf["idx_mask"]]
         .separation(coord_kalman[results_pdf["idx_pred"]])
@@ -334,7 +416,6 @@ def kalman_association(
         .reset_index()
     )
     results_sep = results_pdf.merge(sep_min_tmp, on=["trajectory_id", "idx_alert"])
-
     # compute the angle between the last two points of the trajectories and the alerts
     result_pdf_kalman = results_sep.merge(kalman_pdf, on="trajectory_id")
     angle = angle_three_point_vect(
