@@ -178,7 +178,7 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
             flag.append(True)
         test_features.append(features)
 
-    flag = np.array(flag, dtype=np.bool)
+    flag = np.array(flag, dtype=bool)
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
@@ -340,7 +340,7 @@ def rfscore_sigmoid_elasticc(
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    3176
+    0
     """
 
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
@@ -362,7 +362,7 @@ def rfscore_sigmoid_elasticc(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/earlysnia_elasticc_01AGO2023.pkl'
+        model = curdir + '/data/models/earlysnia_elasticc_03AGO2023_2filters.pkl'
         clf = load_scikit_model(model)
 
     test_features = []
