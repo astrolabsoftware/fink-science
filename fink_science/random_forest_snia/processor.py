@@ -393,7 +393,7 @@ def rfscore_sigmoid_elasticc(
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
-    print(test_features[0]])
+    print(test_features[0])
     # Take only probabilities to be Ia
     to_return = np.zeros(len(midPointTai), dtype=float)
     to_return[mask] = probabilities.T[1]
