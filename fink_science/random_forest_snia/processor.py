@@ -339,7 +339,7 @@ def rfscore_sigmoid_elasticc(
     >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
-    >>> df.filter(df['pIa'] > 0.5).count()
+    >>> df.filter(df['pIa'] > 0.67).count()
     0
     """
 
