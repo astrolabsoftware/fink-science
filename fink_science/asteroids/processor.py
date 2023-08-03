@@ -219,7 +219,6 @@ def roid_catcher(
             magpsf,
             fid,
             jd,
-            ndethist,
             flags,
             confirmed_sso,
             mag_criterion_same_fid,

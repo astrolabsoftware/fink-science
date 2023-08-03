@@ -105,11 +105,9 @@ def compute_ephem(
     ... })
 
     >>> compute_ephem(df_orbit, [2460168.8746030545, 2460160.8748369324])
-              targetname         RA        DEC  RA*cos(Dec)_rate  ...     Delta          V   trueanom                         epoch
-    0  FF20230802aaaaaaa  57.805688  22.400628          0.335055  ...  2.254726  19.184782  19.219255 2023-08-12 09:00:34.887907351
-    1  FF20230802aaaaaaa  54.812999  21.515593          0.356581  ...  2.342217  19.249921  16.800475 2023-08-04 09:00:55.094959284
-    <BLANKLINE>
-    [2 rows x 12 columns]
+              targetname         RA        DEC  RA*cos(Dec)_rate  DEC_rate      alpha      elong        r     Delta          V   trueanom                         epoch
+    0  FF20230802aaaaaaa  57.805688  22.400628          0.335055  0.108234  25.803101  78.640662  2.28273  2.254726  19.184782  19.219255 2023-08-12 09:00:34.887907351
+    1  FF20230802aaaaaaa  54.812999  21.515593          0.356581  0.117211  25.317247  73.879960  2.27945  2.342217  19.249921  16.800475 2023-08-04 09:00:55.094959284
     """
     orb_table = df_to_orb(orbits)
 
@@ -329,16 +327,17 @@ def orbit_association(
     sep = res_search[1]
     idx_ephem = res_search[0]
 
-    # filter the associations to keep only those close by 5 arcsecond of the ephemerides
-    f_distance = np.where(sep.arcsecond < 5.00)[0]
-    idx_assoc = idx_keep_mask[f_distance]
-    idx_ephem_assoc = idx_ephem[f_distance]
+    # filter the associations to keep only those close by 15 arcsecond of the ephemerides
+    f_distance = np.where(sep.arcsecond < 15.00)[0]
 
+    idx_ephem_assoc = idx_ephem[f_distance]
     ephem_id = ephem.loc[idx_ephem_assoc, "targetname"]
-    mag_assoc = mag_mask[idx_assoc]
-    fid_assoc = fid_mask[idx_assoc]
-    jd_assoc = jd_mask[idx_assoc]
     close_orbit = orbit_to_keep[orbit_to_keep["ssoCandId"].isin(ephem_id)]
+
+    mag_assoc = mag_mask[f_distance]
+    fid_assoc = fid_mask[f_distance]
+    jd_assoc = jd_mask[f_distance]
+    idx_assoc = idx_keep_mask[f_distance]
 
     # filter the associations to keep only those with a credible magnitude rate
     diff_mag = np.abs(close_orbit["last_mag"] - mag_assoc)
