@@ -11,7 +11,9 @@ from sklearn.neighbors import BallTree
 from fink_fat.seeding.dbscan_seeding import dist_3d
 from fink_fat.kalman.kalman_prediction import kalmanDf_prediction
 from fink_fat.associations.associations import angle_three_point_vect
+from fink_fat.others.utils import init_logging
 
+from fink_science.tester import spark_unit_tests
 
 def roid_mask(
     ra: np.ndarray,
@@ -74,7 +76,7 @@ def roid_mask(
     ... True
     ... )
     (array([1, 4]), array([1, 4]), <SkyCoord (ICRS): (ra, dec) in deg
-        [(1., 1.), (4., 4.)]>, array([16, 19]), array([1, 2]), array([1, 4]), array([1, 4]), array([1, 4]))
+        [( 1.,  1.), ( 4.,  4.)]>, array([16, 19]), array([1, 2]), array([1, 4]), array([1, 4]), array([1, 4]))
 
     >>> roid_mask(
     ... np.array([0, 1, 2, 3, 4, 5]),
@@ -86,7 +88,7 @@ def roid_mask(
     ... False
     ... )
     (array([0, 2, 3]), array([0, 2, 3]), <SkyCoord (ICRS): (ra, dec) in deg
-        [(0., 0.), (2., 2.), (3., 3.)]>, array([15, 17, 18]), array([1, 2, 1]), array([0, 2, 3]), array([0, 2, 3]), array([0, 2, 3]))
+        [( 0.,  0.), ( 2.,  2.), ( 3.,  3.)]>, array([15, 17, 18]), array([1, 2, 1]), array([0, 2, 3]), array([0, 2, 3]), array([0, 2, 3]))
     """
     if confirmed_sso:
         keep_mask = flags == 3
@@ -135,6 +137,21 @@ def kalman_window(kalman_pdf: pd.DataFrame, coord_alerts: SkyCoord) -> pd.DataFr
     -------
     pd.DataFrame
         the kalman dataframe with the kalman only close to the alerts
+
+    Examples
+    --------
+    >>> kalman_pdf = pd.DataFrame({
+    ...     "ra_1": [0, 10, 30, 50],
+    ...     "dec_1": [0, 10, 30, 50],
+    ...     "trajectory_id": [0, 1, 2, 3]
+    ... })
+
+    >>> coord_alerts = SkyCoord([10, 50], [10, 50], unit="deg")
+
+    >>> kalman_window(kalman_pdf, coord_alerts)
+       ra_1  dec_1  trajectory_id
+    1    10     10              1
+    3    50     50              3
     """
     coord_kalman = SkyCoord(
         kalman_pdf["ra_1"].values,
@@ -179,36 +196,49 @@ def kalman_association(
     Parameters
     ----------
     ra : np.ndarray
-        _description_
+        right ascension of the alerts (degree)
     dec : np.ndarray
-        _description_
+        declination of the alerts (degree)
     jd : np.ndarray
-        _description_
+        exposure time of the alerts (julian date)
     magpsf : np.ndarray
-        _description_
+        psf magnitude of the alerts
     fid : np.ndarray
-        _description_
+        filter identifier of the alerts
     flags : np.ndarray
-        _description_
+        roid flags
     confirmed_sso : bool
-        _description_
+        if true, run the associations with the alerts flagged as 3 (confirmed sso)
+        otherwise, run the association with the alerts flagged as 1 or 2 (candidates sso)
     estimator_id : pd.Series
-        _description_
+        will contains the identifier of the orbits associated with the alerts
     ffdistnr : pd.Series
-        _description_
+        will contains the distance between the ephemeries and the alerts
     mag_criterion_same_fid : float
-        _description_
+        the criterion to filter the alerts with the same filter identifier for the magnitude
+        as the last point used to compute the orbit
     mag_criterion_diff_fid : float
-        _description_
+        the criterion to filter the alerts with the filter identifier for the magnitude
+        different from the last point used to compute the orbit
     angle_criterion : float
-        _description_
+        angle between the last two point of the trajectories and the associated point close to a kalman prediction.
+        keep only the associated alerts with an angle below this treshold.
 
     Returns
     -------
-    _type_
-        _description_
-    """
+    flags: pd.Series
+        contains the flags of the roid module
+        see processor.py
+    estimator_id:
+        contains the orbit identifier, same as the ssoCandId column
+    ffdistnr:
+        contains the distance between the alerts and the ephemeries (degree)
 
+    Examples
+    --------
+
+    """
+    logger = init_logging()
     (
         ra_mask,
         dec_mask,
@@ -220,8 +250,12 @@ def kalman_association(
         idx_keep_mask,
     ) = roid_mask(ra, dec, jd, magpsf, fid, flags, confirmed_sso)
 
-    # path where are stored the kalman filters
-    kalman_pdf = pd.read_pickle(SparkFiles.get("kalman.pkl"))
+    try:
+        # path where are stored the kalman filters
+        kalman_pdf = pd.read_pickle(SparkFiles.get("kalman.pkl"))
+    except FileNotFoundError:
+        logger.warning(f"files containing the kalman filters not found", exc_info=1)
+        return flags, estimator_id, ffdistnr
 
     # filter the kalman estimators to keep only those inside the current exposures.
     kalman_to_keep = kalman_window(kalman_pdf, coord_masked_alerts)
@@ -338,3 +372,12 @@ def kalman_association(
     ffdistnr[idx_to_update] = filtered_group["sep_min_l"]
 
     return flags, estimator_id, ffdistnr
+
+
+if __name__ == "__main__":
+    """Execute the test suite"""
+
+    globs = globals()
+
+    # Run the test suite
+    spark_unit_tests(globs)

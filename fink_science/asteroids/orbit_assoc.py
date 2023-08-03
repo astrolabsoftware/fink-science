@@ -13,6 +13,8 @@ import sbpy.data as sso_py
 from fink_science.tester import spark_unit_tests
 from fink_science.asteroids.kalman_assoc import roid_mask
 
+from fink_fat.others.utils import init_logging
+
 
 def df_to_orb(df_orb: pd.DataFrame) -> sso_py.Orbit:
     """
@@ -294,6 +296,7 @@ def orbit_association(
     4                         []
     dtype: object
     """
+    logger = init_logging()
     (
         ra_mask,
         dec_mask,
@@ -305,8 +308,12 @@ def orbit_association(
         idx_keep_mask,
     ) = roid_mask(ra, dec, jd, magpsf, fid, flags, confirmed_sso)
 
-    # get latest detected orbit
-    orbit_pdf = pd.read_parquet(SparkFiles.get("orbital.parquet"))
+    try:
+        # get latest detected orbit
+        orbit_pdf = pd.read_parquet(SparkFiles.get("orbital.parquet"))
+    except FileNotFoundError:
+        logger.warning(f"files containing the orbits not found", exc_info=1)
+        return flags, estimator_id, ffdistnr
 
     orbit_to_keep = orbit_window(orbit_pdf, coord_alerts, jd_unique, orbit_tw)
 

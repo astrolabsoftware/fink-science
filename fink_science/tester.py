@@ -111,6 +111,8 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
     path = os.path.dirname(__file__)
     orbit_sample = "file://{}/data/orbital.parquet".format(path)
     spark.sparkContext.addFile(orbit_sample)
+    kalman_sample = "file://{}/data/kalman.pkl".format(path)
+    spark.sparkContext.addFile(kalman_sample)
 
     global_args["spark"] = spark
 
