@@ -364,7 +364,7 @@ def rfscore_sigmoid_elasticc(
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/earlysnia_elasticc_01AGO2023.pkl'
         clf = load_scikit_model(model)
-    print(model)
+            
     test_features = []
     for j in ids:
         pdf = pd.DataFrame.from_dict(
@@ -393,7 +393,7 @@ def rfscore_sigmoid_elasticc(
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
-
+    print(test_features[0]])
     # Take only probabilities to be Ia
     to_return = np.zeros(len(midPointTai), dtype=float)
     to_return[mask] = probabilities.T[1]
