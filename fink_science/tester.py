@@ -108,7 +108,6 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
         .config(conf=conf)\
         .getOrCreate()
 
-
     path = os.path.dirname(__file__)
     orbit_sample = "file://{}/data/orbital.parquet".format(path)
     spark.sparkContext.addFile(orbit_sample)
