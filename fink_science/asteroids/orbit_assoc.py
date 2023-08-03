@@ -13,6 +13,7 @@ import sbpy.data as sso_py
 from fink_science.tester import spark_unit_tests
 from fink_science.asteroids.kalman_assoc import roid_mask
 
+
 def df_to_orb(df_orb: pd.DataFrame) -> sso_py.Orbit:
     """
     Convert a dataframe into an orbit table
@@ -26,7 +27,7 @@ def df_to_orb(df_orb: pd.DataFrame) -> sso_py.Orbit:
     -------
     sso_py.Orbit
         orbit table
-    
+
     Examples
     --------
     >>> df_orbit = pd.DataFrame({
@@ -42,9 +43,9 @@ def df_to_orb(df_orb: pd.DataFrame) -> sso_py.Orbit:
 
     >>> df_to_orb(df_orbit)
     <QTable length=1>
-       a       e       i    long. node ...   node   argper    M        epoch    
-       AU             deg              ...   deg     deg     deg                
-    float64 float64 float64  float64   ... float64 float64 float64     object   
+       a       e       i    long. node ...   node   argper    M        epoch
+       AU             deg              ...   deg     deg     deg
+    float64 float64 float64  float64   ... float64 float64 float64     object
     ------- ------- ------- ---------- ... ------- ------- ------- -------------
       2.587   0.123   4.526      5.956 ...   5.956   9.547  12.587 2460158.87174
     """
@@ -127,7 +128,7 @@ def orbit_window(
     orbit_pdf : pd.DataFrame
         dataframe containing the orbit
     coord_alerts : SkyCoord
-        coordinates of the alerts in the current spark batch, 
+        coordinates of the alerts in the current spark batch,
         keep only the orbit close to the alerts of the current batch
     jd : np.ndarray
         exposure time of the alerts in the current batch
@@ -176,8 +177,7 @@ def orbit_window(
     min_night_jd = Time(math.modf(jd_min)[1], format="jd").jd
     max_night_jd = Time(math.modf(jd_max)[1], format="jd").jd
     last_orbits = orbit_pdf[
-        (orbit_pdf["ref_epoch"] <= max_night_jd)
-        & (orbit_pdf["ref_epoch"] >= (min_night_jd - orbit_tw))
+        (orbit_pdf["ref_epoch"] <= max_night_jd) & (orbit_pdf["ref_epoch"] >= (min_night_jd - orbit_tw))
     ]
 
     coord_orbit = SkyCoord(
@@ -217,7 +217,7 @@ def orbit_association(
     orbit_tw: int,
 ):
     """
-    Associates the alerts from the current spark batch 
+    Associates the alerts from the current spark batch
     with the orbit estimated by fink_fat from the previous nights.
 
     Parameters
@@ -242,10 +242,10 @@ def orbit_association(
     ffdistnr : pd.Series
         will contains the distance between the ephemeries and the alerts
     mag_criterion_same_fid : float
-        the criterion to filter the alerts with the same filter identifier for the magnitude 
+        the criterion to filter the alerts with the same filter identifier for the magnitude
         as the last point used to compute the orbit
     mag_criterion_diff_fid : float
-        the criterion to filter the alerts with the filter identifier for the magnitude 
+        the criterion to filter the alerts with the filter identifier for the magnitude
         different from the last point used to compute the orbit
     orbit_tw : int
         time window used to filter the orbit
@@ -345,13 +345,13 @@ def orbit_association(
     idx_mag = idx_assoc[np.where(rate < mag_criterion)[0]]
 
     flags[idx_mag] = 5
-    estimator_id[idx_mag] = np.expand_dims(ephem.loc[idx_ephem_assoc, "targetname"], axis=1).tolist()
+    estimator_id[idx_mag] = np.expand_dims(
+        ephem.loc[idx_ephem_assoc, "targetname"], axis=1
+    ).tolist()
     ffdistnr[idx_mag] = np.expand_dims(sep[f_distance].value, axis=1).tolist()
 
     # return the distance to the ephem and the associated orbit id
     return flags, estimator_id, ffdistnr
-
-
 
 
 if __name__ == "__main__":

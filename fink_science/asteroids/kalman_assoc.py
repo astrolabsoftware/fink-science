@@ -12,6 +12,7 @@ from fink_fat.seeding.dbscan_seeding import dist_3d
 from fink_fat.kalman.kalman_prediction import kalmanDf_prediction
 from fink_fat.associations.associations import angle_three_point_vect
 
+
 def roid_mask(
     ra: np.ndarray,
     dec: np.ndarray,
@@ -74,7 +75,7 @@ def roid_mask(
     ... )
     (array([1, 4]), array([1, 4]), <SkyCoord (ICRS): (ra, dec) in deg
         [(1., 1.), (4., 4.)]>, array([16, 19]), array([1, 2]), array([1, 4]), array([1, 4]), array([1, 4]))
-    
+
     >>> roid_mask(
     ... np.array([0, 1, 2, 3, 4, 5]),
     ... np.array([0, 1, 2, 3, 4, 5]),
@@ -117,6 +118,7 @@ def roid_mask(
         jd_unique,
         idx_keep_mask,
     )
+
 
 def kalman_window(kalman_pdf: pd.DataFrame, coord_alerts: SkyCoord) -> pd.DataFrame:
     """

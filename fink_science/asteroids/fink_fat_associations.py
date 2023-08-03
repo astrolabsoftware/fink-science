@@ -1,9 +1,9 @@
-import numpy as np
 import pandas as pd
 import sys
 import doctest
 
 from fink_science.asteroids.kalman_assoc import kalman_association
+from fink_science.asteroids.orbit_assoc import orbit_association
 
 
 def fink_fat_association(
@@ -18,6 +18,7 @@ def fink_fat_association(
     mag_criterion_same_fid,
     mag_criterion_diff_fid,
     angle_criterion,
+    orbit_tw
 ):
     """
     Find the alerts close to the predictions made by the kalman filters.
@@ -69,6 +70,22 @@ def fink_fat_association(
     mag_criterion_diff_fid = mag_criterion_diff_fid.values[0]
     angle_criterion = angle_criterion.values[0]
 
+    flags, estimator_id, ffdistnr = orbit_association(
+        ra, 
+        dec, 
+        jd, 
+        magpsf, 
+        fid, 
+        flags, 
+        confirmed_sso, 
+        estimator_id,
+        ffdistnr, 
+        mag_criterion_same_fid, 
+        mag_criterion_diff_fid, 
+        orbit_tw
+    )
+
+
     # associates the alerts with the kalman filters
     flags, estimator_id, ffdistnr = kalman_association(
         ra,
@@ -86,6 +103,7 @@ def fink_fat_association(
     )
 
     return flags, estimator_id, ffdistnr
+
 
 if __name__ == "__main__":  # pragma: no cover
     if "unittest.util" in __import__("sys").modules:
