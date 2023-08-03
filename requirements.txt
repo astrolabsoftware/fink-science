@@ -29,7 +29,7 @@ seaborn
 scikit-image
 
 # Random Forest AL
--e git+https://github.com/emilleishida/fink_sn_activelearning.git@5b371e5f712dd07366bdf4c7d60127e32c445c03#egg=fink_sn_activelearning
+-e git+https://github.com/emilleishida/fink_sn_activelearning.git@6c1d04c9581afa7343439beb726edf61d7a18608#egg=fink_sn_activelearning
 
 # KN
 -e git+https://github.com/b-biswas/kndetect@kndetect#egg=kndetect
