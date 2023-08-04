@@ -20,7 +20,14 @@ import os
 import pandas as pd
 import numpy as np
 
-from pyspark.sql.types import IntegerType, ArrayType, FloatType, StructType, StructField, StringType
+from pyspark.sql.types import (
+    IntegerType,
+    ArrayType,
+    FloatType,
+    StructType,
+    StructField,
+    StringType,
+)
 
 from fink_science.tester import spark_unit_tests
 from fink_science.asteroids.fink_fat_associations import fink_fat_association
@@ -242,7 +249,7 @@ def roid_catcher(
             mag_criterion_same_fid,
             mag_criterion_diff_fid,
             angle_criterion,
-            orbit_tw
+            orbit_tw,
         )
 
         return pd.DataFrame(
@@ -259,7 +266,9 @@ if __name__ == "__main__":
 
     globs = globals()
     path = os.path.dirname(__file__)
-    ztf_alert_sample = "file://{}/data/alerts/roid_datatest/alerts_sample_roid".format(path)
+    ztf_alert_sample = "file://{}/data/alerts/roid_datatest/alerts_sample_roid".format(
+        path
+    )
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite

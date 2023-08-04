@@ -5,7 +5,6 @@ from fink_science.asteroids.orbit_assoc import orbit_association
 
 from fink_science.tester import spark_unit_tests
 
-import numpy as np
 def fink_fat_association(
     ra: pd.Series,
     dec: pd.Series,
