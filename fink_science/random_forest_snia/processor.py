@@ -331,7 +331,7 @@ def rfscore_sigmoid_elasticc(
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
-    >>> args += [ F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
+    >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
     >>> args += [F.col('diaObject.hostgal_zphot_err')]
@@ -378,13 +378,13 @@ def rfscore_sigmoid_elasticc(
 
         # Julien added `id`
         meta_feats = [
-            ra.values[j],
-            dec.values[j],
-            hostgal_ra.values[j],
             hostgal_dec.values[j],
+            hostgal_ra.values[j],
             hostgal_snsep.values[j],
             hostgal_zphot.values[j],
             hostgal_zphot_err.values[j],
+            ra.values[j],
+            dec.values[j],
         ]
 
         test_features.append(np.concatenate((meta_feats, features)))
@@ -397,6 +397,7 @@ def rfscore_sigmoid_elasticc(
     to_return[mask] = probabilities.T[1]
     print(' ****************************  EMILLE')
     print(to_return[to_return > 0.5])
+    print(test_features[to_return > 0.5])
 
     return pd.Series(to_return)
 
