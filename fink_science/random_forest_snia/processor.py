@@ -395,6 +395,7 @@ def rfscore_sigmoid_elasticc(
     # Take only probabilities to be Ia
     to_return = np.zeros(len(midPointTai), dtype=float)
     to_return[mask] = probabilities.T[1]
+    print(to_return)
 
     return pd.Series(to_return)
 
