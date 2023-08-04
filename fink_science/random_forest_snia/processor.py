@@ -282,8 +282,6 @@ def rfscore_sigmoid_elasticc(
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
-    You need to run the SIMBAD crossmatch before.
-
     Parameters
     ----------
     midPointTai: Spark DataFrame Column
@@ -332,15 +330,16 @@ def rfscore_sigmoid_elasticc(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [ F.col('diaObject.hostgal_dec'), F.col('diaObject.hostgal_ra')]
+    >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
+    >>> args += [ F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
     >>> args += [F.col('diaObject.hostgal_zphot_err')]
-    >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
+    >>> 
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
-    >>> df.filter(df['pIa'] > 0.67).count()
-    0
+    >>> df.filter(df['pIa'] > 0.5).count()
+    14
     """
 
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
@@ -393,7 +392,7 @@ def rfscore_sigmoid_elasticc(
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
-    print(test_features[0])
+
     # Take only probabilities to be Ia
     to_return = np.zeros(len(midPointTai), dtype=float)
     to_return[mask] = probabilities.T[1]
