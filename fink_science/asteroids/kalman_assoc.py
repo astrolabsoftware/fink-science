@@ -237,6 +237,8 @@ def kalman_association(
 
     Examples
     --------
+    >>> from fink_science.tester import add_roid_datatest
+    >>> add_roid_datatest(spark)
     >>> flags, estimator_id, ffdistnr = kalman_association(
     ...     np.array([0.254, 48.147, 34.741, 0.198, 0.192]),
     ...     np.array([1.036, 65.036, -0.214, 0.987, 0.943]),
@@ -442,6 +444,10 @@ def kalman_association(
     result_filtered = result_pdf_kalman[
         (angle_rate < angle_criterion) & (mag_rate < mag_criterion)
     ]
+
+    with pd.option_context("mode.chained_assignment", None):
+        result_filtered["trajectory_id"] = result_filtered["trajectory_id"].astype(str)
+
     filtered_group = (
         result_filtered.groupby("idx_alert")
         .agg(tr_unique=("trajectory_id", "unique"), sep_min_l=("sep_min", "unique"))

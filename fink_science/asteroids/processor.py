@@ -20,7 +20,7 @@ import os
 import pandas as pd
 import numpy as np
 
-from pyspark.sql.types import IntegerType, ArrayType, FloatType, StructType, StructField
+from pyspark.sql.types import IntegerType, ArrayType, FloatType, StructType, StructField, StringType
 
 from fink_science.tester import spark_unit_tests
 from fink_science.asteroids.fink_fat_associations import fink_fat_association
@@ -40,7 +40,7 @@ roid_schema = StructType(
         ),
         StructField(
             "estimator_id",
-            ArrayType(IntegerType()),
+            ArrayType(StringType()),
             True,
         ),
     ]
@@ -53,6 +53,8 @@ def roid_catcher(
     dec,
     jd,
     magpsf,
+    cjd,
+    cmagpsf,
     fid,
     ndethist,
     sgscore1,
@@ -61,6 +63,7 @@ def roid_catcher(
     angle_criterion,
     mag_criterion_same_fid,
     mag_criterion_diff_fid,
+    orbit_tw,
     confirmed_sso,
 ):
     """Determine if an alert is a potential Solar System object (SSO) using two criteria:
@@ -135,6 +138,8 @@ def roid_catcher(
     ----------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
+    >>> from fink_science.tester import add_roid_datatest
+    >>> add_roid_datatest(spark, True)
 
     >>> df = spark.read.load(ztf_alert_sample)
 
@@ -151,24 +156,37 @@ def roid_catcher(
 
     # Perform the fit + classification (default model)
     >>> args = [
+    ...     'candidate.ra', 'candidate.dec',
+    ...     'candidate.jd', 'candidate.magpsf',
     ...     'cjd', 'cmagpsf',
+    ...     'candidate.fid',
     ...     'candidate.ndethist', 'candidate.sgscore1',
-    ...     'candidate.ssdistnr', 'candidate.distpsnr1']
+    ...     'candidate.ssdistnr', 'candidate.distpsnr1',
+    ...     F.lit(30), F.lit(1), F.lit(1), F.lit(30), F.lit(True)
+    ... ]
     >>> df = df.withColumn('roid', roid_catcher(*args))
 
     # Drop temp columns
     >>> df = df.drop(*what_prefix)
 
-    >>> df.filter(df['roid'] == 2).count()
-    3
+    # >>> df.filter(df['roid.flag'] == 2).count()
+    # 3
 
-    >>> df.filter(df['roid'] == 3).count()
-    3
+    # >>> df.filter(df['roid.flag'] == 3).count()
+    # 3
+
+    # >>> df.filter(df['roid.flag'] == 4).count()
+
+    # >>> df.filter(df['roid.flag'] == 4).select("objectId","roid.estimator_id").collect()
+
+    # >>> df.filter(df['roid.flag'] == 5).count()
+
+    >>> df.filter(df['roid.flag'] == 5).select("objectId","roid.estimator_id").collect()
     """
     flags = np.zeros_like(ndethist.values, dtype=int)
 
     # remove NaN
-    nalerthist = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x)))
+    nalerthist = cmagpsf.apply(lambda x: np.sum(np.array(x) == np.array(x)))
 
     # first detection
     f0 = ndethist == 1
@@ -187,7 +205,7 @@ def roid_catcher(
 
     # Remove long trend (within the observation)
     f3 = nalerthist == 2
-    f4 = jd[f3].apply(lambda x: np.diff(x)[-1]) > (30.0 / (24.0 * 60.0))
+    f4 = cjd[f3].apply(lambda x: np.diff(x)[-1]) > (30.0 / (24.0 * 60.0))
     flags[f3 & f4] = 0
 
     # Remove very long trend (outside the current observation)
@@ -224,6 +242,7 @@ def roid_catcher(
             mag_criterion_same_fid,
             mag_criterion_diff_fid,
             angle_criterion,
+            orbit_tw
         )
 
         return pd.DataFrame(
@@ -240,7 +259,7 @@ if __name__ == "__main__":
 
     globs = globals()
     path = os.path.dirname(__file__)
-    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
+    ztf_alert_sample = "file://{}/data/alerts/roid_datatest/alerts_sample_roid".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite

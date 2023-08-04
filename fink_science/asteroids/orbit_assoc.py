@@ -142,6 +142,8 @@ def orbit_window(
 
     Examples
     --------
+    >>> from fink_science.tester import add_roid_datatest
+    >>> add_roid_datatest(spark)
     # >>> df_orbit = pd.DataFrame({
     # ...     "a": [2.587, 3.258, 15.239, 1.0123],
     # ...     "e": [0.123, 0.657, 0.956, 0.001],

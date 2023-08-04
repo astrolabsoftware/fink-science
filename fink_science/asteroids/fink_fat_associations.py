@@ -5,7 +5,7 @@ from fink_science.asteroids.orbit_assoc import orbit_association
 
 from fink_science.tester import spark_unit_tests
 
-
+import numpy as np
 def fink_fat_association(
     ra: pd.Series,
     dec: pd.Series,
@@ -67,6 +67,8 @@ def fink_fat_association(
 
     Examples
     --------
+    >>> from fink_science.tester import add_roid_datatest
+    >>> add_roid_datatest(spark)
     >>> flags, estimator_id, ffdistnr = fink_fat_association(
     ...     pd.Series([
     ...         46.328490, 108.603010, 97.600172, 98.928007, 2.05, 46.55802234,
@@ -157,6 +159,7 @@ def fink_fat_association(
     angle_criterion = angle_criterion.values[0]
     orbit_tw = orbit_tw.values[0]
 
+    # associates the alerts with the orbit
     flags, estimator_id, ffdistnr = orbit_association(
         ra,
         dec,
