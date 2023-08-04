@@ -326,7 +326,7 @@ def rfscore_sigmoid_elasticc(
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaSources')
+    ...         current='diaSource', history='prvDiaForcedSources')
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
