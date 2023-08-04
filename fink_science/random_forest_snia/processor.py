@@ -397,7 +397,7 @@ def rfscore_sigmoid_elasticc(
     to_return[mask] = probabilities.T[1]
     print(' ****************************  EMILLE')
     print(to_return[to_return > 0.5])
-    print(test_features[to_return > 0.5])
+    print(np.array(test_features)[to_return > 0.5])
 
     return pd.Series(to_return)
 
