@@ -20,8 +20,9 @@ import numpy as np
 
 from pyspark.sql import SparkSession
 
+
 def regular_unit_tests(global_args: dict = None, verbose: bool = False):
-    """ Base commands for the regular unit test suite
+    """Base commands for the regular unit test suite
 
     Include this routine in the main of a module, and execute:
     python3 mymodule.py
@@ -55,8 +56,9 @@ def regular_unit_tests(global_args: dict = None, verbose: bool = False):
 
     sys.exit(doctest.testmod(globs=global_args, verbose=verbose)[0])
 
+
 def spark_unit_tests(global_args: dict = None, verbose: bool = False):
-    """ Base commands for the Spark unit test suite
+    """Base commands for the Spark unit test suite
 
     Include this routine in the main of a module, and execute:
     python3 mymodule.py
@@ -84,31 +86,33 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
     spark = SparkSession.builder.getOrCreate()
 
     conf = SparkConf()
-    confdic = {
-        "spark.python.daemon.module": "coverage_daemon"
-    }
+    confdic = {"spark.python.daemon.module": "coverage_daemon"}
 
-    if spark.version.startswith('2'):
+    if spark.version.startswith("2"):
         confdic.update(
             {
-                "spark.jars.packages": 'org.apache.spark:spark-avro_2.11:{}'.format(spark.version)
+                "spark.jars.packages": "org.apache.spark:spark-avro_2.11:{}".format(
+                    spark.version
+                )
             }
         )
-    elif spark.version.startswith('3'):
+    elif spark.version.startswith("3"):
         confdic.update(
             {
-                "spark.jars.packages": 'org.apache.spark:spark-avro_2.12:{}'.format(spark.version)
+                "spark.jars.packages": "org.apache.spark:spark-avro_2.12:{}".format(
+                    spark.version
+                )
             }
         )
     conf.setMaster("local[1]")
     conf.setAppName("fink_science_test")
     for k, v in confdic.items():
         conf.set(key=k, value=v)
-    spark = SparkSession\
-        .builder\
-        .appName("fink_science_test")\
-        .config(conf=conf)\
+    spark = (
+        SparkSession.builder.appName("fink_science_test")
+        .config(conf=conf)
         .getOrCreate()
+    )
 
     global_args["spark"] = spark
 
@@ -117,7 +121,6 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
         np.set_printoptions(legacy="1.13")
 
     sys.exit(doctest.testmod(globs=global_args, verbose=verbose)[0])
-
 
 
 def add_roid_datatest(spark: SparkSession, is_processor=False):
@@ -133,7 +136,9 @@ def add_roid_datatest(spark: SparkSession, is_processor=False):
     """
     path = os.path.dirname(__file__)
     if is_processor:
-        orbit_sample = "file://{}/data/alerts/roid_datatest/orbital.parquet".format(path)
+        orbit_sample = "file://{}/data/alerts/roid_datatest/orbital.parquet".format(
+            path
+        )
         kalman_sample = "file://{}/data/alerts/roid_datatest/kalman.pkl".format(path)
     else:
         orbit_sample = "file://{}/data/orbital.parquet".format(path)
