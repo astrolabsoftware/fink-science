@@ -378,13 +378,13 @@ def rfscore_sigmoid_elasticc(
 
         # Julien added `id`
         meta_feats = [
-            hostgal_dec.values[j],
+            ra.values[j],
+            dec.values[j],
             hostgal_ra.values[j],
+            hostgal_dec.values[j],
             hostgal_snsep.values[j],
             hostgal_zphot.values[j],
             hostgal_zphot_err.values[j],
-            ra.values[j],
-            dec.values[j]
         ]
 
         test_features.append(np.concatenate((meta_feats, features)))
