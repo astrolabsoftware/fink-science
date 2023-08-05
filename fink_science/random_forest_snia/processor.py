@@ -27,7 +27,7 @@ from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
-from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc
+from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc_perfilter
 
 from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
@@ -178,11 +178,10 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
             flag.append(True)
         test_features.append(features)
 
-    flag = np.array(flag, dtype=np.bool)
+    flag = np.array(flag, dtype=bool)
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
-    probabilities[~flag] = 0.0
 
     # Take only probabilities to be Ia
     to_return = np.zeros(len(jd), dtype=float)
@@ -276,14 +275,12 @@ def extract_features_rf_snia(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist) -> 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_sigmoid_elasticc(
         midPointTai, filterName, psFlux, psFluxErr,
-        cdsxmatch, nobs, ra, dec, hostgal_ra, hostgal_dec,
+        ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
         hostgal_zphot, hostgal_zphot_err,
-        mwebv, maxduration=None,
+        maxduration=None,
         model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
-
-    You need to run the SIMBAD crossmatch before.
 
     Parameters
     ----------
@@ -293,10 +290,6 @@ def rfscore_sigmoid_elasticc(
         Filter IDs (vectors of str)
     psFlux, psFluxErr: Spark DataFrame Columns
         SNANA calibrated flux, and 1-sigma error (vectors of floats)
-    cdsxmatch: Spark DataFrame Column
-        Type of object found in Simbad (string)
-    nobs: Spark DataFrame Column
-        Column containing the number of detections by LSST
     meta: list
         Additional features using metadata from ELaSTICC
     maxduration: Spark DataFrame Column
@@ -333,88 +326,71 @@ def rfscore_sigmoid_elasticc(
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaSources')
+    ...         current='diaSource', history='prvDiaForcedSources')
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('cdsxmatch'), F.col('diaSource.nobs')]
     >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
     >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
+    >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
-    >>> args += [F.col('diaObject.hostgal_zphot_err'), F.col('diaObject.mwebv')]
+    >>> args += [F.col('diaObject.hostgal_zphot_err')]
     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    0
+    14
     """
-    mask = apply_selection_cuts_ztf(psFlux, nobs, cdsxmatch, maxndethist=100)
 
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
     # Maximum days in the history
     if maxduration is not None:
-        mask *= (dt <= maxduration.values[0])
+        mask = (dt <= maxduration.values[0])
+    else:
+        mask = np.repeat(True, len(midPointTai))
 
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
     candid = pd.Series(range(len(midPointTai)))
-    pdf = format_data_as_snana(
-        midPointTai, psFlux, psFluxErr,
-        filterName, candid, mask,
-        transform_to_flux=False
-    )
+    ids = candid[mask]
 
     # Load pre-trained model `clf`
     if model is not None:
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/default-model_sigmoid_elasticc_meta.obj'
+        model = curdir + '/data/models/earlysnia_elasticc_03AGO2023_2filters.pkl'
         clf = load_scikit_model(model)
 
     test_features = []
-    flag = []
-    for id in np.unique(pdf['SNID']):
-        f1 = pdf['SNID'] == id
-        pdf_sub = pdf[f1]
-        features = get_sigmoid_features_elasticc(pdf_sub)
+    for j in ids:
+        pdf = pd.DataFrame.from_dict(
+            {
+                'MJD': midPointTai[j],
+                'FLT': filterName[j],
+                'FLUXCAL': psFlux[j],
+                'FLUXCALERR': psFluxErr[j]
+            }
+        )
 
-        feats = []
-        nfeat_per_band = 6
-        nbands = 6
+        features = get_sigmoid_features_elasticc_perfilter(pdf, list_filters=['u', 'g', 'r', 'i', 'z', 'Y'])
 
         # Julien added `id`
         meta_feats = [
-            ra.values[id],
-            dec.values[id],
-            hostgal_ra.values[id],
-            hostgal_dec.values[id],
-            hostgal_zphot.values[id],
-            hostgal_zphot_err.values[id],
-            mwebv.values[id]
+            hostgal_dec.values[j],
+            hostgal_ra.values[j],
+            hostgal_snsep.values[j],
+            hostgal_zphot.values[j],
+            hostgal_zphot_err.values[j],
+            ra.values[j],
+            dec.values[j],
         ]
 
-        for i in range(nbands):
-            feats.append(features[i * nfeat_per_band])
-        n_nonzero_feats = np.sum(np.array(feats) != 0)
-
-        # Do not classify if less than 2 bands
-        if n_nonzero_feats < 2:
-            flag.append(False)
-        else:
-            flag.append(True)
-        test_features.append(np.concatenate((features, meta_feats)))
-
-        # From Marco
-        # test_features.append(features)
-        # test_features.append(meta_feats)
-
-    flag = np.array(flag, dtype=np.bool)
+        test_features.append(np.concatenate((meta_feats, features)))
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
-    probabilities[~flag] = 0.0
 
     # Take only probabilities to be Ia
     to_return = np.zeros(len(midPointTai), dtype=float)
