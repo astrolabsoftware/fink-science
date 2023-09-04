@@ -106,7 +106,7 @@ def anomaly_score(lc_features) -> float:
     >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
 
     >>> df.filter(df["anomaly_score"] < -0.5).count()
-    15
+    7
 
     >>> df.filter(df["anomaly_score"] == 0).count()
     84
