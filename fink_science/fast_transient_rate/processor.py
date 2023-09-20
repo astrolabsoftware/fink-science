@@ -136,19 +136,20 @@ def fast_transient_rate(df, N):
     # compute the rate from the flux difference and convert back to magnitude
     sample_rate = (-2.5*np.log10(current_mag_sample[:, idx_last_mag] / last_mag_sample)).T / u.stack_column(dt[idx_last_mag], N)
     sample_rate_upper = (-2.5*np.log10(current_mag_sample[:, idx_last_upper] / uniform_upper)).T / u.stack_column(dt[idx_last_upper], N)
-    
+
     # fill the result arrays and return a result dataframe
     res_rate[idx_last_mag] = np.mean(sample_rate, axis=1)
     res_rate[idx_last_upper] = np.mean(sample_rate_upper, axis=1)
 
     res_sigmarate[idx_last_mag] = np.std(sample_rate, axis=1)
     res_sigmarate[idx_last_upper] = np.std(sample_rate_upper, axis=1)
-    
+
     lower_rate[idx_last_mag] = np.percentile(sample_rate, 5.0, axis=1)
     lower_rate[idx_last_upper] = np.percentile(sample_rate_upper, 5.0, axis=1)
-    
+
     upper_rate[idx_last_mag] = np.percentile(sample_rate, 95.0, axis=1)
     upper_rate[idx_last_upper] = np.percentile(sample_rate_upper, 95.0, axis=1)
+
     return pd.DataFrame(np.array([
         tmp_last[:, -1],
         jdstarthist_dt,
