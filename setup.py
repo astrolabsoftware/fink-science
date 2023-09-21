@@ -49,7 +49,7 @@ setuptools.setup(
             'data/models/t2/*/*/variables*',
             'data/models/anomaly_detection/*.csv',
             'data/models/anomaly_detection/*.zip',
-            'data/models/for_al_loop/model_20230907.pkl',
+            'data/models/for_al_loop/*.pkl',
             'data/catalogs/*.parquet',
             'data/catalogs/*.fits',
             'data/catalogs/*.csv'],
