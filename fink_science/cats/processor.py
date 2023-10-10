@@ -180,7 +180,7 @@ def predict_nn(
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/cats_models/model_meta_0'
+        model_path = curdir + '/data/models/cats_models/model_fold0.h5'
     else:
         model_path = model.values[0]
 
