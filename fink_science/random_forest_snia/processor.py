@@ -183,6 +183,10 @@ def rfscore_sigmoid_full(jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist, model=N
     # Make predictions
     probabilities = clf.predict_proba(test_features)
 
+    # pIa = 0.0 for objects that do not
+    # have both features non-zero.
+    probabilities[~flag] = [1.0, 0.0]
+
     # Take only probabilities to be Ia
     to_return = np.zeros(len(jd), dtype=float)
     to_return[mask] = probabilities.T[1]
