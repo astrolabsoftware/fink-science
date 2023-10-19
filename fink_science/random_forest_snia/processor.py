@@ -162,12 +162,12 @@ def rfscore_sigmoid_full(
     >>> args += [F.col('cdsxmatch'), F.col('candidate.ndethist')]
     >>> args += [F.lit(1), F.lit(3), F.lit('diff')]
     >>> args += [F.lit(model_path_al_loop)]
-    >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
+    >>> df = df.withColumn('pIaAL', rfscore_sigmoid_full(*args))
 
-    >>> df.filter(df['pIa'] > 0.5).count()
-    6
+    >>> df.filter(df['pIaAL'] > 0.5).count()
+    5
 
-    >>> df.agg({"pIa": "max"}).collect()[0][0] < 1.0
+    >>> df.agg({"pIaAL": "max"}).collect()[0][0] < 1.0
     True
     """
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
