@@ -72,7 +72,9 @@ def apply_selection_cuts_ztf(
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_sigmoid_full(
         jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist,
-        min_rising_points=2, min_data_points=4, rising_criteria='ewma',
+        min_rising_points=pd.Series([2]),
+        min_data_points=pd.Series([4]),
+        rising_criteria=pd.Series(['ewma']),
         model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit).
@@ -218,7 +220,9 @@ def rfscore_sigmoid_full(
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def extract_features_rf_snia(
         jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist,
-        min_rising_points=2, min_data_points=4, rising_criteria='ewma') -> pd.Series:
+        min_rising_points=pd.Series([2]),
+        min_data_points=pd.Series([4]),
+        rising_criteria=pd.Series(['ewma'])) -> pd.Series:
     """ Return the features used by the RF classifier.
 
     There are 12 features. Order is:
