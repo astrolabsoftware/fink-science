@@ -58,7 +58,7 @@ def load_classifier(source):
     elif source == 'ZTF':
         model_path = k.CLASSIFIER_ZTF
 
-    clf = joblib.load(f)
+    clf = joblib.load(model_path)
 
     return clf
 
