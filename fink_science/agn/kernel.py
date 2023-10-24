@@ -17,7 +17,7 @@ import os
 from fink_science import __file__
 
 curdir = os.path.dirname(os.path.abspath(__file__))
-CLASSIFIER_ELASTICC = curdir + "/data/models/AGN_elasticc_alerts.pkl"
-CLASSIFIER_ZTF = curdir + "/data/models/AGN_binary.pkl"
+CLASSIFIER_ELASTICC = curdir + "/data/models/AGN_elasticc_alerts.joblib"
+CLASSIFIER_ZTF = curdir + "/data/models/AGN_binary.joblib"
 MINIMUM_POINTS = 4
 MAXFEV = 3000
