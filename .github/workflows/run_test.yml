@@ -44,7 +44,7 @@ jobs:
       run: |
         pip uninstall -y actsnfink
         pip install git+https://github.com/emilleishida/fink_sn_activelearning.git@bf8d4e263e02d42781642f872f7bc030c24792bc#egg=actsnfink
-        pip install onnx
+        pip install onnx==1.12.0
         pip install onnxruntime
 
         ./run_tests.sh
