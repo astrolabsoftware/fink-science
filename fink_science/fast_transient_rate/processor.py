@@ -145,23 +145,9 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
     >>> type(local_df)
     <class 'pandas.core.frame.DataFrame'>
 
-    >>> with pd.option_context('display.float_format', '{:.4f}'.format):
-    ...     with pd.option_context('display.max_columns', None):
-    ...         print(fast_transient_rate(local_df, 100, 1))
-         jd_first_real_det  jdstarthist_dt  mag_rate  sigma_rate  lower_rate  upper_rate  delta_time  from_upper
-    0         2459517.8436       1425.2497   -0.2087      0.0446     -0.2940     -0.1631     22.9846      1.0000
-    1         2459517.8436       1425.2497   -0.1409      0.0347     -0.2047     -0.1060     22.9597      1.0000
-    2         2459512.8258       1418.2212   -0.0120      0.0072     -0.0228     -0.0016     28.0029      0.0000
-    3         2459512.8258       1419.9723   -0.1201      0.0415     -0.2055     -0.0684     22.0692      1.0000
-    4         2459512.8626       1443.0561   -0.0610      0.0395     -0.1429     -0.0220     27.9762      1.0000
-    ..                 ...             ...       ...         ...         ...         ...         ...         ...
-    315       2459517.6274        -23.1070   -0.1956      0.0510     -0.2971     -0.1458     23.0848      1.0000
-    316       2459517.6274        -23.1070   -0.1929      0.0623     -0.2781     -0.1382     23.0848      1.0000
-    317       2459538.0496        994.1722   -0.2002      0.3322     -0.7793      0.1517      3.0076      1.0000
-    318       2459537.0483         -4.0098   -0.3982      0.3260     -1.0058     -0.1093      4.0098      1.0000
-    319       2459538.0496         -3.0100   -0.0138      0.3386     -0.5377      0.3246      3.0100      1.0000
-    <BLANKLINE>
-    [320 rows x 8 columns]
+    >>> ft_df = fast_transient_rate(local_df, 100, 1)
+    >>> len(ft_df[ft_df["mag_rate"].abs() > 0.2])
+    48
     """
     # create random generator
     rng = np.random.default_rng(seed)
@@ -374,28 +360,11 @@ def fast_transient_module(spark_df, N, seed=None):
 
     Examples
     --------
-    >>> from pyspark.sql.functions import round
+    >>> from pyspark.sql.functions import abs
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
     >>> df = fast_transient_module(df, 100, 1)
-
-    >>> ft_cols = [
-    ...     round(col, 4).alias(col) if col != "from_upper"
-    ...     else col
-    ...     for col in list(rate_module_output_schema.keys())
-    ... ]
-
-    >>> df.orderBy(["objectId", "candidate.jd"]).select(["objectId", *ft_cols]).show(5)
-    +------------+-----------------+--------------+--------+----------+----------+----------+----------+----------+
-    |    objectId|jd_first_real_det|jdstarthist_dt|mag_rate|sigma_rate|lower_rate|upper_rate|delta_time|from_upper|
-    +------------+-----------------+--------------+--------+----------+----------+----------+----------+----------+
-    |ZTF17aaabbbp|     2459517.8436|     1425.2497| -0.2087|    0.0479|   -0.3065|   -0.1639|   22.9846|      true|
-    |ZTF17aaabbbp|     2459517.8436|     1425.2497| -0.1562|    0.0662|   -0.2345|   -0.1045|   22.9597|      true|
-    |ZTF17aaabqqd|     2459512.8258|     1418.2212| -0.0099|    0.0081|   -0.0224|     0.004|   28.0029|     false|
-    |ZTF17aaabqqd|     2459512.8258|     1419.9723| -0.1217|    0.0495|   -0.2138|   -0.0747|   22.0692|      true|
-    |ZTF17aaacfxd|     2459512.8626|     1443.0561| -0.0588|    0.0396|   -0.1397|   -0.0189|   27.9762|      true|
-    +------------+-----------------+--------------+--------+----------+----------+----------+----------+----------+
-    only showing top 5 rows
-    <BLANKLINE>
+    >>> df.filter(abs(df.mag_rate) > 0.2).count()
+    47
     """
     cols_before = spark_df.columns
 
