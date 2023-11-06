@@ -146,7 +146,7 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
     <class 'pandas.core.frame.DataFrame'>
 
     >>> with pd.option_context('display.float_format', '{:.4f}'.format):
-    ...     with pd.option_context('display.max_colwidth', None):
+    ...     with pd.option_context('display.max_columns', None):
     ...         print(fast_transient_rate(local_df, 100, 1))
          jd_first_real_det  jdstarthist_dt  mag_rate  sigma_rate  lower_rate  upper_rate  delta_time  from_upper
     0         2459517.8436       1425.2497   -0.2087      0.0446     -0.2940     -0.1631     22.9846      1.0000
