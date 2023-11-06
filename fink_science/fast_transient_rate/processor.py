@@ -11,6 +11,7 @@ from fink_science.fast_transient_rate import rate_module_output_schema
 from fink_utils.spark.utils import concat_col
 
 from fink_science.tester import spark_unit_tests
+from fink_science import __file__
 
 def get_last_alert(
     fid: int,
@@ -86,7 +87,7 @@ def return_last_alerts(*args):
     ]
 
 
-def fast_transient_rate(df, N):
+def fast_transient_rate(df, N, seed=None):
     """
     Compute the magnitude rate for fast transient detection.
 
@@ -129,6 +130,9 @@ def fast_transient_rate(df, N):
 
 
     """
+    # create random generator
+    rng = np.random.default_rng(seed)
+
     df = df.reset_index(drop=True)
 
     # initialize return array
@@ -174,21 +178,21 @@ def fast_transient_rate(df, N):
     # sample rate from a gaussian distribution center around the flux with a deviation of error flux
     current_mag_sample = np.empty((N, len(df)), dtype=np.float64)
     current_flux = u.to_flux(df["magpsf"][idx_valid_data])
-    current_mag_sample[:, idx_valid_data] = np.random.normal(
+    current_mag_sample[:, idx_valid_data] = rng.normal(
         current_flux,
         u.to_fluxerr(df["sigmapsf"][idx_valid_data], current_flux),
         (N, len(idx_valid_data)),
     )
 
     last_flux = u.to_flux(tmp_last[:, 0][idx_last_mag])
-    last_mag_sample = np.random.normal(
+    last_mag_sample = rng.normal(
         last_flux,
         u.to_fluxerr(tmp_last[:, 1][idx_last_mag], last_flux),
         (N, len(idx_last_mag)),
     )
 
     # sample upper limit from a uniform distribution starting at 0 until the upper limit
-    uniform_upper = np.random.uniform(
+    uniform_upper = rng.uniform(
         0, u.to_flux(tmp_last[:, 2][idx_last_upper]), (N, len(idx_last_upper))
     )
 
@@ -248,6 +252,7 @@ def magnitude_rate(
     cfid,
     cdiffmaglim,
     N,
+    seed
 ):
     """
     Call the fast_transient_rate within a distributed context (spark pandas udf)
@@ -300,10 +305,10 @@ def magnitude_rate(
         }
     )
 
-    return fast_transient_rate(pdf, N.values[0])
+    return fast_transient_rate(pdf, N.values[0], seed.values[0])
 
 
-def fast_transient_module(spark_df, N):
+def fast_transient_module(spark_df, N, seed=None):
     """
     wrapper function to easily call the fast transient module
 
@@ -332,9 +337,20 @@ def fast_transient_module(spark_df, N):
 
     Examples
     --------
-    >>> df = spark.read.load(ztf_alert_sample)
-    >>> df = fast_transient_module(df, 100)
-    >>> df.select(["objectId", *list(rate_module_output_schema.keys())]).show()
+    >>> df = spark.read.format('parquet').load(ztf_alert_sample)
+    >>> df = fast_transient_module(df, 100, 1)
+    >>> df.select(["objectId", *list(rate_module_output_schema.keys())]).show(5)
+    +------------+-----------------+------------------+--------------------+-------------------+--------------------+--------------------+------------------+----------+
+    |    objectId|jd_first_real_det|    jdstarthist_dt|            mag_rate|         sigma_rate|          lower_rate|          upper_rate|        delta_time|from_upper|
+    +------------+-----------------+------------------+--------------------+-------------------+--------------------+--------------------+------------------+----------+
+    |ZTF18aceiioy|  2459510.6849653|1158.8698843000457|-0.06188297715685...|0.03137471455595489| -0.1261847889148987|-0.02829396430313...|29.892141200136393|      true|
+    |ZTF19aacasnk|  2459510.6849653| 1018.095162099693|-0.11218703990105841| 0.0395777675107466|-0.17683248121097433|-0.07917935791690875|29.892141200136393|      true|
+    |ZTF18abvwsjv|  2459510.6849653|1134.9010533001274|0.018783356482495257|0.00359495598035358|0.013292234065157046|0.024552783916054706|29.892141200136393|     false|
+    |ZTF18abvbosx|  2459510.6849653|1137.9120948999189|-0.12986079288167868| 0.0327441784840633|-0.19554096981506622|-0.09598747835417709|29.892141200136393|      true|
+    |ZTF18aborogc|  2459510.6304398|1229.7532292003743| 0.02088803674450297|0.03071310855349837|-0.04083245142187782|0.051164514493760076| 29.88002309994772|      true|
+    +------------+-----------------+------------------+--------------------+-------------------+--------------------+--------------------+------------------+----------+
+    only showing top 5 rows
+    <BLANKLINE>
     """
     cols_before = spark_df.columns
 
@@ -358,12 +374,14 @@ def fast_transient_module(spark_df, N):
             df_concat["cfid"],
             df_concat["cdiffmaglim"],
             F.lit(N),
+            F.lit(seed)
         ),
     )
 
     return df_ft.select(
         cols_before + [df_ft["ft_module"][k].alias(k) for k in rate_module_output_schema.keys()]
     )
+
 
 if __name__ == "__main__":
     """ Execute the test suite """
