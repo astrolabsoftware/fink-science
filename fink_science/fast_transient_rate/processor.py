@@ -145,9 +145,9 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
     >>> type(local_df)
     <class 'pandas.core.frame.DataFrame'>
 
-    >>> ft_df = fast_transient_rate(local_df, 100, 1)
+    >>> ft_df = fast_transient_rate(local_df, 10000, 2023)
     >>> len(ft_df[ft_df["mag_rate"].abs() > 0.2])
-    48
+    47
     """
     # create random generator
     rng = np.random.default_rng(seed)
@@ -362,9 +362,9 @@ def fast_transient_module(spark_df, N, seed=None):
     --------
     >>> from pyspark.sql.functions import abs
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
-    >>> df = fast_transient_module(df, 100, 1)
+    >>> df = fast_transient_module(df, 10000, 2023)
     >>> df.filter(abs(df.mag_rate) > 0.2).count()
-    47
+    48
     """
     cols_before = spark_df.columns
 
