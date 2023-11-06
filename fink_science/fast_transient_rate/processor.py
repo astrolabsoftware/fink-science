@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import os
 from pyspark.sql.types import StructType, StructField
 
 from pyspark.sql.functions import pandas_udf
@@ -9,6 +10,7 @@ import fink_science.fast_transient_rate.utils as u
 from fink_science.fast_transient_rate import rate_module_output_schema
 from fink_utils.spark.utils import concat_col
 
+from fink_science.tester import spark_unit_tests
 
 def get_last_alert(
     fid: int,
@@ -330,7 +332,9 @@ def fast_transient_module(spark_df, N):
 
     Examples
     --------
-
+    >>> df = spark.read.load(ztf_alert_sample)
+    >>> df = fast_transient_module(df, 100)
+    >>> df.select(["objectId", *list(rate_module_output_schema.keys())]).show()
     """
     cols_before = spark_df.columns
 
@@ -360,3 +364,14 @@ def fast_transient_module(spark_df, N):
     return df_ft.select(
         cols_before + [df_ft["ft_module"][k].alias(k) for k in rate_module_output_schema.keys()]
     )
+
+if __name__ == "__main__":
+    """ Execute the test suite """
+
+    globs = globals()
+    path = os.path.dirname(__file__)
+    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    globs["ztf_alert_sample"] = ztf_alert_sample
+
+    # Run the test suite
+    spark_unit_tests(globs)
