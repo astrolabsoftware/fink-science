@@ -13,6 +13,7 @@ from fink_utils.spark.utils import concat_col
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
+
 def get_last_alert(
     fid: int,
     cfid: int,
@@ -72,7 +73,7 @@ def get_last_alert(
     return [float("nan"), float("nan"), float("nan"), float("nan"), jdstarthist5sigma]
 
 
-def return_last_alerts(*args):
+def return_last_alerts(*args) -> list:
     """
     see get_last_alert documentation
 
@@ -87,7 +88,7 @@ def return_last_alerts(*args):
     ]
 
 
-def fast_transient_rate(df, N, seed=None):
+def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFrame:
     """
     Compute the magnitude rate for fast transient detection.
 
@@ -99,6 +100,8 @@ def fast_transient_rate(df, N, seed=None):
             from the alert history: magpsf, sigmapsf, diffmaglim, jd
     N: integer
         Number of values to sample for the error rate computation
+    seed: integer
+        seed for the random number generator (for reproducibility)
 
     Return
     ------
@@ -127,8 +130,36 @@ def fast_transient_rate(df, N, seed=None):
 
     Examples
     --------
+    >>> spark_df = spark.read.format('parquet').load(ztf_alert_sample)
+    >>> df_concat = concat_col(spark_df, "magpsf")
+    >>> df_concat = concat_col(df_concat, "sigmapsf")
+    >>> df_concat = concat_col(df_concat, "diffmaglim")
+    >>> df_concat = concat_col(df_concat, "jd")
+    >>> df_concat = concat_col(df_concat, "fid")
 
+    >>> local_df = df_concat.select([
+    ... "candidate.fid", "cfid", "cmagpsf", "csigmapsf", "cdiffmaglim", "cjd",
+    ... "candidate.jd", "candidate.jdstarthist", "candidate.magpsf", "candidate.sigmapsf"
+    ... ]).toPandas()
 
+    >>> type(local_df)
+    <class 'pandas.core.frame.DataFrame'>
+
+    >>> fast_transient_rate(local_df, 100, 1)
+         jd_first_real_det  jdstarthist_dt  mag_rate  sigma_rate  lower_rate  upper_rate  delta_time  from_upper
+    0         2.459511e+06     1158.869884 -0.066805    0.034112   -0.133286   -0.029991   29.892141         1.0
+    1         2.459511e+06     1018.095162 -0.102890    0.026445   -0.151063   -0.076359   29.892141         1.0
+    2         2.459511e+06     1134.901053  0.018168    0.003675    0.012621    0.023383   29.892141         0.0
+    3         2.459511e+06     1137.912095 -0.129177    0.030206   -0.193259   -0.096113   29.892141         1.0
+    4         2.459511e+06     1229.753229  0.013787    0.036823   -0.062329    0.050114   29.880023         1.0
+    ..                 ...             ...       ...         ...         ...         ...         ...         ...
+    315       2.459511e+06     1198.784942 -0.122924    0.032110   -0.181194   -0.090394   29.988160         1.0
+    316       2.459513e+06     1209.817639 -0.054985    0.046542   -0.139735   -0.016068   27.934919         1.0
+    317       2.459513e+06     1411.094225  0.003907    0.002416   -0.000413    0.007470   22.089444         0.0
+    318       2.459513e+06     1209.817639 -0.247882    0.045485   -0.326585   -0.204877   22.093692         1.0
+    319       2.459541e+06     1366.055000 -1.769942   24.620849  -41.791666   39.044792    0.010243         0.0
+    <BLANKLINE>
+    [320 rows x 8 columns]
     """
     # create random generator
     rng = np.random.default_rng(seed)
@@ -252,7 +283,7 @@ def magnitude_rate(
     cfid,
     cdiffmaglim,
     N,
-    seed
+    seed,
 ):
     """
     Call the fast_transient_rate within a distributed context (spark pandas udf)
@@ -281,6 +312,8 @@ def magnitude_rate(
         upper limit estimation from the history
     N: pd.Series
         Number of values to sample for the error rate computation
+    seed: integer
+        seed for the random number generator (for reproducibility)
 
     Return
     ------
@@ -329,6 +362,8 @@ def fast_transient_module(spark_df, N, seed=None):
             * prv_candidate.fid
     N: integer
         Number of values to sample for the error rate computation
+    seed: integer
+        seed for the random number generator (for reproducibility)
 
     Return
     ------
@@ -339,15 +374,15 @@ def fast_transient_module(spark_df, N, seed=None):
     --------
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
     >>> df = fast_transient_module(df, 100, 1)
-    >>> df.select(["objectId", *list(rate_module_output_schema.keys())]).show(5)
+    >>> df.orderBy(["objectId", "candidate.jd"]).select(["objectId", *list(rate_module_output_schema.keys())]).show(5)
     +------------+-----------------+------------------+--------------------+-------------------+--------------------+--------------------+------------------+----------+
     |    objectId|jd_first_real_det|    jdstarthist_dt|            mag_rate|         sigma_rate|          lower_rate|          upper_rate|        delta_time|from_upper|
     +------------+-----------------+------------------+--------------------+-------------------+--------------------+--------------------+------------------+----------+
-    |ZTF18aceiioy|  2459510.6849653|1158.8698843000457|-0.06188297715685...|0.03137471455595489| -0.1261847889148987|-0.02829396430313...|29.892141200136393|      true|
-    |ZTF19aacasnk|  2459510.6849653| 1018.095162099693|-0.11218703990105841| 0.0395777675107466|-0.17683248121097433|-0.07917935791690875|29.892141200136393|      true|
-    |ZTF18abvwsjv|  2459510.6849653|1134.9010533001274|0.018783356482495257|0.00359495598035358|0.013292234065157046|0.024552783916054706|29.892141200136393|     false|
-    |ZTF18abvbosx|  2459510.6849653|1137.9120948999189|-0.12986079288167868| 0.0327441784840633|-0.19554096981506622|-0.09598747835417709|29.892141200136393|      true|
-    |ZTF18aborogc|  2459510.6304398|1229.7532292003743| 0.02088803674450297|0.03071310855349837|-0.04083245142187782|0.051164514493760076| 29.88002309994772|      true|
+    |ZTF17aaabbbp|  2459517.8435532| 1425.249652700033|-0.20870715102868334|0.04789120804463472| -0.3064775692990118|-0.16389527305075718| 22.98456020001322|      true|
+    |ZTF17aaabbbp|  2459517.8435532| 1425.249652700033|-0.15619291670996355|0.06618118709228582|-0.23448175226201823| -0.1045037986187643|22.959710699971765|      true|
+    |ZTF17aaabqqd|  2459512.8257755| 1418.221203699708|-0.00988921883304...|0.00808545546848942|-0.02241833410161...| 0.00395248039266259|28.002858799882233|     false|
+    |ZTF17aaabqqd|  2459512.8257755|1419.9723148997873|-0.12165918485605311|0.04948945514809927|-0.21381517662209595|-0.07474257893340712|22.069189800415188|      true|
+    |ZTF17aaacfxd|  2459512.8625579|1443.0561111001298|-0.05884086266007449|0.03956762801753035|-0.13966139677545036|-0.01894148628033...| 27.97618049988523|      true|
     +------------+-----------------+------------------+--------------------+-------------------+--------------------+--------------------+------------------+----------+
     only showing top 5 rows
     <BLANKLINE>
@@ -374,7 +409,7 @@ def fast_transient_module(spark_df, N, seed=None):
             df_concat["cfid"],
             df_concat["cdiffmaglim"],
             F.lit(N),
-            F.lit(seed)
+            F.lit(seed),
         ),
     )
 
@@ -384,11 +419,11 @@ def fast_transient_module(spark_df, N, seed=None):
 
 
 if __name__ == "__main__":
-    """ Execute the test suite """
+    """Execute the test suite"""
 
     globs = globals()
     path = os.path.dirname(__file__)
-    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
