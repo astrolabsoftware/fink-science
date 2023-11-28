@@ -43,7 +43,7 @@ jobs:
     - name: Run test suites
       run: |
         pip uninstall -y actsnfink
-        pip install git+https://github.com/emilleishida/fink_sn_activelearning.git@bf8d4e263e02d42781642f872f7bc030c24792bc#egg=actsnfink
+        pip install git+https://github.com/emilleishida/fink_sn_activelearning.git@07f2b64a2a01fe745049f7e6e2e1304ff7453d31#egg=actsnfink
         pip install git+https://github.com/erusseil/light-curve-python.git@2f0e8d6509b5ac8f11efc2d0620c5409c81270b3#egg=light-curve-python
 
         pip install onnx==1.12.0
