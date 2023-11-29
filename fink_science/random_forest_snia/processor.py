@@ -19,6 +19,7 @@ import pandas as pd
 import numpy as np
 
 import os
+import joblib
 
 from fink_science import __file__
 
@@ -32,6 +33,11 @@ from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc_perfilter
 from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
 from fink_science.tester import spark_unit_tests
+
+RAINBOW_FEATURES_NAMES = ['nobs', 'snr', 'hostgal_sep', 'hostgal_zphot'] + \
+                         ['amplitude', 'rise_time', 
+                          "Tmin", "delta_T", "k_sig", 
+                          'reduced_chi2']
 
 def apply_selection_cuts_ztf(
         magpsf: pd.Series, ndethist: pd.Series, cdsxmatch: pd.Series,
@@ -184,14 +190,14 @@ def rfscore_sigmoid_full(
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/default-model_sigmoid.obj'
-        clf = load_scikit_model(model)
+        clf = joblib.load(model)
 
     test_features = []
     flag = []
     for id in np.unique(pdf['SNID']):
         pdf_sub = pdf[pdf['SNID'] == id]
-        features = get_sigmoid_features_dev(
-            pdf_sub,
+        features = fit_rainbow(
+            pdf_sub[''],
             min_rising_points=min_rising_points.values[0],
             min_data_points=min_data_points.values[0],
             rising_criteria=rising_criteria.values[0]
@@ -439,6 +445,244 @@ def rfscore_sigmoid_elasticc(
 
     return pd.Series(to_return)
 
+@pandas_udf(StringType(), PandasUDFType.SCALAR)
+def extract_features_rainbow(
+        jd, fid, magpsf, sigmapsf, 
+        band_wave_aa={'u':3671.0,'g': 4827.0, 'r':6223.0, 
+                      'i':7546.0, 'z': 8691.0, 'Y':9712.0},
+        with_baseline=False, 
+        with_temperature_evolution=True,
+        min_data_points=7,
+        list_filters=['u','g','r','i','z','Y'],
+        low_bound=-10) -> pd.Series:
+    """ Return the features used by the RF classifier.
+
+    There are 12 features. Order is:
+    a_g,b_g,c_g,snratio_g,chisq_g,nrise_g,
+    a_r,b_r,c_r,snratio_r,chisq_r,nrise_r
+
+    Parameters
+    ----------
+    jd: Spark DataFrame Column
+        JD times (float)
+    fid: Spark DataFrame Column
+        Filter IDs (int)
+    magpsf, sigmapsf: Spark DataFrame Columns
+        Magnitude from PSF-fit photometry, and 1-sigma error
+    band_wave_aa: dict (optional)
+        Dictionary with effective wavelength for each filter. 
+        Default is for ZTF: {"g": 4770.0, "r": 6231.0, "i": 7625.0} 
+    with_baseline: bool (optional)
+        Baseline to be considered. Default is False (baseline 0).
+    low_bound: float (optional)
+        Lower bound of FLUXCAL to consider. Default is -10.
+    with_temperature_evolution: bool (optional)
+       If True use declining sigmoid for temperature evolution.
+       Default is True.
+
+    Returns
+    ----------
+    features: list of str
+        List of string.
+
+    Examples
+    ----------
+    >>> from pyspark.sql.functions import split
+    >>> from pyspark.sql.types import FloatType
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('nobs'), F.col('snr'), F.col('hostgal_sep'), F.colp('hostgal_zphot')]
+    >>> df = df.withColumn('features', extract_features_rf_snia(*args))
+
+    >>> for name in RF_FEATURE_NAMES:
+    ...   index = RF_FEATURE_NAMES.index(name)
+    ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
+
+    # Trigger something
+    >>> df.agg({RF_FEATURE_NAMES[0]: "min"}).collect()[0][0]
+    0.0
+    """
+    mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
+
+    if len(jd[mask]) == 0:
+        return pd.Series(np.zeros(len(jd), dtype=float))
+
+    candid = pd.Series(range(len(jd)))
+    pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
+
+    test_features = []
+    for id in np.unique(pdf['SNID']):
+        pdf_sub = pdf[pdf['SNID'] == id]
+        features = fit_rainbow(
+            pdf_sub['MJD'].values, pdf_sub['FLT'].values, 
+            pdf_sub['FLUXCAL'].values, pdf_sub['FLUXCALERR'].values,
+            band_wave_aa=band_wave_aa,
+            with_baseline=with_baseline, 
+            with_temperature_evolution=with_temperature_evolution,
+            min_data_points=min_data_points,
+            list_filters=bands,
+            low_bound=low_bound
+        )
+        test_features.append([pdf_sub.shape[0]] + \
+                             list(pdf_sub.iloc[0][['nobs', 'snr', 
+                                                   'hostgal_sep', 
+                                                   'hostgal_zphot']].values) + \
+                             list(features[1:]))
+
+    to_return_features = np.zeros((len(jd), len(RF_FEATURE_NAMES)), dtype=float)
+    to_return_features[mask] = test_features
+
+    concatenated_features = [
+        ','.join(np.array(i, dtype=str)) for i in to_return_features
+    ]
+
+    return pd.Series(concatenated_features)
+
+
+
+@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+def rfscore_rainbow_elasticc(
+        midPointTai, filterName, psFlux, psFluxErr,
+        nobs, snr,
+        hostgal_snsep,
+        hostgal_zphot, 
+        maxduration=None,
+        model=None) -> pd.Series:
+    """ Return the probability of an alert to be a SNe Ia using a Random
+    Forest Classifier (rainbow fit) on ELaSTICC alert data.
+
+    Parameters
+    ----------
+    midPointTai: Spark DataFrame Column
+        JD times (vectors of floats)
+    filterName: Spark DataFrame Column
+        Filter IDs (vectors of str)
+    psFlux, psFluxErr: Spark DataFrame Columns
+        SNANA calibrated flux, and 1-sigma error (vectors of floats)
+    metalist: list
+        Additional features using metadata from ELaSTICC
+    maxduration: Spark DataFrame Column
+        Integer for the maximum duration (in days) of the lightcurve to be
+        classified.
+        Default is None, i.e. no maximum duration
+    model: Spark DataFrame Column, optional
+        Path to the trained model. Default is None, in which case the default
+        model `data/models/default-model.obj` is loaded.
+
+    Returns
+    ----------
+    probabilities: 1D np.array of float
+        Probability between 0 (non-Ia) and 1 (Ia).
+
+    Examples
+    ----------
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
+
+    # Assuming random positions
+    >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
+
+    # Required alert columns
+    >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...     df = concat_col(
+    ...         df, colname, prefix=prefix,
+    ...         current='diaSource', history='prvDiaForcedSources')
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
+    >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
+    >>> args += [F.col('diaObject.hostgal_snsep')]
+    >>> args += [F.col('diaObject.hostgal_zphot')]
+    >>> args += [F.col('diaObject.hostgal_zphot_err')]
+    >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
+
+    >>> df.filter(df['pIa'] > 0.5).count()
+    14
+    """
+
+    dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
+
+    # Maximum days in the history
+    if maxduration is not None:
+        mask = (dt <= maxduration.values[0])
+    else:
+        mask = np.repeat(True, len(midPointTai))
+
+    if len(midPointTai[mask]) == 0:
+        return pd.Series(np.zeros(len(midPointTai), dtype=float))
+
+    candid = pd.Series(range(len(midPointTai)))
+    ids = candid[mask]
+
+    # Load pre-trained model `clf`
+    if model is not None:
+        clf = load_scikit_model(model.values[0])
+    else:
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        model = curdir + '/data/models/elasticc_rainbow_earlyIa.joblib'
+        clf = load_scikit_model(model)
+
+    test_features = []
+    for j in ids:
+        pdf = pd.DataFrame.from_dict(
+            {
+                'MJD': midPointTai[j],
+                'FLT': filterName[j],
+                'FLUXCAL': psFlux[j],
+                'FLUXCALERR': psFluxErr[j]
+            }
+        )
+
+        features = get_sigmoid_features_elasticc_perfilter(pdf, list_filters=['u', 'g', 'r', 'i', 'z', 'Y'])
+
+        # Julien added `id`
+        meta_feats = [
+            hostgal_dec.values[j],
+            hostgal_ra.values[j],
+            hostgal_snsep.values[j],
+            hostgal_zphot.values[j],
+            hostgal_zphot_err.values[j],
+            ra.values[j],
+            dec.values[j],
+        ]
+
+        test_features.append(np.concatenate((meta_feats, features)))
+
+    # Make predictions
+    probabilities = clf.predict_proba(test_features)
+
+    # Take only probabilities to be Ia
+    to_return = np.zeros(len(midPointTai), dtype=float)
+    to_return[mask] = probabilities.T[1]
+
+    return pd.Series(to_return)
+
 
 if __name__ == "__main__":
     """ Execute the test suite """
@@ -449,7 +693,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_sample_seed0.parquet'.format(path)
+    elasticc_alert_sample = 'file://{}/data/alerts/test_elasticc_earlysnia.parquet'.format(path)
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
