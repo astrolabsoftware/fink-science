@@ -34,8 +34,7 @@ from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
 from fink_science.tester import spark_unit_tests
 
-RAINBOW_FEATURES_NAMES = ['nobs', 'snr', 'hostgal_sep', 'hostgal_zphot'] + \
-                         ['amplitude', 'rise_time', 
+RAINBOW_FEATURES_NAMES = ['amplitude', 'rise_time', 
                           "Tmin", "delta_T", "k_sig", 
                           'reduced_chi2']
 
@@ -457,9 +456,8 @@ def extract_features_rainbow(
         low_bound=-10) -> pd.Series:
     """ Return the features used by the RF classifier.
 
-    There are 12 features. Order is:
-    a_g,b_g,c_g,snratio_g,chisq_g,nrise_g,
-    a_r,b_r,c_r,snratio_r,chisq_r,nrise_r
+    There are  6 features. Order is:
+    ['amplitude', 'rise_time', "Tmin", "delta_T", "k_sig",'reduced_chi2']
 
     Parameters
     ----------
@@ -474,16 +472,18 @@ def extract_features_rainbow(
         Default is for ZTF: {"g": 4770.0, "r": 6231.0, "i": 7625.0} 
     with_baseline: bool (optional)
         Baseline to be considered. Default is False (baseline 0).
-    low_bound: float (optional)
-        Lower bound of FLUXCAL to consider. Default is -10.
     with_temperature_evolution: bool (optional)
        If True use declining sigmoid for temperature evolution.
        Default is True.
-
+    min_data_points: int (optional)
+       Minimum number of data points in all filters. Default is 7.
+    low_bound: float (optional)
+        Lower bound of FLUXCAL to consider. Default is -10.
+    
     Returns
     ----------
-    features: list of str
-        List of string.
+    features: list of floats
+        Rainbow best-fit parameter values.
 
     Examples
     ----------
@@ -507,23 +507,21 @@ def extract_features_rainbow(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('nobs'), F.col('snr'), F.col('hostgal_sep'), F.colp('hostgal_zphot')]
-    >>> df = df.withColumn('features', extract_features_rf_snia(*args))
+    >>> df = df.withColumn('features', extract_features_rainbow(*args))
 
-    >>> for name in RF_FEATURE_NAMES:
-    ...   index = RF_FEATURE_NAMES.index(name)
+    >>> for name in RAINBOW_FEATURE_NAMES:
+    ...   index = RAINBOW_FEATURE_NAMES.index(name)
     ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
 
     # Trigger something
-    >>> df.agg({RF_FEATURE_NAMES[0]: "min"}).collect()[0][0]
-    0.0
+    >>> df.agg({RAINBOW_FEATURE_NAMES[1]: "min"}).collect()[0][0]
+    1.0798199911817054e-08
     """
-    mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
-
-    if len(jd[mask]) == 0:
+    if len(jd) < min_data_points:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     candid = pd.Series(range(len(jd)))
+    mask = [True for i in range(len(jd))]
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     test_features = []
@@ -539,19 +537,14 @@ def extract_features_rainbow(
             list_filters=bands,
             low_bound=low_bound
         )
-        test_features.append([pdf_sub.shape[0]] + \
-                             list(pdf_sub.iloc[0][['nobs', 'snr', 
-                                                   'hostgal_sep', 
-                                                   'hostgal_zphot']].values) + \
-                             list(features[1:]))
+        test_features.append(features[1:])
 
-    to_return_features = np.zeros((len(jd), len(RF_FEATURE_NAMES)), dtype=float)
+    to_return_features = np.zeros((len(jd), len(RAINBOW_FEATURE_NAMES)), dtype=float)
     to_return_features[mask] = test_features
 
     concatenated_features = [
         ','.join(np.array(i, dtype=str)) for i in to_return_features
     ]
-
     return pd.Series(concatenated_features)
 
 
