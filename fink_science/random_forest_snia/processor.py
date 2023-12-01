@@ -35,13 +35,16 @@ from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
 from fink_science.tester import spark_unit_tests
 
-RAINBOW_FEATURES_NAMES = ['amplitude', 'rise_time', 
-                          "Tmin", "delta_T", "k_sig", 
-                          'reduced_chi2']
+RAINBOW_FEATURES_NAMES = [
+    "amplitude", "rise_time",
+    "Tmin", "delta_T", "k_sig",
+    "reduced_chi2"
+]
+
 
 def apply_selection_cuts_ztf(
         magpsf: pd.Series, ndethist: pd.Series, cdsxmatch: pd.Series,
-        minpoints: int = 4, maxndethist: int = 20) -> pd.Series: 
+        minpoints: int = 4, maxndethist: int = 20) -> pd.Series:
     """ Apply selection cuts to keep only alerts of interest
     for early SN Ia analysis
 
@@ -81,7 +84,7 @@ def rfscore_sigmoid_full(
         min_rising_points=pd.Series([2]),
         min_data_points=pd.Series([4]),
         rising_criteria=pd.Series(['ewma']),
-        model=None) -> pd.Series: 
+        model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit).
 
@@ -130,7 +133,7 @@ def rfscore_sigmoid_full(
     >>> what_prefix = [prefix + i for i in what]
 
     # Append temp columns with historical + current measurements
-    >>> for colname in what: 
+    >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix)
 
     # Perform the fit + classification (default model)
@@ -178,23 +181,23 @@ def rfscore_sigmoid_full(
     """
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
 
-    if len(jd[mask]) == 0: 
+    if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     candid = pd.Series(range(len(jd)))
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     # Load pre-trained model `clf`
-    if model is not None: 
+    if model is not None:
         clf = load_scikit_model(model.values[0])
-    else: 
+    else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/default-model_sigmoid.obj'
         clf = joblib.load(model)
 
     test_features = []
     flag = []
-    for id in np.unique(pdf['SNID']): 
+    for id in np.unique(pdf['SNID']):
         pdf_sub = pdf[pdf['SNID'] == id]
         features = fit_rainbow(
             pdf_sub[''],
@@ -202,9 +205,9 @@ def rfscore_sigmoid_full(
             min_data_points=min_data_points.values[0],
             rising_criteria=rising_criteria.values[0]
         )
-        if (features[0] == 0) or (features[6] == 0): 
+        if (features[0] == 0) or (features[6] == 0):
             flag.append(False)
-        else: 
+        else:
             flag.append(True)
         test_features.append(features)
 
@@ -228,10 +231,10 @@ def extract_features_rf_snia(
         jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist,
         min_rising_points=pd.Series([2]),
         min_data_points=pd.Series([4]),
-        rising_criteria=pd.Series(['ewma'])) -> pd.Series: 
+        rising_criteria=pd.Series(['ewma'])) -> pd.Series:
     """ Return the features used by the RF classifier.
 
-    There are 12 features. Order is: 
+    There are 12 features. Order is:
     a_g,b_g,c_g,snratio_g,chisq_g,nrise_g,
     a_r,b_r,c_r,snratio_r,chisq_r,nrise_r
 
@@ -291,15 +294,15 @@ def extract_features_rf_snia(
     0.0
     """
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
-  
-    if len(jd[mask]) == 0: 
+
+    if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     candid = pd.Series(range(len(jd)))
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     test_features = []
-    for id in np.unique(pdf['SNID']): 
+    for id in np.unique(pdf['SNID']):
         pdf_sub = pdf[pdf['SNID'] == id]
         features = get_sigmoid_features_dev(
             pdf_sub,
@@ -325,7 +328,7 @@ def rfscore_sigmoid_elasticc(
         ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
         hostgal_zphot, hostgal_zphot_err,
         maxduration=None,
-        model=None) -> pd.Series: 
+        model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
@@ -391,27 +394,27 @@ def rfscore_sigmoid_elasticc(
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
     # Maximum days in the history
-    if maxduration is not None: 
+    if maxduration is not None:
         mask = (dt <= maxduration.values[0])
     else:
         mask = np.repeat(True, len(midPointTai))
 
-    if len(midPointTai[mask]) == 0: 
+    if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
     candid = pd.Series(range(len(midPointTai)))
     ids = candid[mask]
 
     # Load pre-trained model `clf`
-    if model is not None: 
+    if model is not None:
         clf = load_scikit_model(model.values[0])
-    else: 
+    else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/earlysnia_elasticc_03AGO2023_2filters.pkl'
         clf = load_scikit_model(model)
 
     test_features = []
-    for j in ids: 
+    for j in ids:
         pdf = pd.DataFrame.from_dict(
             {
                 'MJD': midPointTai[j],
@@ -421,7 +424,10 @@ def rfscore_sigmoid_elasticc(
             }
         )
 
-        features = get_sigmoid_features_elasticc_perfilter(pdf, list_filters=['u', 'g', 'r', 'i', 'z', 'Y'])
+        features = get_sigmoid_features_elasticc_perfilter(
+            pdf,
+            list_filters=['u', 'g', 'r', 'i', 'z', 'Y']
+        )
 
         # Julien added `id`
         meta_feats = [
@@ -448,13 +454,12 @@ def rfscore_sigmoid_elasticc(
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def extract_features_rainbow(
-        jd, fid, magpsf, sigmapsf, 
-        band_wave_aa={'u':3671.0, 'g': 4827.0, 'r':6223.0, 
-                      'i':7546.0, 'z': 8691.0, 'Y':9712.0},
-        with_baseline=False, 
-        min_data_points=7,
-        list_filters=['u', 'g', 'r', 'i', 'z', 'Y'],
-        low_bound=-10) -> pd.Series:
+        jd, fid, magpsf, sigmapsf,
+        band_wave_aa=pd.Series([{'u': 3671.0, 'g': 4827.0, 'r': 6223.0, 'i': 7546.0, 'z': 8691.0, 'Y': 9712.0}]),
+        with_baseline=pd.Series([False]),
+        min_data_points=pd.Series([7]),
+        list_filters=pd.Series([['u', 'g', 'r', 'i', 'z', 'Y']]),
+        low_bound=pd.Series([-10])) -> pd.Series:
     """ Return the features used by the RF classifier.
 
     There are  6 features. Order is:
@@ -469,15 +474,15 @@ def extract_features_rainbow(
     magpsf, sigmapsf: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
     band_wave_aa: dict (optional)
-        Dictionary with effective wavelength for each filter. 
-        Default is for ZTF: {"g": 4770.0, "r": 6231.0, "i": 7625.0} 
+        Dictionary with effective wavelength for each filter.
+        Default is for ZTF: {"g": 4770.0, "r": 6231.0, "i": 7625.0}
     with_baseline: bool (optional)
         Baseline to be considered. Default is False (baseline 0).
     min_data_points: int (optional)
        Minimum number of data points in all filters. Default is 7.
     low_bound: float (optional)
         Lower bound of FLUXCAL to consider. Default is -10.
-    
+
     Returns
     ----------
     features: list of floats
@@ -515,7 +520,7 @@ def extract_features_rainbow(
     >>> df.agg({RAINBOW_FEATURES_NAMES[1]: "min"}).collect()[0][0] < 1e-7
     True
     """
-    if len(jd) < min_data_points: 
+    if len(jd) < min_data_points:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     candid = pd.Series(range(len(jd)))
@@ -523,16 +528,16 @@ def extract_features_rainbow(
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     test_features = []
-    for id in np.unique(pdf['SNID']): 
+    for id in np.unique(pdf['SNID']):
         pdf_sub = pdf[pdf['SNID'] == id]
         features = fit_rainbow(
-            pdf_sub['MJD'].values, pdf_sub['FLT'].values, 
+            pdf_sub['MJD'].values, pdf_sub['FLT'].values,
             pdf_sub['FLUXCAL'].values, pdf_sub['FLUXCALERR'].values,
-            band_wave_aa=band_wave_aa,
-            with_baseline=with_baseline, 
-            min_data_points=min_data_points,
-            list_filters=list_filters,
-            low_bound=low_bound
+            band_wave_aa=band_wave_aa.values[0],
+            with_baseline=with_baseline.values[0],
+            min_data_points=min_data_points.values[0],
+            list_filters=list_filters.values[0],
+            low_bound=low_bound.values[0]
         )
         test_features.append(features[1:])
 
@@ -547,18 +552,17 @@ def extract_features_rainbow(
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_rainbow_elasticc(
-        midPointTai, filterName, magpsf, sigmapsf, 
+        midPointTai, filterName, magpsf, sigmapsf,
         nobs, snr,
         hostgal_snsep,
         hostgal_zphot,
         maxduration=None,
         model=None,
-        band_wave_aa={'u':3671.0, 'g': 4827.0, 'r':6223.0, 
-                      'i':7546.0, 'z': 8691.0, 'Y':9712.0},
-        with_baseline=False, 
-        min_data_points=7,
-        list_filters=['u', 'g', 'r', 'i', 'z', 'Y'],
-        low_bound=-10) -> pd.Series: 
+        band_wave_aa=pd.Series([{'u': 3671.0, 'g': 4827.0, 'r': 6223.0, 'i': 7546.0, 'z': 8691.0, 'Y': 9712.0}]),
+        with_baseline=pd.Series([False]),
+        min_data_points=pd.Series([7]),
+        list_filters=pd.Series([['u', 'g', 'r', 'i', 'z', 'Y']]),
+        low_bound=pd.Series([-10])) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (rainbow fit) on ELaSTICC alert data.
 
@@ -580,8 +584,8 @@ def rfscore_rainbow_elasticc(
         Path to the trained model. Default is None, in which case the default
         model `data/models/default-model.obj` is loaded.
     band_wave_aa: dict (optional)
-        Dictionary with effective wavelength for each filter. 
-        Default is for ZTF: {"g": 4770.0, "r": 6231.0, "i": 7625.0} 
+        Dictionary with effective wavelength for each filter.
+        Default is for ZTF: {"g": 4770.0, "r": 6231.0, "i": 7625.0}
     with_baseline: bool (optional)
         Baseline to be considered. Default is False (baseline 0).
     min_data_points: int (optional)
@@ -628,34 +632,36 @@ def rfscore_rainbow_elasticc(
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
     # Maximum days in the history
-    if maxduration is not None:  
+    if maxduration is not None:
         mask = (dt <= maxduration.values[0])
-    else: 
+    else:
         mask = np.repeat(True, len(midPointTai))
 
-    if len(midPointTai[mask]) == 0: 
+    if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
     candid = pd.Series(range(len(midPointTai)))
     ids = candid[mask]
 
     # Load pre-trained model `clf`
-    if model is not None: 
+    if model is not None:
         clf = load_scikit_model(model.values[0])
-    else: 
+    else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/elasticc_rainbow_earlyIa.joblib'
         clf = joblib.load(model)
 
     test_features = []
-    for j in ids: 
-        features = extract_features_rainbow(midPointTai[j], filterName[j], magpsf[j], sigmapsf[j], 
-                                            band_wave_aa=band_wave_aa,
-                                            with_baseline=with_baseline, 
-                                            min_data_points=min_data_points,
-                                            list_filters=list_filters,
-                                            low_bound=low_bound)
-        # Julien added `id`
+    for j in ids:
+        features = extract_features_rainbow(
+            midPointTai[j], filterName[j], magpsf[j], sigmapsf[j],
+            band_wave_aa=band_wave_aa.values[0],
+            with_baseline=with_baseline.values[0],
+            min_data_points=min_data_points.values[0],
+            list_filters=list_filters.values[0],
+            low_bound=low_bound.values[0]
+        )
+
         meta_feats = [
             len(midPointTai[j]),
             snr.values[j],
@@ -674,7 +680,7 @@ def rfscore_rainbow_elasticc(
     return pd.Series(to_return)
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     """ Execute the test suite """
 
     globs = globals()
