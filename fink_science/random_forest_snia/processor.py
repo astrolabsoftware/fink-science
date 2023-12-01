@@ -604,6 +604,7 @@ def rfscore_rainbow_elasticc(
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
+    >>> print('OOOIIIIIIIII')
 
     # Required alert columns
     >>> what = ['midPointTai', 'filterName', 'cpsFlux', 'cpsFluxErr']
