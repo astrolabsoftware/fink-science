@@ -454,7 +454,7 @@ def extract_features_rf_snia(
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def extract_features_rainbow(
-        jd, fid, magpsf, sigmapsf,
+        jd, fid, cpsFlux, cpsFluxErr,
         band_wave_aa=pd.Series([{'u': 3671.0, 'g': 4827.0, 'r': 6223.0, 'i': 7546.0, 'z': 8691.0, 'Y': 9712.0}]),
         with_baseline=pd.Series([False]),
         min_data_points=pd.Series([7]),
@@ -498,7 +498,7 @@ def extract_features_rainbow(
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Required alert columns
-    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+    >>> what = ['jd', 'fid', 'psFlux', 'psFluxErr']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -620,7 +620,7 @@ def rfscore_rainbow_elasticc(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [size(F.col('cmidPointTai'))]
+    >>> args += [F.col('cmidPointTai').count()]
     >>> args += [F.col('diaSource.snr')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
