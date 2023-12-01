@@ -507,15 +507,15 @@ def extract_features_rainbow(
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('features', extract_features_rainbow(*args))
 
-    >>> for name in RAINBOW_FEATURE_NAMES:
-    ...   index = RAINBOW_FEATURE_NAMES.index(name)
+    >>> for name in RAINBOW_FEATURES_NAMES:
+    ...   index = RAINBOW_FEATURES_NAMES.index(name)
     ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
 
     # Trigger something
-    >>> df.agg({RAINBOW_FEATURE_NAMES[1]: "min"}).collect()[0][0] < 1e-7
+    >>> df.agg({RAINBOW_FEATURES_NAMES[1]: "min"}).collect()[0][0] < 1e-7
     True
     """
-    if len(jd) < min_data_points:
+    if len(jd) < min_data_points: 
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     candid = pd.Series(range(len(jd)))
@@ -523,7 +523,7 @@ def extract_features_rainbow(
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     test_features = []
-    for id in np.unique(pdf['SNID']):
+    for id in np.unique(pdf['SNID']): 
         pdf_sub = pdf[pdf['SNID'] == id]
         features = fit_rainbow(
             pdf_sub['MJD'].values, pdf_sub['FLT'].values, 
@@ -536,7 +536,7 @@ def extract_features_rainbow(
         )
         test_features.append(features[1:])
 
-    to_return_features = np.zeros((len(jd), len(RAINBOW_FEATURE_NAMES)), dtype=float)
+    to_return_features = np.zeros((len(jd), len(RAINBOW_FEATURES_NAMES)), dtype=float)
     to_return_features[mask] = test_features
 
     concatenated_features = [
@@ -552,7 +552,7 @@ def rfscore_rainbow_elasticc(
         hostgal_snsep,
         hostgal_zphot,
         maxduration=None,
-        model=None) -> pd.Series:
+        model=None) -> pd.Series: 
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (rainbow fit) on ELaSTICC alert data.
 
@@ -614,19 +614,19 @@ def rfscore_rainbow_elasticc(
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
     # Maximum days in the history
-    if maxduration is not None:
+    if maxduration is not None: 
         mask = (dt <= maxduration.values[0])
     else:
         mask = np.repeat(True, len(midPointTai))
 
-    if len(midPointTai[mask]) == 0:
+    if len(midPointTai[mask]) == 0: 
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
     candid = pd.Series(range(len(midPointTai)))
     ids = candid[mask]
 
     # Load pre-trained model `clf`
-    if model is not None:
+    if model is not None: 
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
@@ -634,7 +634,7 @@ def rfscore_rainbow_elasticc(
         clf = joblib.load(model)
 
     test_features = []
-    for j in ids:
+    for j in ids: 
         features = extract_features_rainbow(midPointTai[j], filterName[j], magpsf[j], sigmapsf[j], 
                                             band_wave_aa=band_wave_aa,
                                             with_baseline=with_baseline, 
