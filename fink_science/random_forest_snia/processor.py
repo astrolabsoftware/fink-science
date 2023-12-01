@@ -20,6 +20,7 @@ import numpy as np
 
 import os
 import joblib
+import pickle
 
 from fink_science import __file__
 
@@ -648,8 +649,8 @@ def rfscore_rainbow_elasticc(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/elasticc_rainbow_earlyIa.joblib'
-        clf = joblib.load(model)
+        model = curdir + '/data/models/elasticc_rainbow_earlyIa.pkl'
+        clf = pickle.load(open(model, 'rb'))
 
     test_features = []
     for j in ids:
