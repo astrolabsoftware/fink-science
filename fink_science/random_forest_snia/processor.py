@@ -517,7 +517,7 @@ def extract_features_rainbow(
     ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
 
     # Trigger something
-    >>> df.agg({RAINBOW_FEATURES_NAMES[1]: "min"}).collect()[0][0] < 1e-7
+    >>> df.collect()[202][2] == 2.51773482e+00
     True
     """
     if len(jd) < min_data_points.values[0]:
