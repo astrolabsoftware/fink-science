@@ -505,7 +505,7 @@ def extract_features_rainbow(
     >>> what_prefix = [prefix + i for i in what]
 
     # Append temp columns with historical + current measurements
-    >>> for colname in what:
+    >>> for colname in what_prefix:
     ...    df = concat_col(df, colname, prefix=prefix)
 
     # Perform the fit + classification (default model)
