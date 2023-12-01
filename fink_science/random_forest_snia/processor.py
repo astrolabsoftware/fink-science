@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf, PandasUDFType, count
 from pyspark.sql.types import DoubleType, StringType
 
 import pandas as pd
@@ -620,14 +620,14 @@ def rfscore_rainbow_elasticc(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('cmidPointTai').count().collect()]
+    >>> args += [count(F.col(what_prefix[0]))]
     >>> args += [F.col('diaSource.snr')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
     >>> df = df.withColumn('pIa', rfscore_rainbow_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    599
+    80
     """
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
