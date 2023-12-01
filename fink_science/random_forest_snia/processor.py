@@ -663,7 +663,7 @@ def rfscore_rainbow_elasticc(
         )
         nobs = midPointTai[j]
         meta_feats = [
-            len(),
+            nobs,
             snr.values[j],
             hostgal_snsep.values[j],
             hostgal_zphot.values[j]
