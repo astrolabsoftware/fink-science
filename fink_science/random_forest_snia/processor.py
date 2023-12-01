@@ -38,7 +38,7 @@ from fink_science.tester import spark_unit_tests
 RAINBOW_FEATURES_NAMES = [
     "amplitude", "rise_time",
     "Tmin", "delta_T", "k_sig",
-    "reduced_chi2"
+    "reduced_chi2", "lc_max"
 ]
 
 
@@ -524,15 +524,12 @@ def extract_features_rainbow(
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     candid = pd.Series(range(len(jd)))
-    mask = [True for i in range(len(jd))]
-    pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     test_features = []
-    for id in np.unique(pdf['SNID']):
-        pdf_sub = pdf[pdf['SNID'] == id]
+    for id in np.unique(pdf['alertId']):
+        pdf_sub = pdf[pdf['alertId'] == id]
         features = fit_rainbow(
-            pdf_sub['MJD'].values, pdf_sub['FLT'].values,
-            pdf_sub['FLUXCAL'].values, pdf_sub['FLUXCALERR'].values,
+            jd, fid, cpsFlux, cpsFluxErr,
             band_wave_aa=band_wave_aa.values[0],
             with_baseline=with_baseline.values[0],
             min_data_points=min_data_points.values[0],
@@ -661,7 +658,7 @@ def rfscore_rainbow_elasticc(
             list_filters=list_filters.values[0],
             low_bound=low_bound.values[0]
         )
-        nobs = midPointTai[j]
+        nobs = midPointTai[j].count()
         meta_feats = [
             nobs,
             snr.values[j],
