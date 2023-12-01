@@ -495,7 +495,8 @@ def extract_features_rainbow(
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
-    >>> df = spark.read.load(ztf_alert_sample)
+    >>> df = spark.read.load(elasticc_alert_sample)
+    >>> df.show()
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'psFlux', 'psFluxErr']
