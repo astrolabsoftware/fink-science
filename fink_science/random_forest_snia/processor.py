@@ -524,12 +524,15 @@ def extract_features_rainbow(
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     candid = pd.Series(range(len(jd)))
+    mask = [True for i in range(len(jd))]
+    pdf = format_data_as_snana(jd, cpsFlux, cpsFluxErr, fid, candid, mask)
 
     test_features = []
-    for id in np.unique(pdf['alertId']):
-        pdf_sub = pdf[pdf['alertId'] == id]
+    for id in np.unique(pdf['SNID']):
+        pdf_sub = pdf[pdf['SNID'] == id]
         features = fit_rainbow(
-            jd, fid, cpsFlux, cpsFluxErr,
+            pdf_sub['MJD'].values, pdf_sub['FLT'].values,
+            pdf_sub['FLUXCAL'].values, pdf_sub['FLUXCALERR'].values, 
             band_wave_aa=band_wave_aa.values[0],
             with_baseline=with_baseline.values[0],
             min_data_points=min_data_points.values[0],
@@ -549,7 +552,7 @@ def extract_features_rainbow(
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_rainbow_elasticc(
-        midPointTai, filterName, magpsf, sigmapsf,
+        midPointTai, filterName, cpsFlux, cpsFluxErr,
         nobs, snr,
         hostgal_snsep,
         hostgal_zphot,
@@ -569,7 +572,7 @@ def rfscore_rainbow_elasticc(
         JD times (vectors of floats)
     filterName: Spark DataFrame Column
         Filter IDs (vectors of str)
-    magpsf, sigmapsf: Spark DataFrame Columns
+    cpsFlux, cpsFluxErr: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
     metalist: list
         Additional features using metadata from ELaSTICC
@@ -603,7 +606,7 @@ def rfscore_rainbow_elasticc(
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
 
     # Required alert columns
-    >>> what = ['midPointTai', 'filterName', 'magpsf', 'sigmapsf']
+    >>> what = ['midPointTai', 'filterName', 'cpsFlux', 'cpsFluxErr']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -651,7 +654,7 @@ def rfscore_rainbow_elasticc(
     test_features = []
     for j in ids:
         features = extract_features_rainbow(
-            midPointTai[j], filterName[j], magpsf[j], sigmapsf[j],
+            midPointTai[j], filterName[j], cpsFlux[j], cpsFluxErr[j],
             band_wave_aa=band_wave_aa.values[0],
             with_baseline=with_baseline.values[0],
             min_data_points=min_data_points.values[0],
