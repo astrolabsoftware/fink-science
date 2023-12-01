@@ -498,7 +498,7 @@ def extract_features_rainbow(
     >>> df = spark.read.load(elasticc_alert_sample)
 
     # Required alert columns
-    >>> what = ['jd', 'fid', 'psFlux', 'psFluxErr']
+    >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
 
     # Use for creating temp name
     >>> prefix = 'c'
