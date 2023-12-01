@@ -200,7 +200,8 @@ def rfscore_sigmoid_full(
     for id in np.unique(pdf['SNID']):
         pdf_sub = pdf[pdf['SNID'] == id]
         features = fit_rainbow(
-            pdf_sub[''],
+            pdf_sub['MJD'].values, pdf_sub['FLT'].values,
+            pdf_sub['FLUXCAL'].values, pdf_sub['FLUXCALERR'].values,
             min_rising_points=min_rising_points.values[0],
             min_data_points=min_data_points.values[0],
             rising_criteria=rising_criteria.values[0]
@@ -520,7 +521,7 @@ def extract_features_rainbow(
     >>> df.agg({RAINBOW_FEATURES_NAMES[1]: "min"}).collect()[0][0] < 1e-7
     True
     """
-    if len(jd) < min_data_points:
+    if len(jd) < min_data_points.values[0]:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     candid = pd.Series(range(len(jd)))
