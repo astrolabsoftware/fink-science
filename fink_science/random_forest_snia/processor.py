@@ -193,15 +193,14 @@ def rfscore_sigmoid_full(
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/default-model_sigmoid.obj'
-        clf = joblib.load(model)
+        clf = load_scikit_model(model)
 
     test_features = []
     flag = []
     for id in np.unique(pdf['SNID']):
         pdf_sub = pdf[pdf['SNID'] == id]
-        features = fit_rainbow(
-            pdf_sub['MJD'].values, pdf_sub['FLT'].values,
-            pdf_sub['FLUXCAL'].values, pdf_sub['FLUXCALERR'].values,
+        features = get_sigmoid_features_dev(
+            pdf_sub,
             min_rising_points=min_rising_points.values[0],
             min_data_points=min_data_points.values[0],
             rising_criteria=rising_criteria.values[0]
