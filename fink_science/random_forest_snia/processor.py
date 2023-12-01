@@ -606,7 +606,7 @@ def rfscore_rainbow_elasticc(
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
 
     # Required alert columns
-    >>> what = ['midPointTai', 'filterName', 'cpsFlux', 'cpsFluxErr']
+    >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
 
     # Use for creating temp name
     >>> prefix = 'c'
