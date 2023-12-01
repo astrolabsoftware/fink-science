@@ -44,6 +44,10 @@ done
 export PYTHONPATH="${SPARK_HOME}/python/test_coverage:$PYTHONPATH"
 export COVERAGE_PROCESS_START="${ROOTPATH}/.coveragerc"
 
+coverage run --source=$ROOTPATH --rcfile $ROOTPATH/.coveragerc fink_science/random_forest_snia/processor.py
+
+dad
+
 # Run the test suite on the utilities
 for filename in fink_science/*.py
 do
