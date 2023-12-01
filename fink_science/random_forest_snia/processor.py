@@ -41,7 +41,7 @@ RAINBOW_FEATURES_NAMES = ['amplitude', 'rise_time',
 
 def apply_selection_cuts_ztf(
         magpsf: pd.Series, ndethist: pd.Series, cdsxmatch: pd.Series,
-        minpoints: int = 4, maxndethist: int = 20) -> pd.Series:
+        minpoints: int = 4, maxndethist: int = 20) -> pd.Series: 
     """ Apply selection cuts to keep only alerts of interest
     for early SN Ia analysis
 
@@ -81,7 +81,7 @@ def rfscore_sigmoid_full(
         min_rising_points=pd.Series([2]),
         min_data_points=pd.Series([4]),
         rising_criteria=pd.Series(['ewma']),
-        model=None) -> pd.Series:
+        model=None) -> pd.Series: 
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit).
 
@@ -130,7 +130,7 @@ def rfscore_sigmoid_full(
     >>> what_prefix = [prefix + i for i in what]
 
     # Append temp columns with historical + current measurements
-    >>> for colname in what:
+    >>> for colname in what: 
     ...    df = concat_col(df, colname, prefix=prefix)
 
     # Perform the fit + classification (default model)
@@ -178,23 +178,23 @@ def rfscore_sigmoid_full(
     """
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
 
-    if len(jd[mask]) == 0:
+    if len(jd[mask]) == 0: 
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     candid = pd.Series(range(len(jd)))
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     # Load pre-trained model `clf`
-    if model is not None:
+    if model is not None: 
         clf = load_scikit_model(model.values[0])
-    else:
+    else: 
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/default-model_sigmoid.obj'
         clf = joblib.load(model)
 
     test_features = []
     flag = []
-    for id in np.unique(pdf['SNID']):
+    for id in np.unique(pdf['SNID']): 
         pdf_sub = pdf[pdf['SNID'] == id]
         features = fit_rainbow(
             pdf_sub[''],
@@ -202,9 +202,9 @@ def rfscore_sigmoid_full(
             min_data_points=min_data_points.values[0],
             rising_criteria=rising_criteria.values[0]
         )
-        if (features[0] == 0) or (features[6] == 0):
+        if (features[0] == 0) or (features[6] == 0): 
             flag.append(False)
-        else:
+        else: 
             flag.append(True)
         test_features.append(features)
 
@@ -228,10 +228,10 @@ def extract_features_rf_snia(
         jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist,
         min_rising_points=pd.Series([2]),
         min_data_points=pd.Series([4]),
-        rising_criteria=pd.Series(['ewma'])) -> pd.Series:
+        rising_criteria=pd.Series(['ewma'])) -> pd.Series: 
     """ Return the features used by the RF classifier.
 
-    There are 12 features. Order is:
+    There are 12 features. Order is: 
     a_g,b_g,c_g,snratio_g,chisq_g,nrise_g,
     a_r,b_r,c_r,snratio_r,chisq_r,nrise_r
 
@@ -292,14 +292,14 @@ def extract_features_rf_snia(
     """
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
   
-    if len(jd[mask]) == 0:
+    if len(jd[mask]) == 0: 
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     candid = pd.Series(range(len(jd)))
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     test_features = []
-    for id in np.unique(pdf['SNID']):
+    for id in np.unique(pdf['SNID']): 
         pdf_sub = pdf[pdf['SNID'] == id]
         features = get_sigmoid_features_dev(
             pdf_sub,
@@ -325,7 +325,7 @@ def rfscore_sigmoid_elasticc(
         ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
         hostgal_zphot, hostgal_zphot_err,
         maxduration=None,
-        model=None) -> pd.Series:
+        model=None) -> pd.Series: 
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
@@ -391,27 +391,27 @@ def rfscore_sigmoid_elasticc(
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
     # Maximum days in the history
-    if maxduration is not None:
+    if maxduration is not None: 
         mask = (dt <= maxduration.values[0])
     else:
         mask = np.repeat(True, len(midPointTai))
 
-    if len(midPointTai[mask]) == 0:
+    if len(midPointTai[mask]) == 0: 
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
     candid = pd.Series(range(len(midPointTai)))
     ids = candid[mask]
 
     # Load pre-trained model `clf`
-    if model is not None:
+    if model is not None: 
         clf = load_scikit_model(model.values[0])
-    else:
+    else: 
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/earlysnia_elasticc_03AGO2023_2filters.pkl'
         clf = load_scikit_model(model)
 
     test_features = []
-    for j in ids:
+    for j in ids: 
         pdf = pd.DataFrame.from_dict(
             {
                 'MJD': midPointTai[j],
@@ -629,9 +629,9 @@ def rfscore_rainbow_elasticc(
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
     # Maximum days in the history
-    if maxduration is not None: 
+    if maxduration is not None:  
         mask = (dt <= maxduration.values[0])
-    else:
+    else: 
         mask = np.repeat(True, len(midPointTai))
 
     if len(midPointTai[mask]) == 0: 
@@ -643,7 +643,7 @@ def rfscore_rainbow_elasticc(
     # Load pre-trained model `clf`
     if model is not None: 
         clf = load_scikit_model(model.values[0])
-    else:
+    else: 
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/elasticc_rainbow_earlyIa.joblib'
         clf = joblib.load(model)
