@@ -547,14 +547,12 @@ def extract_features_rainbow(
     ]
     return pd.Series(concatenated_features)
 
-
-
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_rainbow_elasticc(
         midPointTai, filterName, psFlux, psFluxErr,
         nobs, snr,
         hostgal_snsep,
-        hostgal_zphot, 
+        hostgal_zphot,
         maxduration=None,
         model=None) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
@@ -664,7 +662,6 @@ def rfscore_rainbow_elasticc(
             ra.values[j],
             dec.values[j],
         ]
-
         test_features.append(np.concatenate((meta_feats, features)))
 
     # Make predictions
@@ -675,7 +672,6 @@ def rfscore_rainbow_elasticc(
     to_return[mask] = probabilities.T[1]
 
     return pd.Series(to_return)
-
 
 if __name__ == "__main__":
     """ Execute the test suite """
