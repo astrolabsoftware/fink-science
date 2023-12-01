@@ -28,7 +28,7 @@ from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
-from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc_perfilter
+# from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc_perfilter
 from actsnfink.rainbow import fit_rainbow
 
 from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
@@ -322,134 +322,134 @@ def extract_features_rf_snia(
     return pd.Series(concatenated_features)
 
 
-@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-def rfscore_sigmoid_elasticc(
-        midPointTai, filterName, psFlux, psFluxErr,
-        ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
-        hostgal_zphot, hostgal_zphot_err,
-        maxduration=None,
-        model=None) -> pd.Series:
-    """ Return the probability of an alert to be a SNe Ia using a Random
-    Forest Classifier (sigmoid fit) on ELaSTICC alert data.
+# @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+# def rfscore_sigmoid_elasticc(
+#         midPointTai, filterName, psFlux, psFluxErr,
+#         ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
+#         hostgal_zphot, hostgal_zphot_err,
+#         maxduration=None,
+#         model=None) -> pd.Series:
+#     """ Return the probability of an alert to be a SNe Ia using a Random
+#     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
 
-    Parameters
-    ----------
-    midPointTai: Spark DataFrame Column
-        JD times (vectors of floats)
-    filterName: Spark DataFrame Column
-        Filter IDs (vectors of str)
-    psFlux, psFluxErr: Spark DataFrame Columns
-        SNANA calibrated flux, and 1-sigma error (vectors of floats)
-    meta: list
-        Additional features using metadata from ELaSTICC
-    maxduration: Spark DataFrame Column
-        Integer for the maximum duration (in days) of the lightcurve to be
-        classified.
-        Default is None, i.e. no maximum duration
-    model: Spark DataFrame Column, optional
-        Path to the trained model. Default is None, in which case the default
-        model `data/models/default-model.obj` is loaded.
+#     Parameters
+#     ----------
+#     midPointTai: Spark DataFrame Column
+#         JD times (vectors of floats)
+#     filterName: Spark DataFrame Column
+#         Filter IDs (vectors of str)
+#     psFlux, psFluxErr: Spark DataFrame Columns
+#         SNANA calibrated flux, and 1-sigma error (vectors of floats)
+#     meta: list
+#         Additional features using metadata from ELaSTICC
+#     maxduration: Spark DataFrame Column
+#         Integer for the maximum duration (in days) of the lightcurve to be
+#         classified.
+#         Default is None, i.e. no maximum duration
+#     model: Spark DataFrame Column, optional
+#         Path to the trained model. Default is None, in which case the default
+#         model `data/models/default-model.obj` is loaded.
 
-    Returns
-    ----------
-    probabilities: 1D np.array of float
-        Probability between 0 (non-Ia) and 1 (Ia).
+#     Returns
+#     ----------
+#     probabilities: 1D np.array of float
+#         Probability between 0 (non-Ia) and 1 (Ia).
 
-    Examples
-    ----------
-    >>> from fink_utils.spark.utils import concat_col
-    >>> from pyspark.sql import functions as F
+#     Examples
+#     ----------
+#     >>> from fink_utils.spark.utils import concat_col
+#     >>> from pyspark.sql import functions as F
 
-    >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
+#     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
 
-    # Assuming random positions
-    >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
+#     # Assuming random positions
+#     >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
 
-    # Required alert columns
-    >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
+#     # Required alert columns
+#     >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
 
-    # Use for creating temp name
-    >>> prefix = 'c'
-    >>> what_prefix = [prefix + i for i in what]
+#     # Use for creating temp name
+#     >>> prefix = 'c'
+#     >>> what_prefix = [prefix + i for i in what]
 
-    # Append temp columns with historical + current measurements
-    >>> for colname in what:
-    ...     df = concat_col(
-    ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaForcedSources')
+#     # Append temp columns with historical + current measurements
+#     >>> for colname in what:
+#     ...     df = concat_col(
+#     ...         df, colname, prefix=prefix,
+#     ...         current='diaSource', history='prvDiaForcedSources')
 
-    # Perform the fit + classification (default model)
-    >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
-    >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
-    >>> args += [F.col('diaObject.hostgal_snsep')]
-    >>> args += [F.col('diaObject.hostgal_zphot')]
-    >>> args += [F.col('diaObject.hostgal_zphot_err')]
-    >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
+#     # Perform the fit + classification (default model)
+#     >>> args = [F.col(i) for i in what_prefix]
+#     >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
+#     >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
+#     >>> args += [F.col('diaObject.hostgal_snsep')]
+#     >>> args += [F.col('diaObject.hostgal_zphot')]
+#     >>> args += [F.col('diaObject.hostgal_zphot_err')]
+#     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
 
-    >>> df.filter(df['pIa'] > 0.5).count()
-    14
-    """
+#     >>> df.filter(df['pIa'] > 0.5).count()
+#     14
+#     """
 
-    dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
+#     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
-    # Maximum days in the history
-    if maxduration is not None:
-        mask = (dt <= maxduration.values[0])
-    else:
-        mask = np.repeat(True, len(midPointTai))
+#     # Maximum days in the history
+#     if maxduration is not None:
+#         mask = (dt <= maxduration.values[0])
+#     else:
+#         mask = np.repeat(True, len(midPointTai))
 
-    if len(midPointTai[mask]) == 0:
-        return pd.Series(np.zeros(len(midPointTai), dtype=float))
+#     if len(midPointTai[mask]) == 0:
+#         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
-    candid = pd.Series(range(len(midPointTai)))
-    ids = candid[mask]
+#     candid = pd.Series(range(len(midPointTai)))
+#     ids = candid[mask]
 
-    # Load pre-trained model `clf`
-    if model is not None:
-        clf = load_scikit_model(model.values[0])
-    else:
-        curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/earlysnia_elasticc_03AGO2023_2filters.pkl'
-        clf = load_scikit_model(model)
+#     # Load pre-trained model `clf`
+#     if model is not None:
+#         clf = load_scikit_model(model.values[0])
+#     else:
+#         curdir = os.path.dirname(os.path.abspath(__file__))
+#         model = curdir + '/data/models/earlysnia_elasticc_03AGO2023_2filters.pkl'
+#         clf = load_scikit_model(model)
 
-    test_features = []
-    for j in ids:
-        pdf = pd.DataFrame.from_dict(
-            {
-                'MJD': midPointTai[j],
-                'FLT': filterName[j],
-                'FLUXCAL': psFlux[j],
-                'FLUXCALERR': psFluxErr[j]
-            }
-        )
+#     test_features = []
+#     for j in ids:
+#         pdf = pd.DataFrame.from_dict(
+#             {
+#                 'MJD': midPointTai[j],
+#                 'FLT': filterName[j],
+#                 'FLUXCAL': psFlux[j],
+#                 'FLUXCALERR': psFluxErr[j]
+#             }
+#         )
 
-        features = get_sigmoid_features_elasticc_perfilter(
-            pdf,
-            list_filters=['u', 'g', 'r', 'i', 'z', 'Y']
-        )
+#         features = get_sigmoid_features_elasticc_perfilter(
+#             pdf,
+#             list_filters=['u', 'g', 'r', 'i', 'z', 'Y']
+#         )
 
-        # Julien added `id`
-        meta_feats = [
-            hostgal_dec.values[j],
-            hostgal_ra.values[j],
-            hostgal_snsep.values[j],
-            hostgal_zphot.values[j],
-            hostgal_zphot_err.values[j],
-            ra.values[j],
-            dec.values[j],
-        ]
+#         # Julien added `id`
+#         meta_feats = [
+#             hostgal_dec.values[j],
+#             hostgal_ra.values[j],
+#             hostgal_snsep.values[j],
+#             hostgal_zphot.values[j],
+#             hostgal_zphot_err.values[j],
+#             ra.values[j],
+#             dec.values[j],
+#         ]
 
-        test_features.append(np.concatenate((meta_feats, features)))
+#         test_features.append(np.concatenate((meta_feats, features)))
 
-    # Make predictions
-    probabilities = clf.predict_proba(test_features)
+#     # Make predictions
+#     probabilities = clf.predict_proba(test_features)
 
-    # Take only probabilities to be Ia
-    to_return = np.zeros(len(midPointTai), dtype=float)
-    to_return[mask] = probabilities.T[1]
+#     # Take only probabilities to be Ia
+#     to_return = np.zeros(len(midPointTai), dtype=float)
+#     to_return[mask] = probabilities.T[1]
 
-    return pd.Series(to_return)
+#     return pd.Series(to_return)
 
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
