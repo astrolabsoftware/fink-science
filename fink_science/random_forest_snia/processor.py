@@ -620,7 +620,7 @@ def rfscore_rainbow_elasticc(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [len(F.col('cmidPointTai'))]
+    >>> args += [size(F.col('cmidPointTai'))]
     >>> args += [F.col('diaSource.snr')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
@@ -661,9 +661,9 @@ def rfscore_rainbow_elasticc(
             list_filters=list_filters.values[0],
             low_bound=low_bound.values[0]
         )
-
+        nobs = midPointTai[j]
         meta_feats = [
-            len(midPointTai[j]),
+            len(),
             snr.values[j],
             hostgal_snsep.values[j],
             hostgal_zphot.values[j]
