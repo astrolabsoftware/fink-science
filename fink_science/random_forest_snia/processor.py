@@ -38,7 +38,7 @@ from fink_science.tester import spark_unit_tests
 RAINBOW_FEATURES_NAMES = [
     "amplitude", "rise_time",
     "Tmin", "delta_T", "k_sig",
-    "reduced_chi2"
+    "reduced_chi2", "lc_max"
 ]
 
 
@@ -454,7 +454,7 @@ def extract_features_rf_snia(
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def extract_features_rainbow(
-        jd, fid, magpsf, sigmapsf,
+        jd, fid, cpsFlux, cpsFluxErr,
         band_wave_aa=pd.Series([{'u': 3671.0, 'g': 4827.0, 'r': 6223.0, 'i': 7546.0, 'z': 8691.0, 'Y': 9712.0}]),
         with_baseline=pd.Series([False]),
         min_data_points=pd.Series([7]),
@@ -495,10 +495,10 @@ def extract_features_rainbow(
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
-    >>> df = spark.read.load(ztf_alert_sample)
+    >>> df = spark.read.load(elasticc_alert_sample)
 
     # Required alert columns
-    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+    >>> what = ['jd', 'fid', 'psFlux', 'psFluxErr']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -525,7 +525,7 @@ def extract_features_rainbow(
 
     candid = pd.Series(range(len(jd)))
     mask = [True for i in range(len(jd))]
-    pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
+    pdf = format_data_as_snana(jd, cpsFlux, cpsFluxErr, fid, candid, mask)
 
     test_features = []
     for id in np.unique(pdf['SNID']):
@@ -552,7 +552,7 @@ def extract_features_rainbow(
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_rainbow_elasticc(
-        midPointTai, filterName, magpsf, sigmapsf,
+        midPointTai, filterName, cpsFlux, cpsFluxErr,
         nobs, snr,
         hostgal_snsep,
         hostgal_zphot,
@@ -572,7 +572,7 @@ def rfscore_rainbow_elasticc(
         JD times (vectors of floats)
     filterName: Spark DataFrame Column
         Filter IDs (vectors of str)
-    magpsf, sigmapsf: Spark DataFrame Columns
+    cpsFlux, cpsFluxErr: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
     metalist: list
         Additional features using metadata from ELaSTICC
@@ -606,7 +606,7 @@ def rfscore_rainbow_elasticc(
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
 
     # Required alert columns
-    >>> what = ['midPointTai', 'filterName', 'magpsf', 'sigmapsf']
+    >>> what = ['midPointTai', 'filterName', 'cpsFlux', 'cpsFluxErr']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -620,7 +620,7 @@ def rfscore_rainbow_elasticc(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [size(F.col('cmidPointTai'))]
+    >>> args += [F.col('cmidPointTai').count().collect()]
     >>> args += [F.col('diaSource.snr')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
@@ -654,14 +654,14 @@ def rfscore_rainbow_elasticc(
     test_features = []
     for j in ids:
         features = extract_features_rainbow(
-            midPointTai[j], filterName[j], magpsf[j], sigmapsf[j],
+            midPointTai[j], filterName[j], cpsFlux[j], cpsFluxErr[j],
             band_wave_aa=band_wave_aa.values[0],
             with_baseline=with_baseline.values[0],
             min_data_points=min_data_points.values[0],
             list_filters=list_filters.values[0],
             low_bound=low_bound.values[0]
         )
-        nobs = midPointTai[j]
+        nobs = midPointTai[j].count()
         meta_feats = [
             nobs,
             snr.values[j],
@@ -689,7 +689,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_parquet/test_elasticc_earlysnia.parquet'.format(path)
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_parquet'.format(path)
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
