@@ -47,7 +47,7 @@ jobs:
 
         pip install onnx==1.12.0
         pip install onnxruntime
-        python3 -mpip install 'light-curve[full]'
+        python3 -mpip install 'light-curve[full]==0.8.1'
 
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
