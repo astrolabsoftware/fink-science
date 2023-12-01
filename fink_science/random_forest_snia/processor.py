@@ -532,7 +532,7 @@ def extract_features_rainbow(
         pdf_sub = pdf[pdf['SNID'] == id]
         features = fit_rainbow(
             pdf_sub['MJD'].values, pdf_sub['FLT'].values,
-            pdf_sub['FLUXCAL'].values, pdf_sub['FLUXCALERR'].values, 
+            pdf_sub['FLUXCAL'].values, pdf_sub['FLUXCALERR'].values,
             band_wave_aa=band_wave_aa.values[0],
             with_baseline=with_baseline.values[0],
             min_data_points=min_data_points.values[0],
