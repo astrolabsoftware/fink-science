@@ -552,7 +552,13 @@ def rfscore_rainbow_elasticc(
         hostgal_snsep,
         hostgal_zphot,
         maxduration=None,
-        model=None) -> pd.Series: 
+        model=None,
+        band_wave_aa={'u':3671.0,'g': 4827.0, 'r':6223.0, 
+                      'i':7546.0, 'z': 8691.0, 'Y':9712.0},
+        with_baseline=False, 
+        min_data_points=7,
+        list_filters=['u','g','r','i','z','Y'],
+        low_bound=-10) -> pd.Series: 
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (rainbow fit) on ELaSTICC alert data.
 
@@ -573,6 +579,15 @@ def rfscore_rainbow_elasticc(
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/default-model.obj` is loaded.
+    band_wave_aa: dict (optional)
+        Dictionary with effective wavelength for each filter. 
+        Default is for ZTF: {"g": 4770.0, "r": 6231.0, "i": 7625.0} 
+    with_baseline: bool (optional)
+        Baseline to be considered. Default is False (baseline 0).
+    min_data_points: int (optional)
+       Minimum number of data points in all filters. Default is 7.
+    low_bound: float (optional)
+        Lower bound of FLUXCAL to consider. Default is -10.
 
     Returns
     ----------
