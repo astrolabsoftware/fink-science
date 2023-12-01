@@ -496,7 +496,6 @@ def extract_features_rainbow(
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(elasticc_alert_sample)
-    >>> df.show()
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'psFlux', 'psFluxErr']
@@ -621,7 +620,7 @@ def rfscore_rainbow_elasticc(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('cmidPointTai').count()]
+    >>> args += [F.col('cmidPointTai').count().collect()]
     >>> args += [F.col('diaSource.snr')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
