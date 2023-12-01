@@ -29,6 +29,7 @@ from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
 from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc_perfilter
+from actsnfink.rainbow import fit_rainbow
 
 from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
@@ -659,7 +660,8 @@ def rfscore_rainbow_elasticc(
 
     return pd.Series(to_return)
 
-if __name__ == "__main__":
+
+if __name__ == "__main__": 
     """ Execute the test suite """
 
     globs = globals()
