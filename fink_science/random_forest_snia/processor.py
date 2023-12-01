@@ -449,11 +449,11 @@ def rfscore_sigmoid_elasticc(
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def extract_features_rainbow(
         jd, fid, magpsf, sigmapsf, 
-        band_wave_aa={'u':3671.0,'g': 4827.0, 'r':6223.0, 
+        band_wave_aa={'u':3671.0, 'g': 4827.0, 'r':6223.0, 
                       'i':7546.0, 'z': 8691.0, 'Y':9712.0},
         with_baseline=False, 
         min_data_points=7,
-        list_filters=['u','g','r','i','z','Y'],
+        list_filters=['u', 'g', 'r', 'i', 'z', 'Y'],
         low_bound=-10) -> pd.Series:
     """ Return the features used by the RF classifier.
 
@@ -553,11 +553,11 @@ def rfscore_rainbow_elasticc(
         hostgal_zphot,
         maxduration=None,
         model=None,
-        band_wave_aa={'u':3671.0,'g': 4827.0, 'r':6223.0, 
+        band_wave_aa={'u':3671.0, 'g': 4827.0, 'r':6223.0, 
                       'i':7546.0, 'z': 8691.0, 'Y':9712.0},
         with_baseline=False, 
         min_data_points=7,
-        list_filters=['u','g','r','i','z','Y'],
+        list_filters=['u', 'g', 'r', 'i', 'z', 'Y'],
         low_bound=-10) -> pd.Series: 
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (rainbow fit) on ELaSTICC alert data.
