@@ -35,8 +35,8 @@ scikit-image
 -e git+https://github.com/b-biswas/kndetect@kndetect#egg=kndetect
 
 # SNAD
-light-curve-python>=0.3.5
-light-curve>=0.4.0
+#light-curve-python>=0.3.5
+#light-curve>=0.4.0
 
 # for elasticc
 -e git+https://github.com/erusseil/light-curve-python.git@2f0e8d6509b5ac8f11efc2d0620c5409c81270b3#egg=light-curve-python
