@@ -531,7 +531,7 @@ def extract_features_rainbow(
             band_wave_aa=band_wave_aa,
             with_baseline=with_baseline, 
             min_data_points=min_data_points,
-            list_filters=bands,
+            list_filters=list_filters,
             low_bound=low_bound
         )
         test_features.append(features[1:])
