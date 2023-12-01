@@ -290,7 +290,7 @@ def extract_features_rf_snia(
     0.0
     """
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
-
+  
     if len(jd[mask]) == 0:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
@@ -444,6 +444,7 @@ def rfscore_sigmoid_elasticc(
 
     return pd.Series(to_return)
 
+
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def extract_features_rainbow(
         jd, fid, magpsf, sigmapsf, 
@@ -541,6 +542,7 @@ def extract_features_rainbow(
         ','.join(np.array(i, dtype=str)) for i in to_return_features
     ]
     return pd.Series(concatenated_features)
+
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_rainbow_elasticc(
