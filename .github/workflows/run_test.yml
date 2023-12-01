@@ -47,6 +47,7 @@ jobs:
 
         pip install onnx==1.12.0
         pip install onnxruntime
+        pip install py4j
         python3 -mpip install 'light-curve[full]==0.8.1'
 
         ./run_tests.sh
