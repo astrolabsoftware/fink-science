@@ -35,6 +35,7 @@ install:
   - pip install --upgrade pip setuptools wheel
   - pip install -r requirements.txt
   - pip install torch==1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+  - python3 -mpip install 'light-curve[full]'
 
 script:
   # Execute tests and report coverage
