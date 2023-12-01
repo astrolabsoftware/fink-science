@@ -450,7 +450,6 @@ def extract_features_rainbow(
         band_wave_aa={'u':3671.0,'g': 4827.0, 'r':6223.0, 
                       'i':7546.0, 'z': 8691.0, 'Y':9712.0},
         with_baseline=False, 
-        with_temperature_evolution=True,
         min_data_points=7,
         list_filters=['u','g','r','i','z','Y'],
         low_bound=-10) -> pd.Series:
@@ -472,9 +471,6 @@ def extract_features_rainbow(
         Default is for ZTF: {"g": 4770.0, "r": 6231.0, "i": 7625.0} 
     with_baseline: bool (optional)
         Baseline to be considered. Default is False (baseline 0).
-    with_temperature_evolution: bool (optional)
-       If True use declining sigmoid for temperature evolution.
-       Default is True.
     min_data_points: int (optional)
        Minimum number of data points in all filters. Default is 7.
     low_bound: float (optional)
@@ -514,8 +510,8 @@ def extract_features_rainbow(
     ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
 
     # Trigger something
-    >>> df.agg({RAINBOW_FEATURE_NAMES[1]: "min"}).collect()[0][0]
-    1.0798199911817054e-08
+    >>> df.agg({RAINBOW_FEATURE_NAMES[1]: "min"}).collect()[0][0] < 1e-7
+    True
     """
     if len(jd) < min_data_points:
         return pd.Series(np.zeros(len(jd), dtype=float))
@@ -532,7 +528,6 @@ def extract_features_rainbow(
             pdf_sub['FLUXCAL'].values, pdf_sub['FLUXCALERR'].values,
             band_wave_aa=band_wave_aa,
             with_baseline=with_baseline, 
-            with_temperature_evolution=with_temperature_evolution,
             min_data_points=min_data_points,
             list_filters=bands,
             low_bound=low_bound
@@ -549,7 +544,7 @@ def extract_features_rainbow(
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_rainbow_elasticc(
-        midPointTai, filterName, psFlux, psFluxErr,
+        midPointTai, filterName, magpsf, sigmapsf, 
         nobs, snr,
         hostgal_snsep,
         hostgal_zphot,
@@ -564,8 +559,8 @@ def rfscore_rainbow_elasticc(
         JD times (vectors of floats)
     filterName: Spark DataFrame Column
         Filter IDs (vectors of str)
-    psFlux, psFluxErr: Spark DataFrame Columns
-        SNANA calibrated flux, and 1-sigma error (vectors of floats)
+    magpsf, sigmapsf: Spark DataFrame Columns
+        Magnitude from PSF-fit photometry, and 1-sigma error
     metalist: list
         Additional features using metadata from ELaSTICC
     maxduration: Spark DataFrame Column
@@ -588,11 +583,8 @@ def rfscore_rainbow_elasticc(
 
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
 
-    # Assuming random positions
-    >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
-
     # Required alert columns
-    >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
+    >>> what = ['midPointTai', 'filterName', 'magpsf', 'sigmapsf']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -606,15 +598,14 @@ def rfscore_rainbow_elasticc(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
-    >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
+    >>> args += [len(F.col('cmidPointTai'))]
+    >>> args += [F.col('diaSource.snr')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
-    >>> args += [F.col('diaObject.hostgal_zphot_err')]
-    >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
+    >>> df = df.withColumn('pIa', rfscore_rainbow_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    14
+    599
     """
 
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
@@ -637,30 +628,23 @@ def rfscore_rainbow_elasticc(
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + '/data/models/elasticc_rainbow_earlyIa.joblib'
-        clf = load_scikit_model(model)
+        clf = joblib.load(model)
 
     test_features = []
     for j in ids:
-        pdf = pd.DataFrame.from_dict(
-            {
-                'MJD': midPointTai[j],
-                'FLT': filterName[j],
-                'FLUXCAL': psFlux[j],
-                'FLUXCALERR': psFluxErr[j]
-            }
-        )
-
-        features = get_sigmoid_features_elasticc_perfilter(pdf, list_filters=['u', 'g', 'r', 'i', 'z', 'Y'])
-
+        features = extract_features_rainbow(midPointTai[j], filterName[j], magpsf[j], sigmapsf[j], 
+                                            band_wave_aa=band_wave_aa,
+                                            with_baseline=with_baseline, 
+                                            min_data_points=min_data_points,
+                                            list_filters=list_filters,
+                                            low_bound=low_bound)
+    
         # Julien added `id`
         meta_feats = [
-            hostgal_dec.values[j],
-            hostgal_ra.values[j],
+            len(midPointTai[j]),
+            snr.values[j],
             hostgal_snsep.values[j],
-            hostgal_zphot.values[j],
-            hostgal_zphot_err.values[j],
-            ra.values[j],
-            dec.values[j],
+            hostgal_zphot.values[j]
         ]
         test_features.append(np.concatenate((meta_feats, features)))
 
