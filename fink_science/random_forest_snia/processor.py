@@ -625,7 +625,6 @@ def rfscore_rainbow_elasticc(
     >>> df.filter(df['pIa'] > 0.5).count()
     599
     """
-
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
     # Maximum days in the history
@@ -656,7 +655,6 @@ def rfscore_rainbow_elasticc(
                                             min_data_points=min_data_points,
                                             list_filters=list_filters,
                                             low_bound=low_bound)
-    
         # Julien added `id`
         meta_feats = [
             len(midPointTai[j]),
