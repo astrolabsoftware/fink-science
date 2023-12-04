@@ -689,7 +689,7 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_parquet'.format(path)
+    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_parquet/test_elasticc_earlysnia.parquet'.format(path)
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
