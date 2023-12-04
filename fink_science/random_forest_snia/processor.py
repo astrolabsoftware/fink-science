@@ -506,8 +506,9 @@ def extract_features_rainbow(
 
     # Append temp columns with historical + current measurements
     >>> for colname in what_prefix:
-    ...    df = concat_col(df, colname, prefix=prefix)
-
+    ...    df = concat_col(df, colname, prefix=prefix, 
+                           current='diaSource', history='prvDiaForcedSources')
+                           
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('features', extract_features_rainbow(*args))
