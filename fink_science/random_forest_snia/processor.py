@@ -522,7 +522,7 @@ def rfscore_rainbow_elasticc(
         ]
         test_features.append(meta_feats + list(features))
         print(meta_feats, ' -- ', features)
-        print(len(test_features[indx]))
+        print(len(test_features[index]))
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
