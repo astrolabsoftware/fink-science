@@ -395,7 +395,7 @@ def extract_features_rainbow(
         low_bound=low_bound
     )
 
-    return features
+    return features[1:]
 
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
