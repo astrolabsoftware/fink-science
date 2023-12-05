@@ -386,8 +386,6 @@ def extract_features_rainbow(
     if len(midPointTai) < min_data_points:
         return np.zeros(len(RAINBOW_FEATURES_NAMES), dtype=float)
 
-    test_features = []
-
     features = fit_rainbow(
         midPointTai, filterName, cpsFlux, cpsFluxErr,
         band_wave_aa=band_wave_aa,
