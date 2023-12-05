@@ -473,7 +473,6 @@ def rfscore_rainbow_elasticc(
     >>> args += [F.col('diaSource.snr')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
-    >>> print(args)
     >>> df = df.withColumn('pIa', rfscore_rainbow_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
@@ -521,7 +520,9 @@ def rfscore_rainbow_elasticc(
             hostgal_snsep.values[index],
             hostgal_zphot.values[index]
         ]
-        test_features.append(np.concatenate((meta_feats, features)))
+        test_features.append(list(features) + meta_feats)
+        if index == ids[0]:
+            print(test_features[0])
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
