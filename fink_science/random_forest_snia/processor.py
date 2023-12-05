@@ -523,7 +523,7 @@ def rfscore_rainbow_elasticc(
         test_features.append(meta_feats + list(features[1:]))
 
     # Make predictions
-    probabilities = clf.predict_proba(test_features)
+    probabilities = clf.predict_proba(np.asarray(test_features, dtype="object"))
 
     # Take only probabilities to be Ia
     to_return = np.zeros(len(midPointTai), dtype=float)
