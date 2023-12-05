@@ -520,10 +520,11 @@ def rfscore_rainbow_elasticc(
             hostgal_snsep.values[index],
             hostgal_zphot.values[index]
         ]
-        test_features.append(meta_feats + list(features[1:]))
+        # test_features.append(meta_feats + list(features[1:]))
+        test_features.append(np.array(meta_feats + list(features)))
 
     # Make predictions
-    probabilities = clf.predict_proba(np.asarray(test_features, dtype="object"))
+    probabilities = clf.predict_proba(test_features)
 
     # Take only probabilities to be Ia
     to_return = np.zeros(len(midPointTai), dtype=float)
