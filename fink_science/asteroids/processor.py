@@ -30,13 +30,13 @@ from pyspark.sql.types import (
 )
 
 from fink_science.tester import spark_unit_tests
-from fink_science.asteroids.fink_fat_associations import fink_fat_association
+from fink_fat.streaming_associations.fink_fat_associations import fink_fat_association
 
 
 roid_schema = StructType(
     [
         StructField(
-            "flag",
+            "roid",
             IntegerType(),
             True,
         ),
@@ -60,6 +60,7 @@ def roid_catcher(
     dec,
     jd,
     magpsf,
+    candid,
     cjd,
     cmagpsf,
     fid,
@@ -67,10 +68,11 @@ def roid_catcher(
     sgscore1,
     ssdistnr,
     distpsnr1,
-    angle_criterion,
+    error_radius,
     mag_criterion_same_fid,
     mag_criterion_diff_fid,
     orbit_tw,
+    orbit_error,
     confirmed_sso,
 ):
     """Determine if an alert is a potential Solar System object (SSO) using two criteria:
@@ -83,11 +85,12 @@ def roid_catcher(
         4. If 2 detections, observations must be done within 30 min.
 
     The alerts are labeled using:
-
-        [3] if the alert has been flagged by ZTF as SSO candidate
-        [2] if the alert has been flagged by Fink as SSO candidate
-        [1] if is the first time ZTF sees this object
-        [0] if it is likely not a SSO
+        * [5] if the alert has been associated with a candidate trajectory using an orbit estimator
+        * [4] if the alert has been associated with a candidate trajectory using a polyfit estimator
+        * [3] if the alert has been flagged by ZTF as SSO candidate
+        * [2] if the alert has been flagged by Fink as SSO candidate
+        * [1] if is the first time ZTF sees this object
+        * [0] if it is likely not a SSO
 
     Parameters
     ----------
@@ -99,6 +102,12 @@ def roid_catcher(
         Observation Julian date at start of exposure [days]
     magpsf: Spark DataFrame Column
         Magnitude from PSF-fit photometry [mag]
+    candid: Spark DataFrame Column
+        alert identifier
+    cjd : Spark DataFrame Column
+        julian date history of the alerts
+    cmagpsf : Spark DataFrame Column
+        magnitude history of the alerts
     fid: Spark DataFrame Column
         filter identifier (for ZTF, 1 = g band and 2 = r band)
     ndethist: Spark DataFrame Column
@@ -117,29 +126,39 @@ def roid_catcher(
     distpsnr1: Spark DataFrame Column
         Distance of closest source from PS1 catalog;
         if exists within 30 arcsec [arcsec]
-    angle_criterion: Spark DataFrame Column
-        angle in degree
-        keep the associations where the angle computed between the last two points of the trajectory
-        and the new alerts are below this threshold.
+    error_radius: Spark DataFrame Column
+        error radius used to associates the alerts with a candidate trajectory
     mag_criterion_same_fid: Spark DataFrame Column
         keep the association where the difference of magnitude between two measurements of the
         same filter are below this threshold.
     mag_criterion_diff_fid: Spark DataFrame Column
         keep the association where the difference of magnitude
         between two measurements of differents filter are below this threshold.
+    orbit_tw : int
+        time window used to filter the orbit
+    orbit_error: float
+        error radius to associates the alerts with the orbits
     confirmed_sso: Spark DataFrame Column
         if true, associates alerts with a flag equals to 3,
         choose alerts with a flag equals to 1 or 2 otherwise.
 
     Returns
     ----------
-    out: integer
+    roid: integer
         5 if the alert has been associated with a candidate trajectory using an orbit estimator
-        4 if the alert has been associated with a candidate trajectory using a kalman estimator
+        4 if the alert has been associated with a candidate trajectory using a polyfit estimator
         3 if the alert has been flagged by ZTF as SSO
         2 if the alert has been flagged by Fink as SSO
         1 if it is the first time ZTF sees this object
         0 if it is likely not a SSO
+    ffdistnr : float list
+        distance from the trajectory prediction
+            - in arcmin if flag == 4
+            - in arcsecond if flag == 5
+    estimator_id: string list
+        The fink_fat trajectory identifier associated with the alerts (only if roid is 4 or 5)
+            - Is a integer if associated with a trajectory candidate
+            - is a string if associated with an orbit
 
     Examples
     ----------
@@ -165,30 +184,26 @@ def roid_catcher(
     >>> args = [
     ...     'candidate.ra', 'candidate.dec',
     ...     'candidate.jd', 'candidate.magpsf',
+    ...     'candidate.candid',
     ...     'cjd', 'cmagpsf',
     ...     'candidate.fid',
     ...     'candidate.ndethist', 'candidate.sgscore1',
     ...     'candidate.ssdistnr', 'candidate.distpsnr1',
-    ...     F.lit(30), F.lit(1), F.lit(1), F.lit(30), F.lit(True)
+    ...     F.lit(2), F.lit(2), F.lit(30), F.lit(15.0), F.lit(True)
     ... ]
     >>> df = df.withColumn('roid', roid_catcher(*args))
 
     # Drop temp columns
     >>> df = df.drop(*what_prefix)
 
-    # >>> df.filter(df['roid.flag'] == 2).count()
-    # 3
-
-    # >>> df.filter(df['roid.flag'] == 3).count()
-    # 3
-
-    # >>> df.filter(df['roid.flag'] == 4).count()
-
-    # >>> df.filter(df['roid.flag'] == 4).select("objectId","roid.estimator_id").collect()
-
-    # >>> df.filter(df['roid.flag'] == 5).count()
-
-    >>> df.filter(df['roid.flag'] == 5).select("objectId","roid.estimator_id").collect()
+    >>> df.filter(df['roid.roid'] == 2).count()
+    175
+    >>> df.filter(df['roid.roid'] == 3).count()
+    6694
+    >>> df.filter(df['roid.roid'] == 4).count()
+    2
+    >>> df.filter(df['roid.roid'] == 5).count()
+    3
     """
     flags = np.zeros_like(ndethist.values, dtype=int)
 
@@ -237,28 +252,30 @@ def roid_catcher(
         )
         flags[mask_roid] = 3
 
-        # fink_fat associations
-        flags, estimator_id, ffdistnr = fink_fat_association(
-            ra,
-            dec,
-            magpsf,
-            fid,
-            jd,
-            flags,
-            confirmed_sso,
-            mag_criterion_same_fid,
-            mag_criterion_diff_fid,
-            angle_criterion,
-            orbit_tw,
-        )
+    # fink_fat associations
+    flags, estimator_id, ffdistnr = fink_fat_association(
+        ra,
+        dec,
+        magpsf,
+        fid,
+        jd,
+        candid,
+        flags,
+        confirmed_sso,
+        error_radius,
+        mag_criterion_same_fid,
+        mag_criterion_diff_fid,
+        orbit_tw,
+        orbit_error,
+    )
 
-        return pd.DataFrame(
-            {
-                "flag": flags,
-                "ffdistnr": ffdistnr,
-                "estimator_id": estimator_id,
-            }
-        )
+    return pd.DataFrame(
+        {
+            "roid": flags,
+            "ffdistnr": ffdistnr,
+            "estimator_id": estimator_id,
+        }
+    )
 
 
 if __name__ == "__main__":

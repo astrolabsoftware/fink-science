@@ -14,11 +14,8 @@
 # limitations under the License.
 import sys
 from fink_science import __file__
-import os
 import doctest
 import numpy as np
-
-from pyspark.sql import SparkSession
 
 
 def regular_unit_tests(global_args: dict = None, verbose: bool = False):
@@ -121,28 +118,3 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
         np.set_printoptions(legacy="1.13")
 
     sys.exit(doctest.testmod(globs=global_args, verbose=verbose)[0])
-
-
-def add_roid_datatest(spark: SparkSession, is_processor=False):
-    """
-    Load the files used for the roid test
-
-    Parameters
-    ----------
-    spark : SparkSession
-        spark session
-    is_processor : bool, optional
-        if True, load the test file for the processor, by default False
-    """
-    path = os.path.dirname(__file__)
-    if is_processor:
-        orbit_sample = "file://{}/data/alerts/roid_datatest/orbital.parquet".format(
-            path
-        )
-        kalman_sample = "file://{}/data/alerts/roid_datatest/kalman.pkl".format(path)
-    else:
-        orbit_sample = "file://{}/data/orbital.parquet".format(path)
-        kalman_sample = "file://{}/data/kalman.pkl".format(path)
-
-    spark.sparkContext.addFile(orbit_sample)
-    spark.sparkContext.addFile(kalman_sample)
