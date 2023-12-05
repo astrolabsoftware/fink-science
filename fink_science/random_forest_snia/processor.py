@@ -321,158 +321,24 @@ def extract_features_rf_snia(
 
     return pd.Series(concatenated_features)
 
-
-# @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
-# def rfscore_sigmoid_elasticc(
-#         midPointTai, filterName, psFlux, psFluxErr,
-#         ra, dec, hostgal_ra, hostgal_dec, hostgal_snsep,
-#         hostgal_zphot, hostgal_zphot_err,
-#         maxduration=None,
-#         model=None) -> pd.Series:
-#     """ Return the probability of an alert to be a SNe Ia using a Random
-#     Forest Classifier (sigmoid fit) on ELaSTICC alert data.
-
-#     Parameters
-#     ----------
-#     midPointTai: Spark DataFrame Column
-#         JD times (vectors of floats)
-#     filterName: Spark DataFrame Column
-#         Filter IDs (vectors of str)
-#     psFlux, psFluxErr: Spark DataFrame Columns
-#         SNANA calibrated flux, and 1-sigma error (vectors of floats)
-#     meta: list
-#         Additional features using metadata from ELaSTICC
-#     maxduration: Spark DataFrame Column
-#         Integer for the maximum duration (in days) of the lightcurve to be
-#         classified.
-#         Default is None, i.e. no maximum duration
-#     model: Spark DataFrame Column, optional
-#         Path to the trained model. Default is None, in which case the default
-#         model `data/models/default-model.obj` is loaded.
-
-#     Returns
-#     ----------
-#     probabilities: 1D np.array of float
-#         Probability between 0 (non-Ia) and 1 (Ia).
-
-#     Examples
-#     ----------
-#     >>> from fink_utils.spark.utils import concat_col
-#     >>> from pyspark.sql import functions as F
-
-#     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
-
-#     # Assuming random positions
-#     >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
-
-#     # Required alert columns
-#     >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
-
-#     # Use for creating temp name
-#     >>> prefix = 'c'
-#     >>> what_prefix = [prefix + i for i in what]
-
-#     # Append temp columns with historical + current measurements
-#     >>> for colname in what:
-#     ...     df = concat_col(
-#     ...         df, colname, prefix=prefix,
-#     ...         current='diaSource', history='prvDiaForcedSources')
-
-#     # Perform the fit + classification (default model)
-#     >>> args = [F.col(i) for i in what_prefix]
-#     >>> args += [F.col('diaObject.ra'), F.col('diaObject.decl')]
-#     >>> args += [F.col('diaObject.hostgal_ra'), F.col('diaObject.hostgal_dec')]
-#     >>> args += [F.col('diaObject.hostgal_snsep')]
-#     >>> args += [F.col('diaObject.hostgal_zphot')]
-#     >>> args += [F.col('diaObject.hostgal_zphot_err')]
-#     >>> df = df.withColumn('pIa', rfscore_sigmoid_elasticc(*args))
-
-#     >>> df.filter(df['pIa'] > 0.5).count()
-#     14
-#     """
-
-#     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
-
-#     # Maximum days in the history
-#     if maxduration is not None:
-#         mask = (dt <= maxduration.values[0])
-#     else:
-#         mask = np.repeat(True, len(midPointTai))
-
-#     if len(midPointTai[mask]) == 0:
-#         return pd.Series(np.zeros(len(midPointTai), dtype=float))
-
-#     candid = pd.Series(range(len(midPointTai)))
-#     ids = candid[mask]
-
-#     # Load pre-trained model `clf`
-#     if model is not None:
-#         clf = load_scikit_model(model.values[0])
-#     else:
-#         curdir = os.path.dirname(os.path.abspath(__file__))
-#         model = curdir + '/data/models/earlysnia_elasticc_03AGO2023_2filters.pkl'
-#         clf = load_scikit_model(model)
-
-#     test_features = []
-#     for j in ids:
-#         pdf = pd.DataFrame.from_dict(
-#             {
-#                 'MJD': midPointTai[j],
-#                 'FLT': filterName[j],
-#                 'FLUXCAL': psFlux[j],
-#                 'FLUXCALERR': psFluxErr[j]
-#             }
-#         )
-
-#         features = get_sigmoid_features_elasticc_perfilter(
-#             pdf,
-#             list_filters=['u', 'g', 'r', 'i', 'z', 'Y']
-#         )
-
-#         # Julien added `id`
-#         meta_feats = [
-#             hostgal_dec.values[j],
-#             hostgal_ra.values[j],
-#             hostgal_snsep.values[j],
-#             hostgal_zphot.values[j],
-#             hostgal_zphot_err.values[j],
-#             ra.values[j],
-#             dec.values[j],
-#         ]
-
-#         test_features.append(np.concatenate((meta_feats, features)))
-
-#     # Make predictions
-#     probabilities = clf.predict_proba(test_features)
-
-#     # Take only probabilities to be Ia
-#     to_return = np.zeros(len(midPointTai), dtype=float)
-#     to_return[mask] = probabilities.T[1]
-
-#     return pd.Series(to_return)
-
-
-@pandas_udf(StringType(), PandasUDFType.SCALAR)
 def extract_features_rainbow(
-        jd, fid, cpsFlux, cpsFluxErr,
-        band_wave_aa=pd.Series([{'u': 3671.0, 'g': 4827.0, 'r': 6223.0, 'i': 7546.0, 'z': 8691.0, 'Y': 9712.0}]),
-        with_baseline=pd.Series([False]),
-        min_data_points=pd.Series([7]),
-        list_filters=pd.Series([['u', 'g', 'r', 'i', 'z', 'Y']]),
-        low_bound=pd.Series([-10])) -> pd.Series:
-    """ Return the features used by the RF classifier.
+        midPointTai, filterName, cpsFlux, cpsFluxErr,
+        band_wave_aa={'u': 3671.0, 'g': 4827.0, 'r': 6223.0, 'i': 7546.0, 'z': 8691.0, 'Y': 9712.0},
+        with_baseline=False,
+        min_data_points=7,
+        low_bound=-10) -> pd.Series:
+    """ Return the features used by the RF classifier for one alert.
 
-    There are  6 features. Order is:
-    ['amplitude', 'rise_time', "Tmin", "delta_T", "k_sig",'reduced_chi2']
+    Features (incl. order) are given by `RAINBOW_FEATURES_NAMES`.
 
     Parameters
     ----------
-    jd: Spark DataFrame Column
-        JD times (float)
-    fid: Spark DataFrame Column
-        Filter IDs (int)
-    magpsf, sigmapsf: Spark DataFrame Columns
-        Magnitude from PSF-fit photometry, and 1-sigma error
+    midPointTai: np.array of floats
+        MJD vector for one object
+    filterName: np.array of str
+        Filter name vector for one object
+    cpsFlux, cpsFluxErr: np.array of float
+        Flux from PSF-fit photometry, and 1-sigma error
     band_wave_aa: dict (optional)
         Dictionary with effective wavelength for each filter.
         Default is for ZTF: {"g": 4770.0, "r": 6231.0, "i": 7625.0}
@@ -505,56 +371,39 @@ def extract_features_rainbow(
     >>> what_prefix = [prefix + i for i in what]
 
     # Append temp columns with historical + current measurements
-    >>> for colname in what_prefix:
-    ...    df = concat_col(df, colname, prefix=prefix,
-                           current='diaSource', history='prvDiaForcedSources')
+    >>> for colname in what:
+    ...     df = concat_col(
+    ...         df, colname, prefix=prefix,
+    ...         current='diaSource', history='prvDiaForcedSources')
 
-    # Perform the fit + classification (default model)
-    >>> args = [F.col(i) for i in what_prefix]
-    >>> df = df.withColumn('features', extract_features_rainbow(*args))
+    >>> pdf = df.select(what_prefix).toPandas()
 
-    >>> for name in RAINBOW_FEATURES_NAMES:
-    ...   index = RAINBOW_FEATURES_NAMES.index(name)
-    ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
-
-    # Trigger something
-    >>> df.collect()[202][2] == 2.51773482e+00
-    True
+    # Test no NaNs
+    >>> for index, alert in pdf.iterrows():
+    ...     a_feature = extract_features_rainbow(*[np.array(x) for x in alert.values])
+    ...     assert np.all(~np.isnan(a_feature))
     """
-    if len(jd) < min_data_points.values[0]:
-        return pd.Series(np.zeros(len(jd), dtype=float))
-
-    candid = pd.Series(range(len(jd)))
-    mask = [True for i in range(len(jd))]
-    pdf = format_data_as_snana(jd, cpsFlux, cpsFluxErr, fid, candid, mask)
+    if len(midPointTai) < min_data_points:
+        return np.zeros(len(RAINBOW_FEATURES_NAMES), dtype=float)
 
     test_features = []
-    for id in np.unique(pdf['SNID']):
-        pdf_sub = pdf[pdf['SNID'] == id]
-        features = fit_rainbow(
-            pdf_sub['MJD'].values, pdf_sub['FLT'].values,
-            pdf_sub['FLUXCAL'].values, pdf_sub['FLUXCALERR'].values,
-            band_wave_aa=band_wave_aa.values[0],
-            with_baseline=with_baseline.values[0],
-            min_data_points=min_data_points.values[0],
-            list_filters=list_filters.values[0],
-            low_bound=low_bound.values[0]
-        )
-        test_features.append(features[1:])
 
-    to_return_features = np.zeros((len(jd), len(RAINBOW_FEATURES_NAMES)), dtype=float)
-    to_return_features[mask] = test_features
+    features = fit_rainbow(
+        midPointTai, filterName, cpsFlux, cpsFluxErr,
+        band_wave_aa=band_wave_aa,
+        with_baseline=with_baseline,
+        min_data_points=min_data_points,
+        list_filters=band_wave_aa.keys(),
+        low_bound=low_bound
+    )
 
-    concatenated_features = [
-        ','.join(np.array(i, dtype=str)) for i in to_return_features
-    ]
-    return pd.Series(concatenated_features)
+    return features[1:]
 
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 def rfscore_rainbow_elasticc(
         midPointTai, filterName, cpsFlux, cpsFluxErr,
-        nobs, snr,
+        snr,
         hostgal_snsep,
         hostgal_zphot,
         maxduration=None,
@@ -562,7 +411,6 @@ def rfscore_rainbow_elasticc(
         band_wave_aa=pd.Series([{'u': 3671.0, 'g': 4827.0, 'r': 6223.0, 'i': 7546.0, 'z': 8691.0, 'Y': 9712.0}]),
         with_baseline=pd.Series([False]),
         min_data_points=pd.Series([7]),
-        list_filters=pd.Series([['u', 'g', 'r', 'i', 'z', 'Y']]),
         low_bound=pd.Series([-10])) -> pd.Series:
     """ Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (rainbow fit) on ELaSTICC alert data.
@@ -575,29 +423,32 @@ def rfscore_rainbow_elasticc(
         Filter IDs (vectors of str)
     cpsFlux, cpsFluxErr: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
-    metalist: list
-        Additional features using metadata from ELaSTICC
+    snr: Spark DataFrame Column
+        SNR from `diaSource` (float)
+    hostgal_snsep: Spark DataFrame Column
+        `hostgal_snsep` from `diaObject` (float)
+    hostgal_zphot: Spark DataFrame Column
+        `hostgal_zphot` from `diaObject` (float)
     maxduration: Spark DataFrame Column
-        Integer for the maximum duration (in days) of the lightcurve to be
-        classified.
-        Default is None, i.e. no maximum duration
+        Maximum duration in days to consider the object for classification (int).
+        Default is None, meaning no maximum duration applied.
     model: Spark DataFrame Column, optional
         Path to the trained model. Default is None, in which case the default
         model `data/models/default-model.obj` is loaded.
-    band_wave_aa: dict (optional)
+    band_wave_aa: Spark DataFrame Column
         Dictionary with effective wavelength for each filter.
-        Default is for ZTF: {"g": 4770.0, "r": 6231.0, "i": 7625.0}
-    with_baseline: bool (optional)
-        Baseline to be considered. Default is False (baseline 0).
-    min_data_points: int (optional)
+        Default is for Elasticc.
+    with_baseline: Spark DataFrame Column
+        Baseline to be considered (bool). Default is False (baseline 0 in flux space).
+    min_data_points: Spark DataFrame Column
        Minimum number of data points in all filters. Default is 7.
-    low_bound: float (optional)
-        Lower bound of FLUXCAL to consider. Default is -10.
+    low_bound: Spark DataFrame Column
+        Lower bound of FLUXCAL to consider (float). Default is -10.
 
     Returns
     ----------
-    probabilities: 1D np.array of float
-        Probability between 0 (non-Ia) and 1 (Ia).
+    probabilities: Spark DataFrame Column
+        Probability between 0 (non-Ia) and 1 (Ia) for each alert.
 
     Examples
     ----------
@@ -621,7 +472,6 @@ def rfscore_rainbow_elasticc(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.count(F.col(what_prefix[0]))]
     >>> args += [F.col('diaSource.snr')]
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
@@ -630,6 +480,7 @@ def rfscore_rainbow_elasticc(
     >>> df.filter(df['pIa'] > 0.5).count()
     80
     """
+    # dt is a column of floats
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
     # Maximum days in the history
@@ -641,9 +492,6 @@ def rfscore_rainbow_elasticc(
     if len(midPointTai[mask]) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
-    candid = pd.Series(range(len(midPointTai)))
-    ids = candid[mask]
-
     # Load pre-trained model `clf`
     if model is not None:
         clf = load_scikit_model(model.values[0])
@@ -652,22 +500,27 @@ def rfscore_rainbow_elasticc(
         model = curdir + '/data/models/elasticc_rainbow_earlyIa.pkl'
         clf = pickle.load(open(model, 'rb'))
 
+    candid = pd.Series(range(len(midPointTai)))
+    ids = candid[mask]
+
     test_features = []
-    for j in ids:
+    for index in ids:
         features = extract_features_rainbow(
-            midPointTai[j], filterName[j], cpsFlux[j], cpsFluxErr[j],
+            midPointTai.values[index],
+            filterName.values[index],
+            cpsFlux.values[index],
+            cpsFluxErr.values[index],
             band_wave_aa=band_wave_aa.values[0],
             with_baseline=with_baseline.values[0],
             min_data_points=min_data_points.values[0],
-            list_filters=list_filters.values[0],
             low_bound=low_bound.values[0]
         )
-        nobs = midPointTai[j].count()
+
         meta_feats = [
-            nobs,
-            snr.values[j],
-            hostgal_snsep.values[j],
-            hostgal_zphot.values[j]
+            len(midPointTai.values[index]),
+            snr.values[index],
+            hostgal_snsep.values[index],
+            hostgal_zphot.values[index]
         ]
         test_features.append(np.concatenate((meta_feats, features)))
 
