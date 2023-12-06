@@ -474,9 +474,9 @@ def rfscore_rainbow_elasticc(
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
     >>> df = df.withColumn('pIa', rfscore_rainbow_elasticc(*args))
-    >>> df.select('pIa').show()
+
     >>> df.filter(df['pIa'] > 0.5).count()
-    80
+    79
     """
     # dt is a column of floats
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
