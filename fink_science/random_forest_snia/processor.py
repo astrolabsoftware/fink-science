@@ -474,7 +474,7 @@ def rfscore_rainbow_elasticc(
     >>> args += [F.col('diaObject.hostgal_snsep')]
     >>> args += [F.col('diaObject.hostgal_zphot')]
     >>> df = df.withColumn('pIa', rfscore_rainbow_elasticc(*args))
-    >>> print(df['pIa'].show())
+    >>> df.select('pIa').show()
     >>> df.filter(df['pIa'] > 0.5).count()
     80
     """
