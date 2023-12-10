@@ -389,7 +389,7 @@ def snn_broad_elasticc(
     >>> pdf = df.select('preds').toPandas()
 
     # 11 objects have been classified as class 0
-    >>> np.sum(pdf.apply(lambda x: np.argmax(x) == 0))
+    >>> np.sum(pdf['preds'].apply(lambda x: np.argmax(x) == 0))
     11
     """
     # No a priori cuts
@@ -449,23 +449,13 @@ def snn_broad_elasticc(
     preds_df = reformat_to_df(pred_probs, ids=ids)
     preds_df.index = preds_df.SNID
 
-    # Take only probabilities to be Ia
-    # snn_class = np.ones(len(midPointTai), dtype=float) * -1
-    # snn_max_prob = np.zeros(len(midPointTai), dtype=float)
-
     all_preds = preds_df.reindex([str(i) for i in diaSourceId[mask].values])
 
     cols = ['prob_class{}'.format(i) for i in range(5)]
     all_preds['all'] = all_preds[cols].values.tolist()
 
-    # all_preds[['snn_class', 'snn_max_prob']] = all_preds[cols].apply(lambda x: extract_max_prob(x), axis=1, result_type="expand")
-    # snn_class[mask] = all_preds.snn_class.values
-    # snn_max_prob[mask] = all_preds.snn_max_prob.values
-
-    # # return main class and associated probability
-    # return pd.Series([[i, j] for i, j in zip(snn_class, snn_max_prob)])
-
     return all_preds['all']
+
 
 if __name__ == "__main__":
     """ Execute the test suite """
