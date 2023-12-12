@@ -18,6 +18,7 @@ import fink_science.agn.models as mod
 from pandas.testing import assert_frame_equal  # noqa: F401
 import fink_science.agn.kernel as k
 import numpy as np
+from numpy.linalg import LinAlgError
 import pickle  # noqa: F401
 from scipy.optimize import curve_fit
 import warnings
@@ -534,7 +535,7 @@ def parametric_bump(ps, band):
         fit = curve_fit(mod.bump, ps[f"cjd_{band}"], ps[f"cflux_{band}"], sigma=ps[f"csigflux_{band}"],
                         p0=[0.225, -2.5, 0.038, get_min(ps[f"cflux_{band}"])], maxfev=k.MAXFEV)
 
-    except (RuntimeError, ValueError):
+    except (RuntimeError, ValueError, LinAlgError):
         fit = [[0.225, -2.5, 0.038, -1]]
 
     return fit[0]
