@@ -478,7 +478,7 @@ def rfscore_rainbow_elasticc(
     79
 
     >>> df.filter(df['pIa'] == -1.0).count()
-    0
+    153
     """
     # dt is a column of floats
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
