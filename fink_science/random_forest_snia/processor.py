@@ -28,7 +28,6 @@ from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
-# from actsnfink.classifier_sigmoid import get_sigmoid_features_elasticc_perfilter
 from actsnfink.rainbow import fit_rainbow
 
 from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
@@ -477,6 +476,9 @@ def rfscore_rainbow_elasticc(
 
     >>> df.filter(df['pIa'] > 0.5).count()
     79
+
+    >>> df.filter(df['pIa'] == -1.0).count()
+    153
     """
     # dt is a column of floats
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
@@ -502,6 +504,7 @@ def rfscore_rainbow_elasticc(
     ids = candid[mask]
 
     test_features = []
+    flag = []
     for index in ids:
         features = extract_features_rainbow(
             midPointTai.values[index],
@@ -513,6 +516,10 @@ def rfscore_rainbow_elasticc(
             min_data_points=min_data_points.values[0],
             low_bound=low_bound.values[0]
         )
+        if features[0] == 0.0:
+            flag.append(False)
+        else:
+            flag.append(True)
 
         meta_feats = [
             len(midPointTai.values[index]),
@@ -520,11 +527,16 @@ def rfscore_rainbow_elasticc(
             hostgal_snsep.values[index],
             hostgal_zphot.values[index]
         ]
-        # test_features.append(meta_feats + list(features[1:]))
         test_features.append(np.array(meta_feats + list(features)))
+
+    flag = np.array(flag, dtype=bool)
 
     # Make predictions
     probabilities = clf.predict_proba(test_features)
+
+    # pIa = -1.0 for objects that do not
+    # have both features non-zero.
+    probabilities[~flag] = [1.0, -1.0]
 
     # Take only probabilities to be Ia
     to_return = np.zeros(len(midPointTai), dtype=float)
