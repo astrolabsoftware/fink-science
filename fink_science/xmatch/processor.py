@@ -240,7 +240,7 @@ def xmatch_cds(
     ...     catalogname="vizier:J/ApJS/254/33/table1",
     ...     distmaxarcsec=1.2,
     ...     cols_out=['SPICY', 'class'],
-    ...     types=['string', 'string'])
+    ...     types=['int', 'string'])
     >>> 'SPICY' in df_spicys.columns
     True
     """
