@@ -241,7 +241,7 @@ def xmatch_cds(
     ...     distmaxarcsec=1.2,
     ...     cols_out=['SPICY', 'class'],
     ...     types=['int', 'string'])
-    >>> 'SPICY' in df_spicys.columns
+    >>> 'SPICY' in df_spicy.columns
     True
     """
     df_out = df.withColumn(
