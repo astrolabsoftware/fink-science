@@ -233,6 +233,16 @@ def xmatch_cds(
     ...     types=['string'])
     >>> 'Type' in df_vsx.columns
     True
+
+    # SPICY
+    >>> df_spicy = xmatch_cds(
+    ...     df,
+    ...     catalogname="vizier:J/ApJS/254/33/table1",
+    ...     distmaxarcsec=1.2,
+    ...     cols_out=['SPICY', 'class'],
+    ...     types=['string', 'string'])
+    >>> 'SPICY' in df_spicys.columns
+    True
     """
     df_out = df.withColumn(
         'xmatch',
