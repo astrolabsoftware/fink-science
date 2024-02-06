@@ -175,6 +175,68 @@ def anomaly_score(lc_features, model_type='AADForest'):
         return model.anomaly_score(data_r, data_g)[0].item()
     return anomaly_score(lc_features)
 
+@pandas_udf(DoubleType())
+def anomaly_score_vect(lc_features, model_type="AADForest"):
+    """Returns anomaly score for an observation
+
+    Parameters
+    ----------
+    lc_features: Spark Map
+        Dict of dicts of floats. Keys of first dict - filters (fid), keys of inner dicts - names of features.
+
+    Returns
+    ----------
+    out: float
+        Anomaly score
+
+    Examples
+    ---------
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+    >>> from fink_science.ad_features.processor import extract_features_ad
+
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns, concatenated with historical data
+    >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid', 'distnr', 'magnr', 'sigmagnr', 'isdiffpos']
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    >>> cols = ['cmagpsf', 'cjd', 'csigmapsf', 'cfid', 'objectId', 'cdistnr', 'cmagnr', 'csigmagnr', 'cisdiffpos']
+    >>> df = df.withColumn('lc_features', extract_features_ad(*cols))
+    >>> df = df.withColumn("anomaly_score", anomaly_score_vect("lc_features"))
+
+    >>> df.filter(df["anomaly_score"] < -0.5).count()
+    7
+
+    >>> df.filter(df["anomaly_score"] == 0).count()
+    84
+    """
+
+    def get_key(x, band):
+        if (
+            len(x) != 2
+            or x is None
+            or any(
+                map(  # noqa: W503
+                    lambda fs: (fs is None or len(fs) == 0), x.values()
+                )
+            )
+        ):
+            return pd.Series({}, dtype=np.float64)
+        else:
+            return pd.Series(x[band])
+
+    data_r = lc_features.apply(lambda x: get_key(x, 1)).fillna(0)[MODEL_COLUMNS]
+    data_g = lc_features.apply(lambda x: get_key(x, 2)).fillna(0)[MODEL_COLUMNS]
+
+    if model_type == "AADForest":
+        score = model_AAD.anomaly_score(data_r, data_g)
+    score = model.anomaly_score(data_r, data_g)
+    return pd.Series(np.transpose(score)[0])
+
 
 if __name__ == "__main__":
     """ Execute the test suite """
