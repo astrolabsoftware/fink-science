@@ -16,7 +16,6 @@ import logging
 import os
 import zipfile
 
-from pyspark.sql.functions import udf
 from pyspark.sql.types import DoubleType
 
 import pandas as pd
@@ -26,6 +25,7 @@ import onnxruntime as rt
 
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
+from pyspark.sql.functions import pandas_udf
 
 logger = logging.getLogger(__name__)
 
@@ -115,9 +115,7 @@ def anomaly_score(lc_features, model_type="AADForest"):
 
     def get_key(x, band):
         if (
-            len(x) != 2
-            or x is None
-            or any(
+            len(x) != 2 or x is None or any(
                 map(  # noqa: W503
                     lambda fs: (fs is None or len(fs) == 0), x.values()
                 )
