@@ -89,7 +89,6 @@ def anomaly_score(lc_features, model_type="AADForest"):
     84
     """
 
-
     path = os.path.dirname(os.path.abspath(__file__))
     model_path = f"{path}/data/models/anomaly_detection"
     g_model_path_AAD = f"{model_path}/forest_g_AAD.onnx"
