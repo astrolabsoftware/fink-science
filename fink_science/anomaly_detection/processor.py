@@ -82,8 +82,8 @@ def anomaly_score(lc_features, model_type="AADForest"):
     >>> df = df.withColumn('lc_features', extract_features_ad(*cols))
     >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
 
-    >>> df.filter(df["anomaly_score"] < -0.5).count()
-    0
+    >>> df.filter(df["anomaly_score"] < -0.013).count()
+    64
 
     >>> df.filter(df["anomaly_score"] == 0).count()
     84
