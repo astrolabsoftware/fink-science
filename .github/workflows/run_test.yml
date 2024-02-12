@@ -42,6 +42,5 @@ jobs:
 
     - name: Run test suites
       run: |
-        pip uninstall -y onnx
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
