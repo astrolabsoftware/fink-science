@@ -120,7 +120,7 @@ def anomaly_score(lc_features, model_type="AADForest"):
                 )
             )
         ):
-            return pd.Series({}, dtype=np.float64)
+            return pd.Series({k: np.nan for k in MODEL_COLUMNS}, dtype=np.float64)
         else:
             return pd.Series(x[band])
 
