@@ -19,7 +19,7 @@ pip install fink_science --upgrade
 For later versions, you will need to install from sources directly using a release tag (see [here](https://github.com/astrolabsoftware/fink-science/releases)):
 
 ```
-# e.g. installing version 4.3.0
+# e.g. installing version 5.7.1
 export TMPDIR=somewhere_with_disk_space
-pip install --no-dependencies --cache-dir=$TMPDIR --build $TMPDIR https://github.com/astrolabsoftware/fink-science/archive/4.3.0.zip
+pip install --no-dependencies --cache-dir=$TMPDIR https://github.com/astrolabsoftware/fink-science/archive/5.7.1.zip
 ```
