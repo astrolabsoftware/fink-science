@@ -43,5 +43,6 @@ jobs:
     - name: Run test suites
       run: |
         pip install light-curve[full]==0.8.2
+        rm -f /tmp/forest_*.onnx
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
