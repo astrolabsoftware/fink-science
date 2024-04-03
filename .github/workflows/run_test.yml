@@ -42,5 +42,6 @@ jobs:
 
     - name: Run test suites
       run: |
+        pip install light-curve[full]==0.8.2
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
