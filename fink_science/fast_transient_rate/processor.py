@@ -230,14 +230,16 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
     # to avoid dividing by 0.
 
     epsilon_0 = np.finfo(float).eps
-    current_mag_sample[:, idx_valid_data] += np.abs(np.min(current_mag_sample[:, idx_valid_data]))
+    if current_mag_sample[:, idx_valid_data].shape[1] != 0:
+        current_mag_sample[:, idx_valid_data] += np.abs(np.min(current_mag_sample[:, idx_valid_data]))
     current_mag_sample[:, idx_valid_data] = np.where(
         current_mag_sample[:, idx_valid_data] == 0,
         epsilon_0,
         current_mag_sample[:, idx_valid_data]
     )
 
-    last_mag_sample += np.abs(np.min(last_mag_sample))
+    if last_mag_sample.shape[1] != 0:
+        last_mag_sample += np.abs(np.min(last_mag_sample))
     last_mag_sample = np.where(last_mag_sample == 0, epsilon_0, last_mag_sample)
 
     # sample upper limit from a uniform distribution starting at 0 until the upper limit
