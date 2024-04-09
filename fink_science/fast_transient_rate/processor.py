@@ -161,7 +161,7 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
 
     >>> ft_df = fast_transient_rate(local_df, 10000, 2023)
     >>> len(ft_df[ft_df["mag_rate"].abs() > 0.2])
-    47
+    48
     """
     # create random generator
     rng = np.random.default_rng(seed)
@@ -223,6 +223,22 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
         u.to_fluxerr(tmp_last[:, 1][idx_last_mag], last_flux),
         (N, len(idx_last_mag)),
     )
+
+    # Fix distribution
+    # shift the normal distributions towards positive values
+    # and remove 0 values to an epsilon close to 0 but not 0
+    # to avoid dividing by 0.
+
+    epsilon_0 = np.finfo(float).eps
+    current_mag_sample[:, idx_valid_data] += np.abs(np.min(current_mag_sample[:, idx_valid_data]))
+    current_mag_sample[:, idx_valid_data] = np.where(
+        current_mag_sample[:, idx_valid_data] == 0,
+        epsilon_0,
+        current_mag_sample[:, idx_valid_data]
+    )
+
+    last_mag_sample += np.abs(np.min(last_mag_sample))
+    last_mag_sample = np.where(last_mag_sample == 0, epsilon_0, last_mag_sample)
 
     # sample upper limit from a uniform distribution starting at 0 until the upper limit
     uniform_upper = rng.uniform(
@@ -378,7 +394,7 @@ def fast_transient_module(spark_df, N, seed=None):
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
     >>> df = fast_transient_module(df, 10000, 2023)
     >>> df.filter(abs(df.mag_rate) > 0.2).count()
-    48
+    47
     """
     cols_before = spark_df.columns
 
