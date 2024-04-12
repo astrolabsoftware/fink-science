@@ -50,9 +50,9 @@ class TwoBandModel:
         return (scores_g[-1] + scores_r[-1]) / 2
 
 
-def anomaly_score(lc_features, models=('')):
-    @pandas_udf(ArrayType(DoubleType()))
-    def anomaly_score(lc_features):
+def anomaly_score(lc_features, model=''):
+    @pandas_udf(DoubleType())
+    def anomaly_score_(lc_features):
         """Returns anomaly score for an observation
 
         Parameters
@@ -76,14 +76,13 @@ def anomaly_score(lc_features, models=('')):
         # Required alert columns, concatenated with historical data
         >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid', 'distnr', 'magnr', 'sigmagnr', 'isdiffpos']
         >>> prefix = 'c'
-        >>> models = ('',)
         >>> what_prefix = [prefix + i for i in what]
         >>> for colname in what:
         ...    df = concat_col(df, colname, prefix=prefix)
 
         >>> cols = ['cmagpsf', 'cjd', 'csigmapsf', 'cfid', 'objectId', 'cdistnr', 'cmagnr', 'csigmagnr', 'cisdiffpos']
         >>> df = df.withColumn('lc_features', extract_features_ad(*cols))
-        >>> df = df.withColumn(f"anomaly_score", anomaly_score("lc_features", models))
+        >>> df = df.withColumn(f"anomaly_score", anomaly_score("lc_features"))
 
         >>> df.filter(df["anomaly_score"] < -0.013).count()
         108
@@ -125,36 +124,33 @@ def anomaly_score(lc_features, models=('')):
         for col in data_g.columns[data_g.isna().any()]:
             data_g[col].fillna(g_means[col], inplace=True)
 
-        
-        result = []
-        for model in models:
-            g_model_path_AAD = f"{model_path}/forest_g_AAD{model}.onnx"
-            r_model_path_AAD = f"{model_path}/forest_r_AAD{model}.onnx"
-            if not (os.path.exists(r_model_path_AAD) and os.path.exists(g_model_path_AAD)):
-                # unzip in a tmp place
-                tmp_path = '/tmp'
-                g_model_path_AAD = f"{tmp_path}/forest_g_AAD{model}.onnx"
-                r_model_path_AAD = f"{tmp_path}/forest_r_AAD{model}.onnx"
-                # check it does not exist to avoid concurrent write
-                if not (os.path.exists(g_model_path_AAD) and os.path.exists(r_model_path_AAD)):
-                    with zipfile.ZipFile(f"{model_path}/anomaly_detection_forest_AAD.zip", 'r') as zip_ref:
-                        zip_ref.extractall(tmp_path)
 
-            forest_r_AAD = rt.InferenceSession(r_model_path_AAD)
-            forest_g_AAD = rt.InferenceSession(g_model_path_AAD)
+        g_model_path_AAD = f"{model_path}/forest_g_AAD{model}.onnx"
+        r_model_path_AAD = f"{model_path}/forest_r_AAD{model}.onnx"
+        if not (os.path.exists(r_model_path_AAD) and os.path.exists(g_model_path_AAD)):
+            # unzip in a tmp place
+            tmp_path = '/tmp'
+            g_model_path_AAD = f"{tmp_path}/forest_g_AAD{model}.onnx"
+            r_model_path_AAD = f"{tmp_path}/forest_r_AAD{model}.onnx"
+            # check it does not exist to avoid concurrent write
+            if not (os.path.exists(g_model_path_AAD) and os.path.exists(r_model_path_AAD)):
+                with zipfile.ZipFile(f"{model_path}/anomaly_detection_forest_AAD{model}.zip", 'r') as zip_ref:
+                    zip_ref.extractall(tmp_path)
 
-            # load the mean values used to replace Nan values from the features extraction
-            r_means = pd.read_csv(f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True)
-            g_means = pd.read_csv(f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True)
+        forest_r_AAD = rt.InferenceSession(r_model_path_AAD)
+        forest_g_AAD = rt.InferenceSession(g_model_path_AAD)
 
-            model_AAD = TwoBandModel(forest_g_AAD, forest_r_AAD)
+        # load the mean values used to replace Nan values from the features extraction
+        r_means = pd.read_csv(f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True)
+        g_means = pd.read_csv(f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True)
 
-            score = model_AAD.anomaly_score(data_r, data_g)
-            score_ = np.transpose(score)[0]
-            score_[mask] = 0.0
-            result.append(score_)
-        return pd.Series(list(zip(*result)))
-    return anomaly_score(lc_features)
+        model_AAD = TwoBandModel(forest_g_AAD, forest_r_AAD)
+
+        score = model_AAD.anomaly_score(data_r, data_g)
+        score_ = np.transpose(score)[0]
+        score_[mask] = 0.0
+        return pd.Series(score_)
+    return anomaly_score_(lc_features)
 
 
 if __name__ == "__main__":
