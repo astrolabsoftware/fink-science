@@ -16,7 +16,7 @@ import logging
 import os
 import zipfile
 
-from pyspark.sql.types import DoubleType, ArrayType
+from pyspark.sql.types import DoubleType
 
 import pandas as pd
 import numpy as np
@@ -90,9 +90,6 @@ def anomaly_score(lc_features, model=''):
         >>> df.filter(df["anomaly_score"] == 0).count()
         84
         """
-
-
-
         def get_key(x, band):
             if (
                 len(x) != 2 or x is None or any(
@@ -109,8 +106,6 @@ def anomaly_score(lc_features, model=''):
 
         r_means = pd.read_csv(f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True)
         g_means = pd.read_csv(f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True)
-
-
         data_r = lc_features.apply(lambda x: get_key(x, 1))[MODEL_COLUMNS]
         data_g = lc_features.apply(lambda x: get_key(x, 2))[MODEL_COLUMNS]
 
@@ -123,7 +118,6 @@ def anomaly_score(lc_features, model=''):
 
         for col in data_g.columns[data_g.isna().any()]:
             data_g[col].fillna(g_means[col], inplace=True)
-
 
         g_model_path_AAD = f"{model_path}/forest_g_AAD{model}.onnx"
         r_model_path_AAD = f"{model_path}/forest_r_AAD{model}.onnx"
