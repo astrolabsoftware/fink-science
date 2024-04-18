@@ -63,7 +63,8 @@ def get_last_alert(
         list[3]: last julian date in the history, nan if not available for the current filter
         list[4]: first 5-sigma julian date contains in the history, always available.
     """
-    jdstarthist5sigma = cjd[0]
+    idx_first_mag = np.where(~np.isnan(cmagpsf))[0]
+    jdstarthist5sigma = cjd[idx_first_mag[0]]
 
     for idx in range(len(cfid) - 1):
         if cfid[idx] == fid:
