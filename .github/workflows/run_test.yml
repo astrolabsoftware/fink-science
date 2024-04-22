@@ -42,5 +42,9 @@ jobs:
 
     - name: Run test suites
       run: |
+        pip install light-curve[full]==0.8.1
+        pip install onnx==1.12.0
+        pip install onnxruntime==1.16.3
+        rm -f /tmp/forest_*.onnx
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
