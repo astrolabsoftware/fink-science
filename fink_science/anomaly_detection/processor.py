@@ -51,7 +51,7 @@ class TwoBandModel:
 
 
 @pandas_udf(DoubleType())
-def anomaly_score(lc_features, model=''):
+def anomaly_score(lc_features, model=None):
     """Returns anomaly score for an observation
 
     Parameters
@@ -89,17 +89,19 @@ def anomaly_score(lc_features, model=''):
     >>> df.filter(df["anomaly_score"] == 0).count()
     84
     """
+
     def get_key(x, band):
         if (
-            len(x) != 2 or x is None or any(
-                map(  # noqa: W503
-                    lambda fs: (fs is None or len(fs) == 0), x.values()
-                )
+                len(x) != 2 or x is None or any(
+            map(  # noqa: W503
+                lambda fs: (fs is None or len(fs) == 0), x.values()
             )
+        )
         ):
             return pd.Series({k: np.nan for k in MODEL_COLUMNS}, dtype=np.float64)
         else:
             return pd.Series(x[band])
+
     path = os.path.dirname(os.path.abspath(__file__))
     model_path = f"{path}/data/models/anomaly_detection"
 
@@ -111,7 +113,11 @@ def anomaly_score(lc_features, model=''):
     mask_r = data_r.isnull().all(1)
     mask_g = data_g.isnull().all(1)
     mask = mask_r.values * mask_g.values
-    model = model[0]
+    if model is not None:
+        model = model[0]
+    else:
+        model = ''
+
     for col in data_r.columns[data_r.isna().any()]:
         data_r[col].fillna(r_means[col], inplace=True)
 
