@@ -50,7 +50,6 @@ class TwoBandModel:
         return (scores_g[-1] + scores_r[-1]) / 2
 
 
-
 @pandas_udf(DoubleType())
 def anomaly_score(lc_features, model=''):
     """Returns anomaly score for an observation
