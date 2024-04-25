@@ -92,16 +92,15 @@ def anomaly_score(lc_features, model=None):
 
     def get_key(x, band):
         if (
-                len(x) != 2 or x is None or any(
-            map(  # noqa: W503
-                lambda fs: (fs is None or len(fs) == 0), x.values()
+            len(x) != 2 or x is None or any(
+                map(  # noqa: W503
+                    lambda fs: (fs is None or len(fs) == 0), x.values()
+                )
             )
-        )
         ):
             return pd.Series({k: np.nan for k in MODEL_COLUMNS}, dtype=np.float64)
         else:
             return pd.Series(x[band])
-
     path = os.path.dirname(os.path.abspath(__file__))
     model_path = f"{path}/data/models/anomaly_detection"
 
