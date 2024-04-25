@@ -52,7 +52,7 @@ class TwoBandModel:
 
 
 @pandas_udf(DoubleType())
-def anomaly_score_(lc_features, model=''):
+def anomaly_score(lc_features, model=''):
     """Returns anomaly score for an observation
 
     Parameters
@@ -112,7 +112,7 @@ def anomaly_score_(lc_features, model=''):
     mask_r = data_r.isnull().all(1)
     mask_g = data_g.isnull().all(1)
     mask = mask_r.values * mask_g.values
-
+    model = model[0]
     for col in data_r.columns[data_r.isna().any()]:
         data_r[col].fillna(r_means[col], inplace=True)
 
