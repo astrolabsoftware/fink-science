@@ -121,8 +121,10 @@ def anomaly_score(lc_features, model_type="AADForest"):
             )
         ):
             return pd.Series({k: np.nan for k in MODEL_COLUMNS}, dtype=np.float64)
-        else:
+        elif band in x:
             return pd.Series(x[band])
+        else:
+            raise IndexError("band {} not found in {}".format(band, x))
 
     data_r = lc_features.apply(lambda x: get_key(x, 1))[MODEL_COLUMNS]
     data_g = lc_features.apply(lambda x: get_key(x, 2))[MODEL_COLUMNS]
