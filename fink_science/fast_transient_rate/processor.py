@@ -66,7 +66,7 @@ def get_last_alert(
     idx_first_mag = np.where(~np.isnan(np.array(cmagpsf, dtype=np.float32)))[0]
     jdstarthist5sigma = cjd[idx_first_mag[0]]
 
-    for idx in range(len(cfid) - 1):
+    for idx in range(len(cfid) - 2, -1, -1):
         if cfid[idx] == fid:
             if cmagpsf[idx] is None:
                 return [
