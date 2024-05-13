@@ -66,7 +66,7 @@ def get_last_alert(
     idx_first_mag = np.where(~np.isnan(np.array(cmagpsf, dtype=np.float32)))[0]
     jdstarthist5sigma = cjd[idx_first_mag[0]]
 
-    for idx in range(len(cfid) - 1):
+    for idx in range(len(cfid) - 2, -1, -1):
         if cfid[idx] == fid:
             if cmagpsf[idx] is None:
                 return [
@@ -162,7 +162,7 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
 
     >>> ft_df = fast_transient_rate(local_df, 10000, 2023)
     >>> len(ft_df[ft_df["mag_rate"].abs() > 0.2])
-    48
+    191
     """
     # create random generator
     rng = np.random.default_rng(seed)
@@ -397,7 +397,7 @@ def fast_transient_module(spark_df, N, seed=None):
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
     >>> df = fast_transient_module(df, 10000, 2023)
     >>> df.filter(abs(df.mag_rate) > 0.2).count()
-    47
+    190
     """
     cols_before = spark_df.columns
 
