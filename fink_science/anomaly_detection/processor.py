@@ -106,8 +106,10 @@ def anomaly_score(lc_features, model=None):
             )
         ):
             return pd.Series({k: np.nan for k in MODEL_COLUMNS}, dtype=np.float64)
-        else:
+        elif band in x:
             return pd.Series(x[band])
+        else:
+            raise IndexError("band {} not found in {}".format(band, x))
     path = os.path.dirname(os.path.abspath(__file__))
     model_path = f"{path}/data/models/anomaly_detection"
 
