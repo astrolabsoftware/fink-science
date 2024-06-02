@@ -58,6 +58,10 @@ def anomaly_score(lc_features, model=None):
     ----------
     lc_features: Spark Map
         Dict of dicts of floats. Keys of first dict - filters (fid), keys of inner dicts - names of features.
+    model: str
+        Name of the model used.
+        Name must start with a ‘_’ and be ‘_{user_name}’,
+        where user_name is the user name of the model at https://anomaly.fink-portal.org/.
 
     Returns
     ----------
@@ -74,6 +78,8 @@ def anomaly_score(lc_features, model=None):
 
     # Required alert columns, concatenated with historical data
     >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid', 'distnr', 'magnr', 'sigmagnr', 'isdiffpos']
+
+    >>> MODELS = ['', '_gamma', '_delta', '_epsilon', '_theta', '_omega'] # '' corresponds to the model for a telegram channel
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
     >>> for colname in what:
@@ -81,7 +87,8 @@ def anomaly_score(lc_features, model=None):
 
     >>> cols = ['cmagpsf', 'cjd', 'csigmapsf', 'cfid', 'objectId', 'cdistnr', 'cmagnr', 'csigmagnr', 'cisdiffpos']
     >>> df = df.withColumn('lc_features', extract_features_ad(*cols))
-    >>> df = df.withColumn(f"anomaly_score", anomaly_score("lc_features"))
+    >>> for model in MODELS:
+    ...     df = df.withColumn(f'anomaly_score{model}', anomaly_score("lc_features", F.lit(model)))
 
     >>> df.filter(df["anomaly_score"] < -0.013).count()
     108
