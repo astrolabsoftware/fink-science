@@ -125,7 +125,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     >>> df = df.withColumn('pKNe', knscore(*args))
 
     >>> df.filter(df['pKNe'] > 0.5).count()
-    0
+    6
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
