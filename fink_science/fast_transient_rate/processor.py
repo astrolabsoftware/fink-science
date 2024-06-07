@@ -67,7 +67,18 @@ def get_last_alert(
     jdstarthist5sigma = cjd[idx_first_mag[0]]
 
     for idx in range(len(cfid) - 2, -1, -1):
-        if cfid[idx] == fid:
+        if cfid[idx] > 2:
+            # neither g nor r for ZTF
+            # TODO: change the logic for LSST
+            return [
+                float("nan"),
+                float("nan"),
+                float("nan"),
+                float("nan"),
+                jdstarthist5sigma,
+            ]
+
+        elif cfid[idx] == fid:
             if cmagpsf[idx] is None:
                 return [
                     float("nan"),
@@ -398,6 +409,12 @@ def fast_transient_module(spark_df, N, seed=None):
     >>> df = fast_transient_module(df, 10000, 2023)
     >>> df.filter(abs(df.mag_rate) > 0.2).count()
     190
+
+    # check robustness for i-band
+    >>> df = spark.read.format('parquet').load(ztf_alert_with_i_band)
+    >>> df = fast_transient_module(df, 10000, 2023)
+    >>> df.filter(abs(df.mag_rate) > 0.2).count()
+    ...
     """
     cols_before = spark_df.columns
 
@@ -437,6 +454,9 @@ if __name__ == "__main__":
     path = os.path.dirname(__file__)
     ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
+
+    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)
