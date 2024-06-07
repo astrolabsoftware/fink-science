@@ -103,7 +103,7 @@ def anomaly_score(lc_features, model_type="AADForest"):
     >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
 
     >>> df.filter(df["anomaly_score"] < 0).count()
-    108
+    121
     """
 
     path = os.path.dirname(os.path.abspath(__file__))
