@@ -414,7 +414,7 @@ def fast_transient_module(spark_df, N, seed=None):
     >>> df = spark.read.format('parquet').load(ztf_alert_with_i_band)
     >>> df = fast_transient_module(df, 10000, 2023)
     >>> df.filter(abs(df.mag_rate) > 0.2).count()
-    ...
+    119
     """
     cols_before = spark_df.columns
 
