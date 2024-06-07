@@ -135,7 +135,7 @@ def extract_features_ad_raw(
     ...    assert len(row['lc_features'][1]) == 26
 
     # check the processing on i-band
-    >>> df = spark.read.format('parquet').load(ztf_alert_with_band)
+    >>> df = spark.read.format('parquet').load(ztf_alert_with_i_band)
 
     # Required alert columns, concatenated with historical data
     >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid', 'distnr', 'magnr', 'sigmagnr', 'isdiffpos']
@@ -248,8 +248,8 @@ if __name__ == "__main__":
     globs["ztf_alert_sample"] = ztf_alert_sample
     del globs["extract_features_ad_raw"]
 
-    ztf_alert_with_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
-    globs["ztf_alert_with_band"] = ztf_alert_with_band
+    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)
