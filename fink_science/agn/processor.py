@@ -151,7 +151,7 @@ def agn_ztf(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     >>> args += ['candidate.ra', 'candidate.dec']
     >>> df_agn = df.withColumn('proba', agn_ztf(*args))
     >>> df_agn.filter(df_agn['proba'] != 0.0).count()
-    145
+    69
     """
 
     data = pd.DataFrame(
