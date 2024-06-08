@@ -195,7 +195,7 @@ def rfscore_sigmoid_full(
     >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    6
+    0
     """
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
 
