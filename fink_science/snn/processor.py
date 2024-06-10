@@ -146,6 +146,29 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
 
     >>> df.filter(df['pIa2'] > 0.5).count()
     8
+
+    # Check robustness wrt i-band
+    >>> df = spark.read.load(ztf_alert_with_i_band)
+    >>> df = xmatch_cds(df)
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+    >>> args_roid = [
+    ...    'cjd', 'cmagpsf',
+    ...    'candidate.ndethist', 'candidate.sgscore1',
+    ...    'candidate.ssdistnr', 'candidate.distpsnr1']
+    >>> df = df.withColumn('roid', roid_catcher(*args_roid))
+
+    # Perform the fit + classification (default model)
+    >>> args = ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']
+    >>> args += [F.col('roid'), F.col('cdsxmatch'), F.col('candidate.jdstarthist')]
+    >>> args += [F.lit('snn_snia_vs_nonia')]
+    >>> df = df.withColumn('pIa', snn_ia(*args))
+
+    >>> df.filter(df['pIa'] > 0.5).count()
+    0
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 
@@ -474,6 +497,9 @@ if __name__ == "__main__":
 
     elasticc_model_path = '{}/data/models/snn_models/elasticc/model.pt'.format(path)
     globs["elasticc_model_path"] = elasticc_model_path
+
+    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)
