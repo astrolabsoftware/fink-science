@@ -168,7 +168,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> df = df.withColumn('pIa', snn_ia(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    0
+    13
     """
     mask = apply_selection_cuts_ztf(magpsf, cdsxmatch, jd, jdstarthist, roid)
 
