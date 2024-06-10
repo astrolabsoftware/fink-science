@@ -134,6 +134,24 @@ def agn_ztf(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     >>> df_agn = df.withColumn('proba', agn_ztf(*args))
     >>> df_agn.filter(df_agn['proba'] != 0.0).count()
     145
+
+    # Verify the code executes if i-band is present in the history
+    >>> df = spark.read.load(ztf_alert_with_i_band)
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = ['objectId'] + [F.col(i) for i in what_prefix]
+    >>> args += ['candidate.ra', 'candidate.dec']
+    >>> df_agn = df.withColumn('proba', agn_ztf(*args))
+    >>> df_agn.filter(df_agn['proba'] != 0.0).count()
+    69
     """
 
     data = pd.DataFrame(
@@ -160,6 +178,9 @@ if __name__ == "__main__":
 
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
+
+    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)
