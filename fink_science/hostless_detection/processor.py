@@ -10,7 +10,7 @@ from pyspark.sql.types import FloatType
 import pandas as pd
 
 from run_pipeline import HostLessExtragalactic
-from science.pipeline_utils import load_json
+from pipeline_utils import load_json
 
 CONFIGS = load_json("config.json")
 
