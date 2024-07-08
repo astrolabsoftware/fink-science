@@ -12,7 +12,7 @@ import pandas as pd
 from run_pipeline import HostLessExtragalactic
 from pipeline_utils import load_json
 
-CONFIGS = load_json("config.json")
+CONFIGS = load_json("./fink_science/hostless_detection/config.json")
 
 
 @pandas_udf(FloatType())
