@@ -8,7 +8,7 @@
 from typing import Dict, Tuple
 
 import numpy as np
-from pipeline_utils import (
+from fink_science.hostless_detection.pipeline_utils import (
     apply_sigma_clipping,
     run_hostless_detection_with_clipped_data, read_bytes_image,
     run_powerspectrum_analysis)
@@ -39,8 +39,8 @@ class HostLessExtragalactic:
         template_stamp
            template stamp data
         """
-        science_stamp = read_bytes_image(science_stamp["stampData"])
-        template_stamp = read_bytes_image(template_stamp["stampData"])
+        science_stamp = read_bytes_image(science_stamp)
+        template_stamp = read_bytes_image(template_stamp)
         science_stamp_clipped, template_stamp_clipped = (
             self._run_sigma_clipping(science_stamp, template_stamp))
         is_hostless_candidate = run_hostless_detection_with_clipped_data(

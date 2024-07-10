@@ -15,7 +15,7 @@ from astropy.io import fits
 from astropy.stats import sigma_clip
 import numpy as np
 
-import powerspectrum as ps
+import fink_science.hostless_detection.powerspectrum as ps
 
 
 def load_json(file_path: str) -> Dict:
