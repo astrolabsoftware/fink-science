@@ -68,6 +68,6 @@ def run_potential_hostless(
 if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
-    sample_file = './fink_science/data/alerts/hostless_detection/part-0-0-435829.parquet'.format(path)
+    sample_file = './fink_science/data/alerts/hostless_detection/part-0-0-435829.parquet'
     globs["sample_file"] = sample_file
     spark_unit_tests(globs)
