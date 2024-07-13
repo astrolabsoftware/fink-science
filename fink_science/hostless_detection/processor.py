@@ -7,6 +7,7 @@
 
 import os
 
+import numpy as np
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import FloatType
 import pandas as pd
@@ -21,12 +22,15 @@ CONFIGS = load_json("./fink_science/hostless_detection/config.json")
 
 @pandas_udf(FloatType())
 def run_potential_hostless(
-        cutoutScience: pd.Series, cutoutTemplate: pd.Series) -> pd.Series:
+        magpsf: pd.Series, cutoutScience: pd.Series,
+        cutoutTemplate: pd.Series) -> pd.Series:
     """
     Runs potential hostless candidate detection using
 
     Parameters
     ----------
+    magpsf
+        Magnitude from PSF-fit photometry [mag]
     cutoutScience
         science stamp images
     cutoutTemplate
@@ -44,24 +48,30 @@ def run_potential_hostless(
 
     Examples
     ----------
-    >>> columns_to_select = ["cutoutScience", "cutoutTemplate"]
+    >>> columns_to_select = ["cmagpsf", "cutoutScience", "cutoutTemplate"]
     >>> df = spark.read.load(sample_file)
     >>> df.count()
     72
-    >>> df = df.select("cutoutScience", "cutoutTemplate")
-    >>> df = df.withColumn('kstest_static', run_potential_hostless(df["cutoutScience"], df["cutoutTemplate"]))
+    >>> df = df.select(columns_to_select)
+    >>> df = df.withColumn('kstest_static', run_potential_hostless(df["cmagpsf"], df["cutoutScience"], df["cutoutTemplate"]))
     >>> df = df.select("kstest_static").toPandas()
     >>> len(df[df["kstest_static"] >= 0])
     3
     """
     hostless_science_class = HostLessExtragalactic(CONFIGS)
+    number_of_alerts = magpsf.apply(
+        lambda x: np.sum(np.array(x) == np.array(x)))
     results = []
+    default_result = -99
     for index in range(cutoutScience.shape[0]):
         science_stamp = cutoutScience["stampData"][index]
         template_stamp = cutoutTemplate["stampData"][index]
-        current_result = hostless_science_class.process_candidate_fink(
-            science_stamp, template_stamp)
-        results.append(current_result)
+        if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
+            current_result = hostless_science_class.process_candidate_fink(
+                science_stamp, template_stamp)
+            results.append(current_result)
+        else:
+            results.append(default_result)
     return pd.Series(results)
 
 

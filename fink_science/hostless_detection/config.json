@@ -8,5 +8,6 @@
     "crop_radius": 7,
     "max_number_of_pixels_clipped": 5,
     "min_number_of_pixels_clipped": 3
-  }
+  },
+  "minimum_number_of_alerts": 3
 }
