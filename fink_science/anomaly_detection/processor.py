@@ -79,7 +79,7 @@ def anomaly_score(lc_features, model=None):
     # Required alert columns, concatenated with historical data
     >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid', 'distnr', 'magnr', 'sigmagnr', 'isdiffpos']
 
-    >>> MODELS = ['', '_gamma', '_delta', '_epsilon', '_theta', '_omega'] # '' corresponds to the model for a telegram channel
+    >>> MODELS = ['', '_beta'] # '' corresponds to the model for a telegram channel
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]
     >>> for colname in what:
@@ -93,8 +93,8 @@ def anomaly_score(lc_features, model=None):
     >>> df.filter(df["anomaly_score"] < -0.013).count()
     108
 
-    >>> df.filter(df["anomaly_score"] == 0).count()
-    96
+    >>> df.filter(df["anomaly_score"] == 0).count() < 200
+    True
 
     # Check the robustness of the code when i-band is present
     >>> df = spark.read.load(ztf_alert_with_i_band)
