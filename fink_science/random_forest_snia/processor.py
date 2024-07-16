@@ -177,6 +177,25 @@ def rfscore_sigmoid_full(
 
     >>> df.agg({"pIaAL": "max"}).collect()[0][0] < 1.0
     True
+
+    # check robustness wrt i-band
+    >>> df = spark.read.load(ztf_alert_with_i_band)
+    >>> df = xmatch_cds(df)
+
+    # Required alert columns
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('cdsxmatch'), F.col('candidate.ndethist')]
+    >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
+
+    >>> df.filter(df['pIa'] > 0.5).count()
+    0
     """
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
 
@@ -562,6 +581,9 @@ if __name__ == "__main__":
 
     model_path_al_loop = '{}/data/models/for_al_loop/model_20231009.pkl'.format(path)
     globs["model_path_al_loop"] = model_path_al_loop
+
+    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)

@@ -88,6 +88,28 @@ def mulens(
 
     >>> df.filter(df['new_mulens'] > 0.0).count()
     0
+
+    # check robustness wrt i-band
+    >>> df = spark.read.load(ztf_alert_with_i_band)
+
+    # Required alert columns
+    >>> what = [
+    ...    'fid', 'magpsf', 'sigmapsf',
+    ...    'magnr', 'sigmagnr', 'isdiffpos']
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += ['candidate.ndethist']
+    >>> df = df.withColumn('new_mulens', mulens(*args))
+
+    # Drop temp columns
+    >>> df = df.drop(*what_prefix)
+
+    >>> df.filter(df['new_mulens'] > 0.0).count()
+    0
     """
     warnings.filterwarnings('ignore')
 
@@ -257,6 +279,9 @@ if __name__ == "__main__":
 
     model_path = '{}/data/models'.format(path)
     globs["model_path"] = model_path
+
+    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)

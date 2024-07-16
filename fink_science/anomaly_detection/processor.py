@@ -95,6 +95,23 @@ def anomaly_score(lc_features, model=None):
 
     >>> df.filter(df["anomaly_score"] == 0).count()
     84
+
+    # Check the robustness of the code when i-band is present
+    >>> df = spark.read.load(ztf_alert_with_i_band)
+
+    # Required alert columns, concatenated with historical data
+    >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid', 'distnr', 'magnr', 'sigmagnr', 'isdiffpos']
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    >>> cols = ['cmagpsf', 'cjd', 'csigmapsf', 'cfid', 'objectId', 'cdistnr', 'cmagnr', 'csigmagnr', 'cisdiffpos']
+    >>> df = df.withColumn('lc_features', extract_features_ad(*cols))
+    >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
+
+    >>> df.filter(df["anomaly_score"] < 0).count()
+    121
     """
 
     def get_key(x, band):
@@ -110,6 +127,7 @@ def anomaly_score(lc_features, model=None):
             return pd.Series(x[band])
         else:
             raise IndexError("band {} not found in {}".format(band, x))
+
     path = os.path.dirname(os.path.abspath(__file__))
     model_path = f"{path}/data/models/anomaly_detection"
 
@@ -166,6 +184,9 @@ if __name__ == "__main__":
     path = os.path.dirname(os.path.abspath(__file__))
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
+
+    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)

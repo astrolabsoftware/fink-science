@@ -63,10 +63,22 @@ def get_last_alert(
         list[3]: last julian date in the history, nan if not available for the current filter
         list[4]: first 5-sigma julian date contains in the history, always available.
     """
-    jdstarthist5sigma = cjd[0]
+    idx_first_mag = np.where(~np.isnan(np.array(cmagpsf, dtype=np.float32)))[0]
+    jdstarthist5sigma = cjd[idx_first_mag[0]]
 
-    for idx in range(len(cfid) - 1):
-        if cfid[idx] == fid:
+    for idx in range(len(cfid) - 2, -1, -1):
+        if cfid[idx] > 2:
+            # neither g nor r for ZTF
+            # TODO: change the logic for LSST
+            return [
+                float("nan"),
+                float("nan"),
+                float("nan"),
+                float("nan"),
+                jdstarthist5sigma,
+            ]
+
+        elif cfid[idx] == fid:
             if cmagpsf[idx] is None:
                 return [
                     float("nan"),
@@ -161,7 +173,7 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
 
     >>> ft_df = fast_transient_rate(local_df, 10000, 2023)
     >>> len(ft_df[ft_df["mag_rate"].abs() > 0.2])
-    47
+    191
     """
     # create random generator
     rng = np.random.default_rng(seed)
@@ -223,6 +235,24 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
         u.to_fluxerr(tmp_last[:, 1][idx_last_mag], last_flux),
         (N, len(idx_last_mag)),
     )
+
+    # Fix distribution
+    # shift the normal distributions towards positive values
+    # and remove 0 values to an epsilon close to 0 but not 0
+    # to avoid dividing by 0.
+
+    epsilon_0 = np.finfo(float).eps
+    if current_mag_sample[:, idx_valid_data].shape[1] != 0:
+        current_mag_sample[:, idx_valid_data] += np.abs(np.min(current_mag_sample[:, idx_valid_data]))
+    current_mag_sample[:, idx_valid_data] = np.where(
+        current_mag_sample[:, idx_valid_data] == 0,
+        epsilon_0,
+        current_mag_sample[:, idx_valid_data]
+    )
+
+    if last_mag_sample.shape[1] != 0:
+        last_mag_sample += np.abs(np.min(last_mag_sample))
+    last_mag_sample = np.where(last_mag_sample == 0, epsilon_0, last_mag_sample)
 
     # sample upper limit from a uniform distribution starting at 0 until the upper limit
     uniform_upper = rng.uniform(
@@ -378,7 +408,13 @@ def fast_transient_module(spark_df, N, seed=None):
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
     >>> df = fast_transient_module(df, 10000, 2023)
     >>> df.filter(abs(df.mag_rate) > 0.2).count()
-    48
+    190
+
+    # check robustness for i-band
+    >>> df = spark.read.format('parquet').load(ztf_alert_with_i_band)
+    >>> df = fast_transient_module(df, 10000, 2023)
+    >>> df.filter(abs(df.mag_rate) > 0.2).count()
+    119
     """
     cols_before = spark_df.columns
 
@@ -418,6 +454,9 @@ if __name__ == "__main__":
     path = os.path.dirname(__file__)
     ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
+
+    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)
