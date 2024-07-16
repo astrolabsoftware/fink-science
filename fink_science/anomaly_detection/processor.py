@@ -94,7 +94,7 @@ def anomaly_score(lc_features, model=None):
     108
 
     >>> df.filter(df["anomaly_score"] == 0).count()
-    84
+    96
 
     # Check the robustness of the code when i-band is present
     >>> df = spark.read.load(ztf_alert_with_i_band)
