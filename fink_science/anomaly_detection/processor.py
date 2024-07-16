@@ -122,7 +122,7 @@ def anomaly_score(lc_features, model=None):
     mask_g = data_g.isnull().all(1)
     mask = mask_r.values * mask_g.values
     if model is not None:
-        model = model[0]
+        model = model.values[0]
     else:
         model = ''
 
