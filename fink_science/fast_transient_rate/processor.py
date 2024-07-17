@@ -1,4 +1,4 @@
-# Copyright 2020-2023 AstroLab Software
+# Copyright 2020-2024 AstroLab Software
 # Author: Roman Le Montagner
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
+
 import numpy as np
 import pandas as pd
 import os
@@ -114,6 +116,7 @@ def return_last_alerts(*args) -> list:
     ]
 
 
+@profile
 def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFrame:
     """
     Compute the magnitude rate for fast transient detection.

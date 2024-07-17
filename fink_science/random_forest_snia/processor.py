@@ -17,6 +17,7 @@ from pyspark.sql.types import DoubleType, StringType
 
 import pandas as pd
 import numpy as np
+from line_profiler import profile
 
 import os
 import pickle
@@ -78,6 +79,7 @@ def apply_selection_cuts_ztf(
     return mask
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+@profile
 def rfscore_sigmoid_full(
         jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist,
         min_rising_points=pd.Series([2]),
@@ -245,6 +247,7 @@ def rfscore_sigmoid_full(
     return pd.Series(to_return)
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
+@profile
 def extract_features_rf_snia(
         jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist,
         min_rising_points=pd.Series([2]),
@@ -417,6 +420,7 @@ def extract_features_rainbow(
 
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+@profile
 def rfscore_rainbow_elasticc(
         midPointTai, filterName, cpsFlux, cpsFluxErr,
         snr,

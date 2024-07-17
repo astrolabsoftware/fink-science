@@ -1,4 +1,4 @@
-# Copyright 2020-2022 AstroLab Software
+# Copyright 2020-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
+
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import DoubleType, FloatType, ArrayType
 
@@ -74,6 +76,7 @@ def apply_selection_cuts_ztf(
     return mask
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+@profile
 def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name, model_ext=None) -> pd.Series:
     """ Compute probabilities of alerts to be SN Ia using SuperNNova
 
@@ -203,6 +206,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     return pd.Series(to_return)
 
 @pandas_udf(FloatType(), PandasUDFType.SCALAR)
+@profile
 def snn_ia_elasticc(
         diaSourceId, midPointTai, filterName, psFlux, psFluxErr,
         roid, cdsxmatch, jdstarthist,
@@ -343,6 +347,7 @@ def extract_max_prob(arr):
     return {'class': index, 'prob': array[index]}
 
 @pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
+@profile
 def snn_broad_elasticc(
         diaSourceId, midPointTai, filterName, psFlux, psFluxErr,
         roid, cdsxmatch, jdstarthist,

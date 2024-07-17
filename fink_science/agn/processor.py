@@ -1,4 +1,4 @@
-# Copyright 2022 Fink Software
+# Copyright 2022-2024 Fink Software
 # Author: Etienne Russeil
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
 
 from fink_science.agn.classifier import agn_classifier
 from pyspark.sql.functions import pandas_udf
@@ -23,6 +24,7 @@ from fink_science.tester import spark_unit_tests
 
 
 @pandas_udf(DoubleType())
+@profile
 def agn_elasticc(
         diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName,
         ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_ra, hostgal_dec):
@@ -84,6 +86,7 @@ def agn_elasticc(
 
 
 @pandas_udf(DoubleType())
+@profile
 def agn_ztf(objectId, jd, magpsf, sigmapsf, fid, ra, dec):
     """High level spark wrapper for the AGN classifier on ZTF data
 

@@ -1,4 +1,4 @@
-# Copyright 2020-2022 AstroLab Software
+# Copyright 2020-2024 AstroLab Software
 # Author: Andre Santos, Bernardo Fraga, Clecio de Bom
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
 
 import os
 import numpy as np
@@ -32,6 +33,7 @@ tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
 
 
 @pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
+@profile
 def predict_nn(
         midpointTai: pd.Series,
         psFlux: pd.Series,
