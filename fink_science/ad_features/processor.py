@@ -133,6 +133,23 @@ def extract_features_ad_raw(
     >>> for row in df.take(10):
     ...    assert len(row['lc_features']) == len(np.unique(row['cfid']))
     ...    assert len(row['lc_features'][1]) == 26
+
+    # check the processing on i-band
+    >>> df = spark.read.format('parquet').load(ztf_alert_with_i_band)
+
+    # Required alert columns, concatenated with historical data
+    >>> what = ['magpsf', 'jd', 'sigmapsf', 'fid', 'distnr', 'magnr', 'sigmagnr', 'isdiffpos']
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    >>> cols = ['cmagpsf', 'cjd', 'csigmapsf', 'cfid', 'objectId', 'cdistnr', 'cmagnr', 'csigmagnr', 'cisdiffpos']
+    >>> df = df.withColumn('lc_features', extract_features_ad(*cols))
+
+    >>> for row in df.take(10):
+    ...    assert len(row['lc_features']) == len(np.unique(row['cfid'])) - 1
+    ...    assert 3 not in row['lc_features'].keys()
     """
 
     cfid = np.asarray(cfid, "int32")
@@ -144,6 +161,10 @@ def extract_features_ad_raw(
     extractor = create_extractor()
 
     passbands = np.unique(cfid)
+
+    # keep only g and/or r -- see #393
+    maskFilter = passbands <= 2
+    passbands = passbands[maskFilter]
 
     # Select only valid measurements (not upper limits)
     maskNotNone = magpsf == magpsf
@@ -226,6 +247,9 @@ if __name__ == "__main__":
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
     del globs["extract_features_ad_raw"]
+
+    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)

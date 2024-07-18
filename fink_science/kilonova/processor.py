@@ -107,6 +107,25 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
 
     >>> df.filter(df['pKNe'] > 0.5).count()
     1
+
+    # check robustness wrt i-band
+    >>> df = spark.read.load(ztf_alert_with_i_band)
+    >>> df = xmatch_cds(df)
+
+    # Required alert columns
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += [F.col('candidate.jdstarthist'), F.col('cdsxmatch'), F.col('candidate.ndethist')]
+    >>> df = df.withColumn('pKNe', knscore(*args))
+
+    >>> df.filter(df['pKNe'] > 0.5).count()
+    0
     """
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
@@ -288,6 +307,9 @@ if __name__ == "__main__":
 
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
+
+    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)
