@@ -1,11 +1,9 @@
 import pandas as pd
 import numpy as np
 import fink_science.agn.kernel as k
-import pickle
+import joblib
 
-
-with open(k.CLASSIFIER_ELASTICC, "rb") as f:
-    clf_unit = pickle.load(f)
+clf_unit = joblib.load(k.CLASSIFIER_ELASTICC)
 
 raw_ztf_unit = pd.DataFrame(
     {

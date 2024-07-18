@@ -12,16 +12,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pickle  # noqa: F401
+import warnings
+from scipy.optimize import curve_fit
 
 import pandas as pd
+import numpy as np
+from numpy.linalg import LinAlgError
+
+import fink_science.slsn.kernel as k
 import fink_science.slsn.models as mod
 import fink_science.agn.feature_extraction as fe_agn
+
 from pandas.testing import assert_frame_equal  # noqa: F401
-import fink_science.slsn.kernel as k
-import numpy as np
-import pickle  # noqa: F401
-from scipy.optimize import curve_fit
-import warnings
 
 
 def transform_data(formated):
@@ -109,7 +112,7 @@ def parametric_func(ps, band):
     try:
         fit = curve_fit(mod.mvsr_right_transient, ps[f"cjd_{band}"], ps[f"cflux_{band}"], sigma=ps[f"csigflux_{band}"], p0=[-0.005, 0.015, 15], bounds=([-2, 0, -300], [0, 2, 300]), maxfev=k.MAXFEV)
 
-    except (RuntimeError, ValueError):
+    except (RuntimeError, ValueError, LinAlgError):
         fit = [[0, 0, 0]]
 
     return fit[0]

@@ -14,16 +14,18 @@
 # limitations under the License.
 import logging
 import os
-import pickle
 import zipfile
 
-from pyspark.sql.functions import udf
 from pyspark.sql.types import DoubleType
 
 import pandas as pd
+import numpy as np
+
+import onnxruntime as rt
 
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
+from pyspark.sql.functions import pandas_udf
 
 logger = logging.getLogger(__name__)
 
@@ -43,38 +45,13 @@ class TwoBandModel:
         self.forest_g = forest_g
 
     def anomaly_score(self, data_g, data_r):
-        scores_g = self.forest_g.score_samples(data_g)
-        scores_r = self.forest_r.score_samples(data_r)
-        return (scores_g + scores_r) / 2
+        scores_g = self.forest_g.run(None, {"X": data_g.values.astype(np.float32)})
+        scores_r = self.forest_r.run(None, {"X": data_r.values.astype(np.float32)})
+        return (scores_g[-1] + scores_r[-1]) / 2
 
-
-path = os.path.dirname(os.path.abspath(__file__))
-model_path = f"{path}/data/models/anomaly_detection"
-g_model_path = f"{model_path}/forest_g.pickle"
-r_model_path = f"{model_path}/forest_r.pickle"
-if not (os.path.exists(r_model_path) and os.path.exists(g_model_path)):
-    # unzip in a tmp place
-    tmp_path = '/tmp'
-    g_model_path = f"{tmp_path}/forest_g.pickle"
-    r_model_path = f"{tmp_path}/forest_r.pickle"
-    # check it does not exist to avoid concurrent write
-    if not (os.path.exists(r_model_path) and os.path.exists(g_model_path)):
-        with zipfile.ZipFile(f"{model_path}/anomaly_detection_forest.zip", 'r') as zip_ref:
-            zip_ref.extractall(tmp_path)
-
-with open(r_model_path, 'rb') as forest_file:
-    forest_r = pickle.load(forest_file)
-with open(g_model_path, 'rb') as forest_file:
-    forest_g = pickle.load(forest_file)
-r_means = pd.read_csv(f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True)
-g_means = pd.read_csv(f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True)
-
-model = TwoBandModel(forest_g, forest_r)
-
-
-@udf(returnType=DoubleType())
-def anomaly_score(lc_features) -> float:
-    """ Returns anomaly score for an observation
+@pandas_udf(DoubleType())
+def anomaly_score(lc_features, model_type="AADForest"):
+    """Returns anomaly score for an observation
 
     Parameters
     ----------
@@ -105,40 +82,74 @@ def anomaly_score(lc_features) -> float:
     >>> df = df.withColumn('lc_features', extract_features_ad(*cols))
     >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
 
-    >>> df.filter(df["anomaly_score"] < -0.5).count()
-    15
+    >>> df.filter(df["anomaly_score"] < -0.013).count()
+    108
 
     >>> df.filter(df["anomaly_score"] == 0).count()
     84
-
     """
 
-    if (
-        lc_features is None
-        or len(lc_features) != 2  # noqa: W503 (https://www.flake8rules.com/rules/W503.html, https://www.flake8rules.com/rules/W504.html)
-        or any(map(  # noqa: W503
-            lambda fs: (fs is None or len(fs) == 0),
-            lc_features.values()
-        ))
-    ):
-        return 0.0
-    if any(map(lambda fid: fid not in lc_features, (1, 2))):
-        logger.exception(f"Unsupported 'lc_features' format in '{__file__}/{anomaly_score.__name__}'")
+    path = os.path.dirname(os.path.abspath(__file__))
+    model_path = f"{path}/data/models/anomaly_detection"
+    g_model_path_AAD = f"{model_path}/forest_g_AAD.onnx"
+    r_model_path_AAD = f"{model_path}/forest_r_AAD.onnx"
+    if not (os.path.exists(r_model_path_AAD) and os.path.exists(g_model_path_AAD)):
+        # unzip in a tmp place
+        tmp_path = '/tmp'
+        g_model_path_AAD = f"{tmp_path}/forest_g_AAD.onnx"
+        r_model_path_AAD = f"{tmp_path}/forest_r_AAD.onnx"
+        # check it does not exist to avoid concurrent write
+        if not (os.path.exists(g_model_path_AAD) and os.path.exists(r_model_path_AAD)):
+            with zipfile.ZipFile(f"{model_path}/anomaly_detection_forest_AAD.zip", 'r') as zip_ref:
+                zip_ref.extractall(tmp_path)
 
-    data_r, data_g = (
-        pd.DataFrame.from_dict({k: [v] for k, v in lc_features[i].items()})[MODEL_COLUMNS]
-        for i in (1, 2)
-    )
-    for data, means in ((data_r, r_means), (data_g, g_means)):
-        for col in data.columns[data.isna().any()]:
-            data[col].fillna(means[col], inplace=True)
-    return model.anomaly_score(data_r, data_g)[0].item()
+    forest_r_AAD = rt.InferenceSession(r_model_path_AAD)
+    forest_g_AAD = rt.InferenceSession(g_model_path_AAD)
+
+    # load the mean values used to replace Nan values from the features extraction
+    r_means = pd.read_csv(f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True)
+    g_means = pd.read_csv(f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True)
+
+    model_AAD = TwoBandModel(forest_g_AAD, forest_r_AAD)
+
+    def get_key(x, band):
+        if (
+            len(x) != 2 or x is None or any(
+                map(  # noqa: W503
+                    lambda fs: (fs is None or len(fs) == 0), x.values()
+                )
+            )
+        ):
+            return pd.Series({k: np.nan for k in MODEL_COLUMNS}, dtype=np.float64)
+        elif band in x:
+            return pd.Series(x[band])
+        else:
+            raise IndexError("band {} not found in {}".format(band, x))
+
+    data_r = lc_features.apply(lambda x: get_key(x, 1))[MODEL_COLUMNS]
+    data_g = lc_features.apply(lambda x: get_key(x, 2))[MODEL_COLUMNS]
+
+    mask_r = data_r.isnull().all(1)
+    mask_g = data_g.isnull().all(1)
+    mask = mask_r.values * mask_g.values
+
+    for col in data_r.columns[data_r.isna().any()]:
+        data_r[col].fillna(r_means[col], inplace=True)
+
+    for col in data_g.columns[data_g.isna().any()]:
+        data_g[col].fillna(g_means[col], inplace=True)
+
+    score = model_AAD.anomaly_score(data_r, data_g)
+    score_ = np.transpose(score)[0]
+    score_[mask] = 0.0
+    return pd.Series(score_)
 
 
 if __name__ == "__main__":
     """ Execute the test suite """
     globs = globals()
 
+    path = os.path.dirname(os.path.abspath(__file__))
     ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 

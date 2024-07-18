@@ -1,4 +1,4 @@
-# Copyright 2019-2021 AstroLab Software
+# Copyright 2019-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -222,6 +222,26 @@ def xmatch_cds(
     ...     cols_out=['DR3Name', 'Plx', 'e_Plx'],
     ...     types=['string', 'float', 'float'])
     >>> 'Plx' in df_gaia.columns
+    True
+
+    # VSX
+    >>> df_vsx = xmatch_cds(
+    ...     df,
+    ...     catalogname="vizier:B/vsx/vsx",
+    ...     distmaxarcsec=1.5,
+    ...     cols_out=['Type'],
+    ...     types=['string'])
+    >>> 'Type' in df_vsx.columns
+    True
+
+    # SPICY
+    >>> df_spicy = xmatch_cds(
+    ...     df,
+    ...     catalogname="vizier:J/ApJS/254/33/table1",
+    ...     distmaxarcsec=1.2,
+    ...     cols_out=['SPICY', 'class'],
+    ...     types=['int', 'string'])
+    >>> 'SPICY' in df_spicy.columns
     True
     """
     df_out = df.withColumn(

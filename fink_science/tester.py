@@ -93,12 +93,11 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
                 )
             }
         )
-    elif spark.version.startswith("3"):
+    elif spark.version.startswith('3'):
+        py4j_mod = 'org.slf4j:slf4j-log4j12:1.7.36,org.slf4j:slf4j-simple:1.7.36'
         confdic.update(
             {
-                "spark.jars.packages": "org.apache.spark:spark-avro_2.12:{}".format(
-                    spark.version
-                )
+                "spark.jars.packages": 'org.apache.spark:spark-avro_2.12:{},{}'.format(spark.version, py4j_mod)
             }
         )
     conf.setMaster("local[1]")

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pickle
+import joblib
 import fink_science.agn.kernel as k
 import fink_science.agn.feature_extraction as fe
 import os
@@ -27,7 +27,7 @@ import fink_science.agn.unit_examples as uex  # noqa: F401
 def load_classifier(source):
     """
     load the random forest classifier trained to recognize the AGN
-    on binary cases : AGNs vs non-AGNs  (pickle format).
+    on binary cases : AGNs vs non-AGNs  (joblib format).
 
     Parameters
     ----------
@@ -58,8 +58,7 @@ def load_classifier(source):
     elif source == 'ZTF':
         model_path = k.CLASSIFIER_ZTF
 
-    with open(model_path, "rb") as f:
-        clf = pickle.load(f)
+    clf = joblib.load(model_path)
 
     return clf
 
