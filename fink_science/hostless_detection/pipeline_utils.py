@@ -21,6 +21,7 @@ import fink_science.hostless_detection.powerspectrum as ps
 np.random.seed(1337)
 warnings.filterwarnings('ignore')
 
+
 def load_json(file_path: str) -> Dict:
     """
     Loads json file
@@ -86,7 +87,7 @@ def crop_center_patch(input_image: np.ndarray,
 
 def _check_hostless_conditions(
         science_clipped: np.ndarray, template_clipped: np.ndarray,
-        detection_config: Dict):
+        detection_config: Dict) -> bool:
     """
     Counts the number of masked sigma clipping pixels and checks if they
     are within the range defined in the config
@@ -116,7 +117,7 @@ def _check_hostless_conditions(
 
 def run_hostless_detection_with_clipped_data(
         science_stamp: np.ndarray, template_stamp: np.ndarray,
-        configs: Dict, image_shape: List) -> bool:
+        configs: Dict) -> bool:
     """
     Detects potential hostless candidates with sigma clipped stamp images by
      cropping an image patch from the center of the image.
@@ -129,10 +130,8 @@ def run_hostless_detection_with_clipped_data(
        science image
     template_stamp
         template image
-    detection_configs
-        configs with detection threshold
-    image_shape
-        image shape
+    configs
+        detection configs with detection threshold
     """
     sigma_clipping_config = configs["sigma_clipping_kwargs"]
 
@@ -159,7 +158,8 @@ def run_hostless_detection_with_clipped_data(
 
 
 def create_noise_filled_mask(image_data: np.ndarray,
-                             mask_data: np.ndarray, image_size: List):
+                             mask_data: np.ndarray,
+                             image_size: List) -> np.ndarray:
     """
     Creates input image data with noise filled mask
     Parameters

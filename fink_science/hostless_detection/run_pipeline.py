@@ -27,8 +27,8 @@ class HostLessExtragalactic:
         self.configs = configs
         self._image_shape = self.configs["image_shape"]  # List
 
-    def process_candidate_fink(self, science_stamp: Dict,
-                               template_stamp: Dict):
+    def process_candidate_fink(self, science_stamp: bytes,
+                               template_stamp: bytes) -> float:
         """
         Processes each candidate
 
@@ -50,7 +50,7 @@ class HostLessExtragalactic:
             self._run_sigma_clipping(science_stamp, template_stamp))
         is_hostless_candidate = run_hostless_detection_with_clipped_data(
             science_stamp_clipped, template_stamp_clipped,
-            self.configs, self._image_shape)
+            self.configs)
         if is_hostless_candidate:
             power_spectrum_results = run_powerspectrum_analysis(
                 science_stamp, template_stamp,

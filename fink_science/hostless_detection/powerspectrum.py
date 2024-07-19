@@ -5,6 +5,7 @@
     https://arxiv.org/abs/2404.18165
 """
 
+from typing import Dict, Tuple
 import numpy as np
 import astropy.table as at
 from scipy.stats import binned_statistic, wasserstein_distance, kstest
@@ -12,7 +13,7 @@ from scipy.stats import binned_statistic, wasserstein_distance, kstest
 
 np.random.seed(1337)
 
-def get_powerspectrum(data, size):
+def get_powerspectrum(data: np.ndarray, size: int) -> np.ndarray:
     """
     Function to compute power spectrum.
 
@@ -44,7 +45,7 @@ def get_powerspectrum(data, size):
 def detect_host_with_powerspectrum(
         sci_image: np.ndarray = None, tpl_image: np.ndarray = None,
         number_of_iterations: int = 1000, cutout_size: int = 15,
-        metric: str = 'kstest'):
+        metric: str = 'kstest') -> Tuple[at.Table, Dict, Dict, Dict]:
     """
     Function to detect host with power spectrum analysis.
     Parameters
