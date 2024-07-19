@@ -17,8 +17,8 @@ from fink_science.hostless_detection.pipeline_utils import load_json
 from fink_science.tester import spark_unit_tests
 
 
-CONFIGS = load_json("./fink_science/hostless_detection/config.json")
-
+current_directory = os.path.dirname(os.path.abspath(__file__))
+CONFIGS = load_json("{}/hostless_detection/config.json".format(current_directory))
 
 @pandas_udf(FloatType())
 def run_potential_hostless(
