@@ -144,4 +144,3 @@ def detect_host_with_powerspectrum(
 
     return (output_table, output_result_dict,
             real_Abins_dict, shuffled_Abins_dict)
-
