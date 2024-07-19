@@ -10,6 +10,7 @@ import gzip
 import io
 import json
 from typing import Dict, List
+import warnings
 
 from astropy.io import fits
 from astropy.stats import sigma_clip
@@ -18,7 +19,7 @@ import numpy as np
 import fink_science.hostless_detection.powerspectrum as ps
 
 np.random.seed(1337)
-
+warnings.filterwarnings('ignore')
 
 def load_json(file_path: str) -> Dict:
     """
