@@ -17,6 +17,8 @@ import numpy as np
 
 import fink_science.hostless_detection.powerspectrum as ps
 
+np.random.seed(1337)
+
 
 def load_json(file_path: str) -> Dict:
     """
@@ -84,6 +86,18 @@ def crop_center_patch(input_image: np.ndarray,
 def _check_hostless_conditions(
         science_clipped: np.ndarray, template_clipped: np.ndarray,
         detection_config: Dict):
+    """
+    Counts the number of masked sigma clipping pixels and checks if they
+    are within the range defined in the config
+    Parameters
+    ----------
+    science_clipped
+        sigma clipped science image
+    template_clipped
+        sigma clipped template image
+    detection_config
+        configs with detection threshold
+    """
     num_science_pixels_masked = np.ma.count_masked(science_clipped)
     num_template_pixels_masked = np.ma.count_masked(template_clipped)
     if ((num_science_pixels_masked > detection_config[
@@ -170,6 +184,9 @@ def run_powerspectrum_analysis(
         science_mask: np.ndarray, template_mask: np.ndarray,
         image_size: List, number_of_iterations: int = 200) -> Dict:
     """
+    Runs powerspectrum analysis by transforming the stamps to
+    fourier space as described in the paper:
+    https://arxiv.org/abs/2404.18165
 
     Parameters
     ----------

@@ -54,7 +54,7 @@ def run_potential_hostless(
     72
     >>> df = df.select(columns_to_select)
     >>> df = df.withColumn('kstest_static', run_potential_hostless(df["cmagpsf"], df["cutoutScience"], df["cutoutTemplate"]))
-    >>> df = df.select("kstest_static").toPandas()
+    >>> df = df.select(["kstest_static"]).toPandas()
     >>> len(df[df["kstest_static"] >= 0])
     3
     """

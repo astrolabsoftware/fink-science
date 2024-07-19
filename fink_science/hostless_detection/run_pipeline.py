@@ -40,7 +40,12 @@ class HostLessExtragalactic:
            template stamp data
         """
         science_stamp = read_bytes_image(science_stamp)
+
         template_stamp = read_bytes_image(template_stamp)
+        if (science_stamp.shape != tuple(self._image_shape)
+            ) or (template_stamp.shape != tuple(self._image_shape)):
+            return -99
+
         science_stamp_clipped, template_stamp_clipped = (
             self._run_sigma_clipping(science_stamp, template_stamp))
         is_hostless_candidate = run_hostless_detection_with_clipped_data(
