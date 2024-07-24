@@ -1,6 +1,7 @@
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import BooleanType
 
+import os
 import pandas as pd
 import numpy as np
 import joblib
@@ -99,7 +100,9 @@ def orphan_grb(ctimemjd, cabmags, cabmagserr, cfilts):
     features_norm = preprocessing.normalize(df_features, norm='max')
 
     # use Boosting Decision Tree classifier
-    clf = joblib.load('../data/model_orphans.pkl')
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    model_path = curdir + '/data/models/'
+    clf = joblib.load(model_path + 'model_orphans.pkl')
     proba = clf.predict_proba(features_norm)
 
     # `True` for the objects that have a probability > 0.999999 to be an orphan, else `False`
