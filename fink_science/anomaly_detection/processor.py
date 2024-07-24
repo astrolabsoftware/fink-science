@@ -1,4 +1,4 @@
-# Copyright 2020-2022 AstroLab Software
+# Copyright 2020-2024 AstroLab Software
 # Author: Igor Beschastnov
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
+
 import logging
 import os
 import zipfile
@@ -50,6 +52,7 @@ class TwoBandModel:
         return (scores_g[-1] + scores_r[-1]) / 2
 
 @pandas_udf(DoubleType())
+@profile
 def anomaly_score(lc_features, model_type="AADForest"):
     """Returns anomaly score for an observation
 

@@ -1,4 +1,4 @@
-# Copyright 2019-2021 AstroLab Software
+# Copyright 2019-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
+
 import io
 import csv
 import pandas as pd
@@ -30,6 +32,7 @@ MANGROVE_COLS = [
     'ang_dist'
 ]
 
+@profile
 def cross_match_astropy(pdf, catalog_ztf, catalog_other, radius_arcsec=None):
     """ Crossmatch two catalogs
 
@@ -233,6 +236,7 @@ def extract_vsx(filename):
     pdf_vsx = pd.read_parquet(filename)
     return pdf_vsx['RAJ2000'], pdf_vsx['DEJ2000'], pdf_vsx['VType']
 
+@profile
 def generate_csv(s: str, lists: list) -> str:
     """ Make a string (CSV formatted) given lists of data and header.
     Parameters

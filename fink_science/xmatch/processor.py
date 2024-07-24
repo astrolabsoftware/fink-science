@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
+
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import StringType, MapType
@@ -37,6 +39,7 @@ from fink_science import __file__
 from typing import Any
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
+@profile
 def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog: str, cols: str) -> pd.Series:
     """ Query the CDSXmatch service to find identified objects
     in alerts. The catalog queried is the SIMBAD bibliographical database.
@@ -274,6 +277,7 @@ def xmatch_cds(
 
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
+@profile
 def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
     """ Crossmatch alerts with user-defined catalogs
 
@@ -427,6 +431,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
     return pdf_merge['Type']
 
 @pandas_udf(MapType(StringType(), StringType()), PandasUDFType.SCALAR)
+@profile
 def crossmatch_mangrove(candid, ra, dec, radius_arcsec=None):
     """ Crossmatch alerts with the Mangrove catalog
 

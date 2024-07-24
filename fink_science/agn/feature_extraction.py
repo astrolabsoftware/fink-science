@@ -1,4 +1,4 @@
-# Copyright 2022 Fink Software
+# Copyright 2022-2024 Fink Software
 # Author: Etienne Russeil
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
 
 import pandas as pd
 import fink_science.agn.models as mod
@@ -24,7 +25,7 @@ from scipy.optimize import curve_fit
 import warnings
 import fink_science.agn.unit_examples as uex  # noqa: F401
 
-
+@profile
 def map_fid(ps):
     """Convert LSST filters to corresponding int value
     From u, g, r, i, z, Y to 0, 1, 2, 3, 4, 5
@@ -49,6 +50,7 @@ def map_fid(ps):
     return np.array(list(map(band_dict.get, ps)))
 
 
+@profile
 def remove_nan(ps):
     """
     funtion that remove nan values from list contains in columns
@@ -76,6 +78,7 @@ def remove_nan(ps):
     return [np.array(_col)[mask].astype(type(_col[0])) for _col in ps]
 
 
+@profile
 def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
     """Conversion from magnitude to Fluxcal from SNANA manual
     Parameters
@@ -110,6 +113,7 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
     return fluxcal, fluxcal_err
 
 
+@profile
 def compute_hostgal_dist(df):
     """Compute the distance to host galaxy column
         using simple Pythagoras computation.
@@ -146,6 +150,7 @@ def compute_hostgal_dist(df):
     return hostgal_dist
 
 
+@profile
 def convert_full_dataset(clean: pd.DataFrame):
     """
     Convert all mag and mag err to flux and flux err
@@ -179,6 +184,7 @@ def convert_full_dataset(clean: pd.DataFrame):
     return clean
 
 
+@profile
 def format_data(df, source):
     """Transform filter names to ints and
     add distance to host galaxy column.
@@ -242,6 +248,7 @@ def format_data(df, source):
     return df
 
 
+@profile
 def keep_filter(ps, band):
     """
     Funtion that removes points from other bands than the one specified
@@ -277,6 +284,7 @@ def keep_filter(ps, band):
     return [np.array(_col)[mask].astype(type(_col[0])) for _col in ps]
 
 
+@profile
 def translate(ps):
     """Translate a cjd list by substracting maxflux point
 
@@ -308,6 +316,7 @@ def translate(ps):
         return ps["cjd"] - ps["cjd"][np.argmax(ps["cflux"])]
 
 
+@profile
 def normalize(ps):
     """Normalize by dividing by a data frame of maximum
 
@@ -418,6 +427,7 @@ def get_min(x, absolute=False):
         return x.min()
 
 
+@profile
 def transform_data(formated, minimum_points, source):
     """Apply transformations for each filters on a flux formated dataset
             - Shift cjd so that the max flux point is at 0
@@ -500,6 +510,7 @@ def transform_data(formated, minimum_points, source):
     return all_transformed, valid
 
 
+@profile
 def parametric_bump(ps, band):
 
     """Fit the lightcurves using the bump function.
@@ -541,6 +552,7 @@ def parametric_bump(ps, band):
     return fit[0]
 
 
+@profile
 def compute_color(ps, fit_func):
     """Compute the color of an alert by computing blue-red
     Proceed by virtually filling missing points of each band using the bump fit
@@ -645,6 +657,7 @@ def compute_mean(x):
         return np.mean(x)
 
 
+@profile
 def parametrise(all_transformed, source, target_col=""):
     """Extract parameters from a list of dataset outputed
        by the transform_data function.
@@ -764,6 +777,7 @@ def parametrise(all_transformed, source, target_col=""):
     return all_features
 
 
+@profile
 def merge_features(all_features, minimum_points, source, target_col=""):
     """Merge feature tables of all filters.
     Additionnaly compute color parameters :
@@ -936,6 +950,7 @@ def merge_features(all_features, minimum_points, source, target_col=""):
     return ordered_features
 
 
+@profile
 def get_probabilities(clf, features, valid):
     """Returns probabilty of being an AGN predicted by the classifier.
 

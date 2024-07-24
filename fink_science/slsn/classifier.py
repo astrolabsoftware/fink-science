@@ -1,4 +1,4 @@
-# Copyright 2022 Fink Software
+# Copyright 2022-2024 Fink Software
 # Author: Etienne Russeil
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
 
 import joblib
 import fink_science.slsn.kernel as k
@@ -42,6 +43,7 @@ def load_classifier():
     return clf
 
 
+@profile
 def slsn_classifier(data):
     """
     Call the slsn_classifier
