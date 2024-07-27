@@ -1,4 +1,4 @@
-# Copyright 2021-2022 AstroLab Software
+# Copyright 2021-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
+
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import DoubleType, StringType
 
@@ -32,6 +34,7 @@ from kndetect.features import extract_features_all_lightcurves, get_feature_name
 from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+@profile
 def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_name=None) -> pd.Series:
     """ Return the probability of an alert to be a Kilonova using a Random
     Forest Classifier.
@@ -190,6 +193,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     return pd.Series(to_return)
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
+@profile
 def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
     """ Extract features used by the Kilonova classifier (using a Random
     Forest Classifier).

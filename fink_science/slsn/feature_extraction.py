@@ -1,4 +1,4 @@
-# Copyright 2022 Fink Software
+# Copyright 2022-2024 Fink Software
 # Author: Etienne Russeil
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
+
 import pickle  # noqa: F401
 import warnings
 from scipy.optimize import curve_fit
@@ -27,6 +29,7 @@ import fink_science.agn.feature_extraction as fe_agn
 from pandas.testing import assert_frame_equal  # noqa: F401
 
 
+@profile
 def transform_data(formated):
     """Apply transformations for each filters on a flux formated dataset
             - Shift cjd so that the max flux point is at 0
@@ -86,7 +89,7 @@ def transform_data(formated):
 
     return all_transformed, valid
 
-
+@profile
 def parametric_func(ps, band):
 
     """Fit the lightcurves using the mvsr transient function.
@@ -118,6 +121,7 @@ def parametric_func(ps, band):
     return fit[0]
 
 
+@profile
 def compute_color(ps):
     """Compute the color of an alert by computing blue-red
     Proceed by virtually filling missing points of each band using the mvsr transient fit
@@ -147,6 +151,7 @@ def compute_color(ps):
     return (new_cflux_0 - new_cflux_1) * ps["peak"]
 
 
+@profile
 def parametrise(all_transformed, target_col=""):
     """Extract parameters from a list of dataset outputed
        by the transform_data function.
@@ -231,6 +236,7 @@ def parametrise(all_transformed, target_col=""):
     return all_features
 
 
+@profile
 def merge_features(all_features, target_col=""):
     """Merge feature tables of all filters.
     Additionnaly fit requested bands and add fitted values as parameters:
@@ -344,6 +350,7 @@ def merge_features(all_features, target_col=""):
     return ordered_features
 
 
+@profile
 def compute_chi2(pdf, color):
 
     x = pdf[f'cjd_{color}']

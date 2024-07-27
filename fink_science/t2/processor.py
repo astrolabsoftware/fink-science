@@ -1,4 +1,4 @@
-# Copyright 2022 AstroLab Software
+# Copyright 2022-2024 AstroLab Software
 # Author: Tarek Allam, Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from line_profiler import profile
+
 import os
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
@@ -42,6 +44,7 @@ def maxclass(dic):
 
 
 @pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
+@profile
 def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name=None) -> pd.Series:
     """ Return vector of probabilities from T2
 
