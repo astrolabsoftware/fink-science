@@ -38,6 +38,18 @@ def run_potential_hostless(
         science stamp images
     cutoutTemplate
         template stamp images
+    snn_snia_vs_nonia
+        The probability of an alert to be a SN Ia vs.
+        core-collapse SNe using SuperNNova
+    snn_sn_vs_all
+        The probability of an alert to be a SNe vs. anything else
+        (variable stars and other categories in the training) using SuperNNova
+    rf_snia_vs_nonia
+        Probability of an alert to be a SNe Ia using a Random Forest Classifier
+        (binary classification). Higher is better
+    cdsxmatch
+        Object type of the closest source from SIMBAD database; if exists
+        within 1 arcsec. See https://fink-portal.org/api/v1/classes
 
     Returns
     ----------
