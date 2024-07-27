@@ -24,7 +24,9 @@ CONFIGS = load_json("{}/config.json".format(current_directory))
 @pandas_udf(FloatType())
 def run_potential_hostless(
         magpsf: pd.Series, cutoutScience: pd.Series,
-        cutoutTemplate: pd.Series) -> pd.Series:
+        cutoutTemplate: pd.Series, snn_snia_vs_nonia: pd.Series,
+        snn_sn_vs_all: pd.Series, rf_snia_vs_nonia: pd.Series,
+        cdsxmatch: pd.Series) -> pd.Series:
     """
     Runs potential hostless candidate detection using
 
@@ -49,12 +51,15 @@ def run_potential_hostless(
 
     Examples
     ----------
-    >>> columns_to_select = ["cmagpsf", "cutoutScience", "cutoutTemplate"]
+    >>> columns_to_select = ["cmagpsf", "cutoutScience", "cutoutTemplate",
+    ... "snn_snia_vs_nonia", "snn_sn_vs_all", "rf_snia_vs_nonia", "cdsxmatch"]
     >>> df = spark.read.load(sample_file)
     >>> df.count()
     72
     >>> df = df.select(columns_to_select)
-    >>> df = df.withColumn('kstest_static', run_potential_hostless(df["cmagpsf"], df["cutoutScience"], df["cutoutTemplate"]))
+    >>> df = df.withColumn('kstest_static', run_potential_hostless(df["cmagpsf"],
+    ... df["cutoutScience"], df["cutoutTemplate"], df["snn_snia_vs_nonia"], df["snn_sn_vs_all"],
+    ... df["rf_snia_vs_nonia"], df["cdsxmatch"]))
     >>> df = df.select(["kstest_static"]).toPandas()
     >>> len(df[df["kstest_static"] >= 0])
     3
@@ -67,10 +72,16 @@ def run_potential_hostless(
     for index in range(cutoutScience.shape[0]):
         science_stamp = cutoutScience["stampData"][index]
         template_stamp = cutoutTemplate["stampData"][index]
-        if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
-            current_result = hostless_science_class.process_candidate_fink(
-                science_stamp, template_stamp)
-            results.append(current_result)
+        if ((snn_snia_vs_nonia[index] >= 0.5) or (
+                snn_sn_vs_all[index] >= 0.5) or (
+                rf_snia_vs_nonia[index] >= 0.5) or (
+                cdsxmatch[index] in CONFIGS["cdsxmatch_classes"])):
+            if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
+                current_result = hostless_science_class.process_candidate_fink(
+                    science_stamp, template_stamp)
+                results.append(current_result)
+            else:
+                results.append(default_result)
         else:
             results.append(default_result)
     return pd.Series(results)
