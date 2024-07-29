@@ -8,10 +8,80 @@
 from typing import Dict, Tuple
 import numpy as np
 import astropy.table as at
-from scipy.stats import binned_statistic, wasserstein_distance, kstest
-
+from scipy.stats import binned_statistic, kstest
 
 np.random.seed(1337)
+
+
+def searchsorted_2d(a, v, side='right', sorter=None):
+    """
+    vectorized numpye searchsorted method
+    From here:https://stackoverflow.com/a/52825077
+
+    Parameters
+    ----------
+    a
+        input array
+    v
+        values to insert into array
+    side
+        if left, index of the first suitable location would be selected
+        if right index of the last suitable location would be selected
+    sorter
+        sorted method
+
+    Returns
+    -------
+    results
+        pairwise wasserstein distance
+    """
+    a = np.asarray(a)
+    v = np.asarray(v)
+
+    # Augment a with row id
+    ai = np.empty(a.shape, dtype=[('row', int), ('value', a.dtype)])
+    ai['row'] = np.arange(a.shape[0]).reshape(-1, 1)
+    ai['value'] = a
+
+    # Augment v with row id
+    vi = np.empty(v.shape, dtype=[('row', int), ('value', v.dtype)])
+    vi['row'] = np.arange(v.shape[0]).reshape(-1, 1)
+    vi['value'] = v
+    # Perform searchsorted on augmented array.
+    # The row information is embedded in the values, so only the equivalent rows
+    # between a and v are considered.
+    result = np.searchsorted(ai.flatten(), vi.flatten(), side=side, sorter=sorter)
+    # Restore the original shape, decode the searchsorted indices so
+    # they apply to the original data.
+    result = result.reshape(vi.shape) - vi['row'] * a.shape[1]
+    return result
+
+def pairwise_wasserstein_distance(u_values: np.ndarray,
+                                  v_values: np.ndarray) -> np.ndarray:
+    """
+    computes wasserstein distance pairwise.
+    extended version of scipy.stats.wasserstein_distance
+
+    Parameters
+    ----------
+    u_values
+        first distribution
+    v_values
+        second distribution
+    Returns
+    -------
+    results
+        pairwise wasserstein distance
+    """
+    all_values = np.concatenate((u_values, v_values), axis=1)
+    all_values.sort(kind='mergesort')
+    deltas = np.diff(all_values)
+    u_cdf_indices = searchsorted_2d(np.sort(u_values), all_values[:, :-1])
+    v_cdf_indices = searchsorted_2d(np.sort(v_values), all_values[:, :-1])
+    v_cdf = v_cdf_indices / v_values.shape[1]
+    u_cdf = u_cdf_indices / u_values.shape[1]
+    return np.sum(np.multiply(np.abs(u_cdf - v_cdf), deltas), axis=1)
+
 
 def get_powerspectrum(data: np.ndarray, size: int) -> np.ndarray:
     """
@@ -107,18 +177,18 @@ def detect_host_with_powerspectrum(
             shuffled_Abins_dict[cutout_size][n] = Abins
 
         # Calculate distances and perform statistical tests
-
-        WD_dist_real_to_shuffled = []
-        WD_dist_shuffled_to_shuffled = []
-
-        for n in range(number_of_iterations):
-
-            iter1 = shuffled_Abins_dict[cutout_size][n]
-            wd = wasserstein_distance(iter1, real_Abins_dict[cutout_size])
-            WD_dist_real_to_shuffled.append(wd)
-            WD_dist_shuffled_to_shuffled.extend([
-                wasserstein_distance(iter1, shuffled_Abins_dict[cutout_size][m])
-                for m in range(n)])
+        WD_dist_real_to_shuffled = pairwise_wasserstein_distance(
+            shuffled_Abins_dict[cutout_size],
+            np.concatenate([[real_Abins_dict[cutout_size]]] * number_of_iterations,
+                           axis=0))
+        indices = [i for i in range(1, number_of_iterations) for k in range(i)]
+        shuffled_Abins_dict_continuous_repeat = shuffled_Abins_dict[cutout_size][indices]
+        shuffled_Abins_dict_slice_repeat = np.concatenate(
+            [shuffled_Abins_dict[cutout_size][0:i] for i in range(
+                number_of_iterations)])
+        WD_dist_shuffled_to_shuffled = pairwise_wasserstein_distance(
+            shuffled_Abins_dict_continuous_repeat,
+            shuffled_Abins_dict_slice_repeat)
 
         WD_dist_real_to_shuffled = np.array(WD_dist_real_to_shuffled)
         WD_dist_shuffled_to_shuffled = np.array(

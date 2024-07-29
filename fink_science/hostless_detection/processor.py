@@ -87,7 +87,7 @@ def run_potential_hostless(
         if ((snn_snia_vs_nonia[index] >= 0.5) or (
                 snn_sn_vs_all[index] >= 0.5) or (
                 rf_snia_vs_nonia[index] >= 0.5) or (
-                cdsxmatch[index] in CONFIGS["cdsxmatch_classes"])):
+                cdsxmatch[index] in CONFIGS["finkclasses_list"])):
             if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
                 current_result = hostless_science_class.process_candidate_fink(
                     science_stamp, template_stamp)

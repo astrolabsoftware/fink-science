@@ -10,7 +10,7 @@
     "min_number_of_pixels_clipped": 3
   },
   "minimum_number_of_alerts": 3,
-  "cdsxmatch_classes": ["(SIMBAD) AGN", "(SIMBAD) AGN_Candidate", "(SIMBAD) SN",
+  "finkclasses_list": ["(SIMBAD) AGN", "(SIMBAD) AGN_Candidate", "(SIMBAD) SN",
     "(SIMBAD) BH_Candidate", "(SIMBAD) Blazar", "(SIMBAD) Blazar_Candidate",
     "(SIMBAD) BLLac", "(SIMBAD) BLLac_Candidate", "(SIMBAD) Candidate_Nova",
     "(SIMBAD) Candidate_NS", "(SIMBAD) Candidate_SN*", "(SIMBAD) LINER", "(SIMBAD) QSO",
