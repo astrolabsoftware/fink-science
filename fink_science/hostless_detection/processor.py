@@ -26,7 +26,7 @@ def run_potential_hostless(
         magpsf: pd.Series, cutoutScience: pd.Series,
         cutoutTemplate: pd.Series, snn_snia_vs_nonia: pd.Series,
         snn_sn_vs_all: pd.Series, rf_snia_vs_nonia: pd.Series,
-        cdsxmatch: pd.Series) -> pd.Series:
+        rf_kn_vs_nonkn: pd.Series, cdsxmatch: pd.Series) -> pd.Series:
     """
     Runs potential hostless candidate detection using
 
@@ -47,6 +47,9 @@ def run_potential_hostless(
     rf_snia_vs_nonia
         Probability of an alert to be a SNe Ia using a Random Forest Classifier
         (binary classification). Higher is better
+    rf_kn_vs_nonkn
+        robability of an alert to be a Kilonova using a PCA & Random Forest
+        Classifier (binary classification). Higher is better.
     cdsxmatch
         Object type of the closest source from SIMBAD database; if exists
         within 1 arcsec. See https://fink-portal.org/api/v1/classes
@@ -64,14 +67,15 @@ def run_potential_hostless(
     Examples
     ----------
     >>> columns_to_select = ["cmagpsf", "cutoutScience", "cutoutTemplate",
-    ... "snn_snia_vs_nonia", "snn_sn_vs_all", "rf_snia_vs_nonia", "cdsxmatch"]
+    ... "snn_snia_vs_nonia", "snn_sn_vs_all", "rf_snia_vs_nonia", "rf_kn_vs_nonkn",
+    ... "cdsxmatch"]
     >>> df = spark.read.load(sample_file)
     >>> df.count()
     72
     >>> df = df.select(columns_to_select)
     >>> df = df.withColumn('kstest_static', run_potential_hostless(df["cmagpsf"],
     ... df["cutoutScience"], df["cutoutTemplate"], df["snn_snia_vs_nonia"], df["snn_sn_vs_all"],
-    ... df["rf_snia_vs_nonia"], df["cdsxmatch"]))
+    ... df["rf_snia_vs_nonia"], df["rf_kn_vs_nonkn"], df["cdsxmatch"]))
     >>> df = df.select(["kstest_static"]).toPandas()
     >>> len(df[df["kstest_static"] >= 0])
     3
@@ -87,6 +91,7 @@ def run_potential_hostless(
         if ((snn_snia_vs_nonia[index] >= 0.5) or (
                 snn_sn_vs_all[index] >= 0.5) or (
                 rf_snia_vs_nonia[index] >= 0.5) or (
+                rf_kn_vs_nonkn[index] >= 0.5) or (
                 cdsxmatch[index] in CONFIGS["finkclasses_list"])):
             if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
                 current_result = hostless_science_class.process_candidate_fink(
