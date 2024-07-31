@@ -4,7 +4,7 @@
     Transients
     https://arxiv.org/abs/2404.18165
 """
-
+from line_profiler import profile
 from typing import Dict, Tuple
 import numpy as np
 import astropy.table as at
@@ -112,6 +112,7 @@ def get_powerspectrum(data: np.ndarray, size: int) -> np.ndarray:
     return Abins
 
 
+@profile
 def detect_host_with_powerspectrum(
         sci_image: np.ndarray = None, tpl_image: np.ndarray = None,
         number_of_iterations: int = 1000, cutout_size: int = 15,
