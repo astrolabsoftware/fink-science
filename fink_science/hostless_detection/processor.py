@@ -74,7 +74,7 @@ def run_potential_hostless(
     72
     >>> df = df.select(columns_to_select)
     >>> df = df.withColumn('kstest_static', run_potential_hostless(df["cmagpsf"],
-    ... df["cutoutScience"], df["cutoutTemplate"], df["snn_snia_vs_nonia"], df["snn_sn_vs_all"],
+    ... df["cutoutScience.stampData"], df["cutoutTemplate.stampData"], df["snn_snia_vs_nonia"], df["snn_sn_vs_all"],
     ... df["rf_snia_vs_nonia"], df["rf_kn_vs_nonkn"], df["cdsxmatch"]))
     >>> df = df.select(["kstest_static"]).toPandas()
     >>> len(df[df["kstest_static"] >= 0])
@@ -86,8 +86,8 @@ def run_potential_hostless(
     results = []
     default_result = -99
     for index in range(cutoutScience.shape[0]):
-        science_stamp = cutoutScience["stampData"][index]
-        template_stamp = cutoutTemplate["stampData"][index]
+        science_stamp = cutoutScience[index]
+        template_stamp = cutoutTemplate[index]
         if ((snn_snia_vs_nonia[index] >= 0.5) or (
                 snn_sn_vs_all[index] >= 0.5) or (
                 rf_snia_vs_nonia[index] >= 0.5) or (
