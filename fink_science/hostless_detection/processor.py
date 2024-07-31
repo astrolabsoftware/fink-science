@@ -68,6 +68,7 @@ def run_potential_hostless(
 
     Examples
     ----------
+    >>> from pyspark.sql.functions import lit
     >>> from fink_filters.classification import extract_fink_classification
 
     >>> df = spark.read.load(sample_file)
@@ -83,7 +84,7 @@ def run_potential_hostless(
     >>> df = df.withColumn("finkclass", extract_fink_classification(*cols))
 
     # Fake TNS classification for the test
-    >>> df = df.withColumn("tnsclass", "Unknown")
+    >>> df = df.withColumn("tnsclass", lit("Unknown"))
 
     # Add a new column
     >>> df = df.withColumn('kstest_static',
