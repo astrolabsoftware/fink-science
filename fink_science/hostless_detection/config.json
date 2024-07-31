@@ -10,7 +10,7 @@
     "min_number_of_pixels_clipped": 3
   },
   "minimum_number_of_alerts": 3,
-  "finkclasses_regular": ["AGN", "AGN_Candidate", "SN",
+  "finkclass": ["AGN", "AGN_Candidate", "SN",
     "BH_Candidate", "Blazar", "Blazar_Candidate",
     "BLLac", "BLLac_Candidate", "Candidate_Nova",
     "Candidate_NS", "Candidate_SN*", "LINER", "QSO",
@@ -18,7 +18,7 @@
     "Seyfert_1", "Seyfert_2", "SN", "SN*_Candidate",
     "Supernova", "ULX", "ULX?", "ULX_Candidate",
     "SN candidate", "Early SN Ia candidate", "Kilonova candidate"],
-  "finkclasses_tns": ["AGN", "FRB", "Galaxy", "ILRT", "Impostor-SN",
+  "tnsclass": ["AGN", "FRB", "Galaxy", "ILRT", "Impostor-SN",
     "Kilonova", "LBV", "Light-Echo", "LRN", "Nova",
     "Other", "QSO", "SLSN-I", "SLSN-II", "SN", "SN I",
     "SN Ia", "SN Ia-91bg-like", "SN Ia-91T-like", "SN Ia-CSM",
