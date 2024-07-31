@@ -86,15 +86,15 @@ def run_potential_hostless(
     >>> df = df.withColumn("tnsclass", "Unknown")
 
     # Add a new column
-    >>> df = df.withColumn('kstest_static', 
+    >>> df = df.withColumn('kstest_static',
     ...     run_potential_hostless(
     ...         df["cmagpsf"],
-    ...         df["cutoutScience.stampData"], 
-    ...         df["cutoutTemplate.stampData"], 
-    ...         df["snn_snia_vs_nonia"], 
+    ...         df["cutoutScience.stampData"],
+    ...         df["cutoutTemplate.stampData"],
+    ...         df["snn_snia_vs_nonia"],
     ...         df["snn_sn_vs_all"],
-    ...         df["rf_snia_vs_nonia"], 
-    ...         df["rf_kn_vs_nonkn"], 
+    ...         df["rf_snia_vs_nonia"],
+    ...         df["rf_kn_vs_nonkn"],
     ...         df["finkclass"],
     ...         df["tnsclass"]))
     >>> df.filter(df["kstest_static"] >= 0).count()
@@ -106,24 +106,27 @@ def run_potential_hostless(
     # compute length of the ligtcurves
     number_of_alerts = magpsf.apply(
         lambda x: np.sum(np.array(x) == np.array(x)))
-    
+
     # Init values
     results = []
-    default_result = -99
+    default_result = -99.0
 
-    # define conditions
-    c0 = snn_snia_vs_nonia[index] >= 0.5
-    c1 = snn_sn_vs_all[index] >= 0.5
-    c2 = rf_snia_vs_nonia[index] >= 0.5
-    c3 = rf_kn_vs_nonkn[index] >= 0.5
-    c4 = finkclass[index] in CONFIGS["finkclass"]
-    c5 = tnsclass[index] in CONFIGS["tnsclass"]
+    # score conditions
+    c0 = snn_snia_vs_nonia >= 0.5
+    c1 = snn_sn_vs_all >= 0.5
+    c2 = rf_snia_vs_nonia >= 0.5
+    c3 = rf_kn_vs_nonkn >= 0.5
 
     for index in range(cutoutScience.shape[0]):
-        science_stamp = cutoutScience[index]
-        template_stamp = cutoutTemplate[index]
-        if (c0 or c1 or c2 or c3 or c4 or c5):
+        # xmatch conditions
+        c4 = finkclass[index] in CONFIGS["finkclass"]
+        c5 = tnsclass[index] in CONFIGS["tnsclass"]
+
+        if (c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5):
             if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
+                science_stamp = cutoutScience[index]
+                template_stamp = cutoutTemplate[index]
+
                 current_result = hostless_science_class.process_candidate_fink(
                     science_stamp, template_stamp)
                 results.append(current_result)
