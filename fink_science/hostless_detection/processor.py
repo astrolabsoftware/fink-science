@@ -4,7 +4,7 @@
     Transients
     https://arxiv.org/abs/2404.18165
 """
-
+from line_profiler import profile
 import os
 
 import numpy as np
@@ -22,6 +22,7 @@ CONFIGS = load_json("{}/config.json".format(current_directory))
 
 
 @pandas_udf(FloatType())
+@profile
 def run_potential_hostless(
         magpsf: pd.Series, cutoutScience: pd.Series,
         cutoutTemplate: pd.Series, snn_snia_vs_nonia: pd.Series,

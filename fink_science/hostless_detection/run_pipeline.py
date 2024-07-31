@@ -4,7 +4,7 @@
     Transients
     https://arxiv.org/abs/2404.18165
 """
-
+from line_profiler import profile
 from typing import Dict, Tuple
 
 import numpy as np
@@ -27,6 +27,7 @@ class HostLessExtragalactic:
         self.configs = configs
         self._image_shape = self.configs["image_shape"]  # List
 
+    @profile
     def process_candidate_fink(self, science_stamp: bytes,
                                template_stamp: bytes) -> float:
         """
