@@ -52,7 +52,8 @@ setuptools.setup(
             'data/models/for_al_loop/*.pkl',
             'data/catalogs/*.parquet',
             'data/catalogs/*.fits',
-            'data/catalogs/*.csv'],
+            'data/catalogs/*.csv',
+            'hostless_detection/config.json'],
     },
 
     classifiers=[
