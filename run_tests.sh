@@ -19,9 +19,9 @@ set -e
 message_help="""
 Run the test suite of the modules\n\n
 Usage:\n
-    \t./run_tests.sh [--no-spark]\n\n
+    \t./run_tests.sh [--no-spark] [--single_module]\n\n
 
-Note you need Spark 2.4+ installed to fully test the modules.
+Note you need Spark 3.1.3+ installed to fully test the modules.
 Otherwise, use the --no-spark argument
 """
 export ROOTPATH=`pwd`
@@ -30,9 +30,13 @@ NO_SPARK=false
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --no-spark)
-        NO_SPARK=true
-        shift 1
-        ;;
+      NO_SPARK=true
+      shift 1
+      ;;
+    --single_module)
+      SINGLE_MODULE_PATH=$2
+      shift 2
+      ;;
     -h)
         echo -e $message_help
         exit
@@ -43,6 +47,24 @@ done
 # Add coverage_daemon to the pythonpath.
 export PYTHONPATH="${SPARK_HOME}/python/test_coverage:$PYTHONPATH"
 export COVERAGE_PROCESS_START="${ROOTPATH}/.coveragerc"
+
+# single module testing
+if [[ -n "${SINGLE_MODULE_PATH}" ]]; then
+  coverage run \
+   --source=${ROOTPATH} \
+   --rcfile ${ROOTPATH}/.coveragerc ${SINGLE_MODULE_PATH}
+
+  # Combine individual reports in one
+  coverage combine
+
+  unset COVERAGE_PROCESS_START
+
+  coverage report -m
+  coverage html
+
+  exit 0
+
+fi
 
 # Run the test suite on the utilities
 for filename in fink_science/*.py
@@ -59,8 +81,8 @@ do
  # Skip Spark if needed
  if [[ "$NO_SPARK" = true ]] && [[ ${filename##*/} = 'processor.py' ]] ; then
    echo '[NO SPARK] skipping' $filename
- elif [[ ${filename#*/} = 'anomaly_detection/processor.py' ]]; then
-   echo "skip anomaly"
+ #elif [[ ${filename#*/} = 'anomaly_detection/processor.py' ]]; then
+ #  echo "skip anomaly"
  else
    echo $filename
    # Run test suite + coverage
