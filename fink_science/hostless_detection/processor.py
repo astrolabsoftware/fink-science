@@ -4,12 +4,13 @@
     Transients
     https://arxiv.org/abs/2404.18165
 """
+
 from line_profiler import profile
 import os
 
 import numpy as np
 from pyspark.sql.functions import pandas_udf
-from pyspark.sql.types import FloatType
+from pyspark.sql.types import ArrayType, FloatType
 import pandas as pd
 
 from fink_science.hostless_detection.run_pipeline import HostLessExtragalactic
@@ -21,13 +22,14 @@ current_directory = os.path.dirname(os.path.abspath(__file__))
 CONFIGS = load_json("{}/config.json".format(current_directory))
 
 
-@pandas_udf(FloatType())
+@pandas_udf(ArrayType(FloatType()))
 @profile
 def run_potential_hostless(
         magpsf: pd.Series, cutoutScience: pd.Series,
         cutoutTemplate: pd.Series, snn_snia_vs_nonia: pd.Series,
         snn_sn_vs_all: pd.Series, rf_snia_vs_nonia: pd.Series,
-        rf_kn_vs_nonkn: pd.Series, finkclass: pd.Series, tnsclass: pd.Series) -> pd.Series:
+        rf_kn_vs_nonkn: pd.Series, finkclass: pd.Series, tnsclass: pd.Series,
+        jdstarthist_dt: pd.Series) -> pd.Series:
     """
     Runs potential hostless candidate detection using
 
@@ -55,6 +57,9 @@ def run_potential_hostless(
         Fink derived classification tags
     tnsclass: pd.Series
         Tag from cross-referencing with the TNS database
+    jdstarthist_dt
+        Delta time between `jd_first_real_det` and the first variation time
+         at 3 sigma (`jdstarthist`).
 
     Returns
     ----------
@@ -81,7 +86,7 @@ def run_potential_hostless(
     ...    "cdsxmatch", "roid", "mulens", "snn_snia_vs_nonia",
     ...    "snn_sn_vs_all", "rf_snia_vs_nonia", "candidate.ndethist",
     ...    "candidate.drb", "candidate.classtar", "candidate.jd",
-    ...    "candidate.jdstarthist", "rf_kn_vs_nonkn", "tracklet",]
+    ...    "candidate.jdstarthist", "rf_kn_vs_nonkn", "tracklet"]
     >>> df = df.withColumn("finkclass", extract_fink_classification(*cols))
 
     # Fake TNS classification for the test
@@ -98,8 +103,9 @@ def run_potential_hostless(
     ...         df["rf_snia_vs_nonia"],
     ...         df["rf_kn_vs_nonkn"],
     ...         df["finkclass"],
-    ...         df["tnsclass"]))
-    >>> df.filter(df["kstest_static"] >= 0).count()
+    ...         df["tnsclass"],
+    ...         df["jdstarthist_dt"]))
+    >>> df.filter(df.kstest_static[0] >= 0).count()
     3
     """
     # load the configuration file
@@ -110,7 +116,7 @@ def run_potential_hostless(
         lambda x: np.sum(np.array(x) == np.array(x)))
 
     # Init values
-    results = []
+    kstest_results = []
     default_result = -99.0
 
     # score conditions
@@ -123,20 +129,19 @@ def run_potential_hostless(
         # xmatch conditions
         c4 = finkclass[index] in CONFIGS["finkclass"]
         c5 = tnsclass[index] in CONFIGS["tnsclass"]
-
-        if (c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5):
+        c6 = abs(jdstarthist_dt[index]) <= CONFIGS["cutout_timeframe"]
+        if ((c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5) and c6):
             if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
                 science_stamp = cutoutScience[index]
                 template_stamp = cutoutTemplate[index]
-
-                current_result = hostless_science_class.process_candidate_fink(
+                kstest_science, kstest_template = hostless_science_class.process_candidate_fink(
                     science_stamp, template_stamp)
-                results.append(current_result)
+                kstest_results.append([kstest_science, kstest_template])
             else:
-                results.append(default_result)
+                kstest_results.append([default_result, default_result])
         else:
-            results.append(default_result)
-    return pd.Series(results)
+            kstest_results.append([default_result, default_result])
+    return pd.Series(kstest_results)
 
 
 if __name__ == "__main__":
