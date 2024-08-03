@@ -29,7 +29,7 @@ class HostLessExtragalactic:
 
     @profile
     def process_candidate_fink(self, science_stamp: bytes,
-                               template_stamp: bytes) -> float:
+                               template_stamp: bytes) -> Tuple[float, float]:
         """
         Processes each candidate
 
@@ -45,7 +45,7 @@ class HostLessExtragalactic:
         template_stamp = read_bytes_image(template_stamp)
         if (science_stamp.shape != tuple(self._image_shape)) or (
                 template_stamp.shape != tuple(self._image_shape)):
-            return -99
+            return -99, -99
 
         science_stamp_clipped, template_stamp_clipped = (
             self._run_sigma_clipping(science_stamp, template_stamp))
@@ -57,8 +57,8 @@ class HostLessExtragalactic:
                 science_stamp, template_stamp,
                 science_stamp_clipped.mask.astype(int),
                 template_stamp_clipped.mask.astype(int), self._image_shape)
-            return power_spectrum_results["kstest_SCIENCE_15_statistic"]
-        return -99
+            return power_spectrum_results["kstest_SCIENCE_15_statistic"], power_spectrum_results["kstest_TEMPLATE_15_statistic"]
+        return -99, -99
 
     def _run_sigma_clipping(
             self, science_stamp: np.ndarray,
