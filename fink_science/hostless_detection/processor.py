@@ -29,7 +29,7 @@ def run_potential_hostless(
         cutoutTemplate: pd.Series, snn_snia_vs_nonia: pd.Series,
         snn_sn_vs_all: pd.Series, rf_snia_vs_nonia: pd.Series,
         rf_kn_vs_nonkn: pd.Series, finkclass: pd.Series, tnsclass: pd.Series,
-        jdstarthist_dt: pd.Series) -> pd.Series:
+        deltat: pd.Series) -> pd.Series:
     """
     Runs potential hostless candidate detection using
 
@@ -57,9 +57,9 @@ def run_potential_hostless(
         Fink derived classification tags
     tnsclass: pd.Series
         Tag from cross-referencing with the TNS database
-    jdstarthist_dt
-        Delta time between `jd_first_real_det` and the first variation time
-         at 3 sigma (`jdstarthist`).
+    deltat
+        Delta time between `candidate.jd` and the first variation time
+         at 3 sigma (`candidate.jdstarthist`).
 
     Returns
     ----------
@@ -129,7 +129,7 @@ def run_potential_hostless(
         # xmatch conditions
         c4 = finkclass[index] in CONFIGS["finkclass"]
         c5 = tnsclass[index] in CONFIGS["tnsclass"]
-        c6 = abs(jdstarthist_dt[index]) <= CONFIGS["cutout_timeframe"]
+        c6 = abs(deltat[index]) <= CONFIGS["cutout_timeframe"]
         if ((c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5) and c6):
             if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
                 science_stamp = cutoutScience[index]
