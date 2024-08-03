@@ -104,7 +104,7 @@ def run_potential_hostless(
     ...         df["rf_kn_vs_nonkn"],
     ...         df["finkclass"],
     ...         df["tnsclass"],
-    ...         df["jdstarthist_dt"]))
+    ...         df["candidate.jd"] - df["candidate.jdstarthist"]))
     >>> df.filter(df.kstest_static[0] >= 0).count()
     3
     """
