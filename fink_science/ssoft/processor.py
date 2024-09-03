@@ -28,6 +28,7 @@ from pyspark.sql.types import MapType, FloatType, StringType
 
 from fink_utils.sso.utils import get_miriade_data
 from fink_utils.sso.spins import estimate_sso_params
+from fink_utils.sso.periods import estimate_synodic_period
 
 import numpy as np
 import pandas as pd
@@ -285,6 +286,17 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     model=model.values[0],
                     normalise_to_V=False
                 )
+
+            # Add synodic period estimation
+            period, chi2red_period = estimate_synodic_period(
+                pdf=pdf,
+                phyparam=outdic,
+                flavor="SHG1G2",
+                sb_method="fastnifty",
+                Nterms_base=1,
+                Nterms_band=1,
+                period_range=(1. / 24., 30.) # 1h to 1 month
+            )
 
             # Add astrometry
             fink_coord = SkyCoord(ra=pdf['i:ra'].values * u.deg, dec=pdf['i:dec'].values * u.deg)
