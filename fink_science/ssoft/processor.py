@@ -297,7 +297,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                 sb_method="fastnifty",
                 Nterms_base=1,
                 Nterms_band=1,
-                period_range=(1. / 24., 30.) # 1h to 1 month
+                period_range=(1. / 24., 30.)  # 1h to 1 month
             )
 
             outdic["synodic_period"] = period
@@ -354,12 +354,12 @@ def correct_ztf_mpc_names(ssnamenr):
     >>> assert np.all(ssnamenr_alt[3:] == ssnamenr[3:])
     """
     # remove numbered
-    regex = "^\d+$"
+    regex = "^\d+$"  # noqa: W605
     template = re.compile(regex)
     unnumbered = np.array([template.findall(str(x)) == [] for x in ssnamenr])
 
     # Extract names
-    regex = "(?P<year>\d{4})(?P<letter>\w{2})(?P<end>\d+)$"
+    regex = "(?P<year>\d{4})(?P<letter>\w{2})(?P<end>\d+)$"  # noqa: W605
     processed = [process_regex(regex, x) for x in ssnamenr[unnumbered]]
 
     def f(x, y):
