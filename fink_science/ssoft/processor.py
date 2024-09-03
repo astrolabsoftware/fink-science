@@ -64,6 +64,8 @@ COLUMNS = {
     'std_astrometry': {'type': 'double', 'description': 'Astrometry: standard deviation of the angular separation between observations and ephemerides, in arcsecond'},
     'skew_astrometry': {'type': 'double', 'description': 'Astrometry: skewness of the angular separation between observations and ephemerides'},
     'kurt_astrometry': {'type': 'double', 'description': 'Astrometry: kurtosis of the angular separation between observations and ephemerides'},
+    'synodic_period': {'type': 'double', 'description': 'Synodic period estimated, in hour'},
+    'synodic_period_chi2red': {'type': 'double', 'description': 'Reduced chi-square for the period estimation'},
     'n_obs': {'type': 'int', 'description': 'Number of observations in Fink'},
     'n_obs_1': {'type': 'int', 'description': 'Number of observations for the ZTF filter band g in Fink'},
     'n_obs_2': {'type': 'int', 'description': 'Number of observations for the ZTF filter band r in Fink'},
@@ -297,6 +299,9 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                 Nterms_band=1,
                 period_range=(1. / 24., 30.) # 1h to 1 month
             )
+
+            outdic["synodic_period"] = period
+            outdic["synodic_period_chi2red"] = chi2red_period
 
             # Add astrometry
             fink_coord = SkyCoord(ra=pdf['i:ra'].values * u.deg, dec=pdf['i:dec'].values * u.deg)
