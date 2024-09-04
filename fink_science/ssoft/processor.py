@@ -562,7 +562,7 @@ def aggregate_sso_data(output_filename=None):
 
     return df_agg
 
-def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=50, frac=None, model='SHG1G2', version=None) -> pd.DataFrame:
+def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=50, frac=None, model='SHG1G2', version=None, sb_method="auto") -> pd.DataFrame:
     """ Build the Fink Flat Table from scratch
 
     Parameters
@@ -583,6 +583,11 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
         Model name among HG, HG1G2, SHG1G2. Default is SHG1G2.
     version: str, optional
         Version number of the table. By default YYYY.MM.
+    sb_method: str
+        Specify the single-band lomb scargle implementation to use.
+        See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
+        If nifty-ls is installed, one can also specify fastnifty. Although
+        in this case it does not work yet for Nterms_* higher than 1.
 
     Returns
     ----------
@@ -635,7 +640,8 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
                 'cra',
                 'cdec',
                 F.lit('ephemcc'),
-                F.lit(model)
+                F.lit(model),
+                F.lit(sb_method)
             )
         ).select(cols).toPandas()
 
