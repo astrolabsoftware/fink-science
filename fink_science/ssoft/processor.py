@@ -174,7 +174,7 @@ def process_regex(regex, data):
     return parameters
 
 @pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
-def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, method, model):
+def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, method, model, sb_method):
     """ Extract phase and spin parameters from Fink alert data using Apache Spark
 
     Parameters
@@ -199,6 +199,11 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
         otherwise use `rest` to call the ssodnet web service.
     model: str
         Model name. Available: HG, HG1G2, SHG1G2
+    sb_method: str
+        Specify the single-band lomb scargle implementation to use.
+        See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
+        If nifty-ls is installed, one can also specify fastnifty. Although
+        in this case it does not work yet for Nterms_* higher than 1.
 
     Returns
     ----------
@@ -294,7 +299,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                 pdf=pdf,
                 phyparam=outdic,
                 flavor="SHG1G2",
-                sb_method="fastnifty",
+                sb_method=sb_method.values[0],
                 Nterms_base=1,
                 Nterms_band=1,
                 period_range=(1. / 24., 30.)  # 1h to 1 month
@@ -591,13 +596,13 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
         now = datetime.datetime.now()
         version = '{}.{:02d}'.format(now.year, now.month)
 
-    if aggregated_filename is not None:
-        df_ztf = spark.read.format('parquet').load(aggregated_filename)
-    else:
+    if aggregated_filename is None:
         print('Reconstructing SSO data...')
         t0 = time.time()
-        df_ztf = aggregate_sso_data(output_filename='sso_aggregated_{}'.format(version))
+        aggregated_filename = 'sso_aggregated_{}'.format(version)
+        aggregate_sso_data(output_filename=aggregated_filename)
         print('Time to reconstruct SSO data: {:.2f} seconds'.format(time.time() - t0))
+    df_ztf = spark.read.format('parquet').load(aggregated_filename)
 
     print('{:,} SSO objects in Fink'.format(df_ztf.count()))
 
