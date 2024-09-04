@@ -234,12 +234,12 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
         pdf_sso = pd.DataFrame(
             {
                 'i:ssnamenr': [ssname] * len(ra.values[index]),
-                'i:magpsf': magpsf.values[index],
-                'i:sigmapsf': sigmapsf.values[index],
-                'i:jd': jd.values[index],
-                'i:fid': fid.values[index],
-                'i:ra': ra.values[index],
-                'i:dec': dec.values[index]
+                'i:magpsf': magpsf.values[index].astype(float),
+                'i:sigmapsf': sigmapsf.values[index].astype(float),
+                'i:jd': jd.values[index].astype(float),
+                'i:fid': fid.values[index].astype(int),
+                'i:ra': ra.values[index].astype(float),
+                'i:dec': dec.values[index].astype(float)
             }
         )
 
@@ -294,19 +294,23 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     normalise_to_V=False
                 )
 
-            # Add synodic period estimation
-            period, chi2red_period = estimate_synodic_period(
-                pdf=pdf,
-                phyparam=outdic,
-                flavor="SHG1G2",
-                sb_method=sb_method.values[0],
-                Nterms_base=1,
-                Nterms_band=1,
-                period_range=(1. / 24., 30.)  # 1h to 1 month
-            )
+            if "H_1" in outdic and "H_2" in outdic:
+                # Add synodic period estimation
+                period, chi2red_period = estimate_synodic_period(
+                    pdf=pdf,
+                    phyparam=outdic,
+                    flavor="SHG1G2",
+                    sb_method=sb_method.values[0],
+                    Nterms_base=1,
+                    Nterms_band=1,
+                    period_range=(1. / 24., 30.)  # 1h to 1 month
+                )
 
-            outdic["synodic_period"] = period
-            outdic["synodic_period_chi2red"] = chi2red_period
+                outdic["synodic_period"] = period
+                outdic["synodic_period_chi2red"] = chi2red_period
+            else:
+                outdic["synodic_period"] = np.nan
+                outdic["synodic_period_chi2red"] = np.nan
 
             # Add astrometry
             fink_coord = SkyCoord(ra=pdf['i:ra'].values * u.deg, dec=pdf['i:dec'].values * u.deg)
