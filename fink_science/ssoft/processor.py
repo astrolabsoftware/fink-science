@@ -234,12 +234,12 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
         pdf_sso = pd.DataFrame(
             {
                 'i:ssnamenr': [ssname] * len(ra.values[index]),
-                'i:magpsf': magpsf.values[index],
-                'i:sigmapsf': sigmapsf.values[index],
-                'i:jd': jd.values[index],
-                'i:fid': fid.values[index],
-                'i:ra': ra.values[index],
-                'i:dec': dec.values[index]
+                'i:magpsf': magpsf.values[index].astype(float),
+                'i:sigmapsf': sigmapsf.values[index].astype(float),
+                'i:jd': jd.values[index].astype(float),
+                'i:fid': fid.values[index].astype(int),
+                'i:ra': ra.values[index].astype(float),
+                'i:dec': dec.values[index].astype(float)
             }
         )
 
