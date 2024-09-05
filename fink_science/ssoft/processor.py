@@ -301,7 +301,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                 period, chi2red_period = estimate_synodic_period(
                     pdf=pdf,
                     phyparam=outdic,
-                    flavor=method.value[0],
+                    flavor=method.values[0],
                     sb_method=sb_method.values[0],
                     Nterms_base=1,
                     Nterms_band=1,
