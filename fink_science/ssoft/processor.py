@@ -294,12 +294,14 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     normalise_to_V=False
                 )
 
-            if "H_1" in outdic and "H_2" in outdic:
+            filts = np.unique(pdf['i:fid'].values)
+            is_fit_ok = np.all(["H_{}".format(filt) in outdic for filt in filts])
+            if is_fit_ok:
                 # Add synodic period estimation
                 period, chi2red_period = estimate_synodic_period(
                     pdf=pdf,
                     phyparam=outdic,
-                    flavor="SHG1G2",
+                    flavor=method.value[0],
                     sb_method=sb_method.values[0],
                     Nterms_base=1,
                     Nterms_band=1,
