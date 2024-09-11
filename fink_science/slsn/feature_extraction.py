@@ -23,7 +23,6 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 import fink_science.slsn.kernel as k
-import fink_science.slsn.models as mod
 import fink_science.slsn.basic_functions as base
 from light_curve.light_curve_py import RainbowFit
 from light_curve.light_curve_py import warnings as rainbow_warnings
