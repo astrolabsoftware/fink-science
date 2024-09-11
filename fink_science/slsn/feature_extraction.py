@@ -59,19 +59,20 @@ def transform_data(data):
     --------
     """
 
-    peak = data['cpsFlux'].apply(base.get_max)
+    peak = data["cpsFlux"].apply(base.get_max)
     valid = np.array([True] * len(data))
     valid = valid & (data["cmidPointTai"].apply(lambda x: len(x) >= k.MINIMUM_POINTS))
-    
+
     if not valid.any():
         return data, valid
-    
-    data['peak'] = peak
+
+    data["peak"] = peak
     data["cmidPointTai"] = data.apply(base.translate, axis=1)
     data[["cpsFlux", "cpsFluxErr"]] = data.apply(base.normalize, axis=1)
     data["snr"] = data[["cpsFlux", "cpsFluxErr"]].apply(
-        lambda pdf: pdf["cpsFlux"] / pdf["cpsFluxErr"], axis=1)
-    
+        lambda pdf: pdf["cpsFlux"] / pdf["cpsFluxErr"], axis=1
+    )
+
     return data, valid
 
 
@@ -83,7 +84,7 @@ def parametrise(transformed, metadata, target_col=""):
             - "peak" : maximum flux before normalization for filter k.NORMALIZING_BAND
             - "ra" : right ascension
             - "decl" : declination
-            
+
             Optional metadata:
                 - "hostgal_snsep" : distance to host galaxy
                 - "hostgal_zphot" : redshift of the host galaxy
@@ -115,34 +116,46 @@ def parametrise(transformed, metadata, target_col=""):
     """
 
     ids = transformed["diaObjectId"]
-    
+
     df_parameters = pd.DataFrame(data={"object_id": ids})
     df_parameters["peak"] = transformed["peak"]
 
-        
     warnings.filterwarnings("ignore", category=rainbow_warnings.ExperimentalWarning)
     rainbow_features = transformed.apply(apply_rainbow, axis=1)
-    
-    for idx, name in enumerate(['reference_time', 'rise_time', 'amplitude', 'Tmin', 'Tmax', 't_color', 'fit_error']):
+
+    for idx, name in enumerate(
+        [
+            "reference_time",
+            "rise_time",
+            "amplitude",
+            "Tmin",
+            "Tmax",
+            "t_color",
+            "fit_error",
+        ]
+    ):
         df_parameters[name] = [i[idx] for i in rainbow_features]
-    
+
     for idx, band in enumerate(k.PASSBANDS):
-        
-        masks = transformed['cfilterName'].apply(lambda x: x==band)
-        
-        single_band_flux = pd.Series([k[masks.iloc[idx2]]for idx2, k in enumerate(transformed['cpsFlux'])])  
+        masks = transformed["cfilterName"].apply(lambda x: x == band)
+
+        single_band_flux = pd.Series(
+            [k[masks.iloc[idx2]] for idx2, k in enumerate(transformed["cpsFlux"])]
+        )
         std = single_band_flux.apply(base.compute_std)
-        
-        single_band_snr = pd.Series([k[masks.iloc[idx2]]for idx2, k in enumerate(transformed['snr'])]) 
+
+        single_band_snr = pd.Series(
+            [k[masks.iloc[idx2]] for idx2, k in enumerate(transformed["snr"])]
+        )
         mean_snr = single_band_snr.apply(base.compute_mean)
-        
+
         df_parameters[f"std_{band}"] = list(std)
         df_parameters[f"mean_snr_{band}"] = list(mean_snr)
 
     df_parameters["ra"] = transformed["ra"]
     df_parameters["decl"] = transformed["decl"]
     df_parameters["nb_points"] = transformed["cpsFlux"].apply(lambda x: len(x))
-            
+
     if metadata:
         df_parameters["hostgal_snsep"] = transformed["hostgal_snsep"]
         df_parameters["hostgal_zphot"] = transformed["hostgal_zphot"]
@@ -151,21 +164,24 @@ def parametrise(transformed, metadata, target_col=""):
     if target_col != "":
         targets = transformed[target_col]
         df_parameters[target_col] = targets
-        
+
     return df_parameters
 
-def apply_rainbow(pds):
 
+def apply_rainbow(pds):
     band_wave_aa = {"u": 3751, "g": 4742, "r": 6173, "i": 7502, "z": 8679, "Y": 9711}
 
-    fitter = RainbowFit.from_angstrom(band_wave_aa, with_baseline=False,\
-                               temperature='Tsigmoid', bolometric='linexp')#, 
+    fitter = RainbowFit.from_angstrom(
+        band_wave_aa, with_baseline=False, temperature="Tsigmoid", bolometric="linexp"
+    )  # ,
 
     try:
-        result = fitter._eval(t=pds['cmidPointTai'],
-                                     m=pds['cpsFlux'],
-                                     sigma=pds['cpsFluxErr'],
-                                     band=pds['cfilterName'])
+        result = fitter._eval(
+            t=pds["cmidPointTai"],
+            m=pds["cpsFlux"],
+            sigma=pds["cpsFluxErr"],
+            band=pds["cfilterName"],
+        )
         return result
 
     except RuntimeError:
@@ -173,7 +189,6 @@ def apply_rainbow(pds):
 
 
 if __name__ == "__main__":
-
     import sys
     import doctest
 

@@ -39,11 +39,12 @@ def load_classifier(metadata):
 
     if metadata:
         clf = joblib.load(k.CLASSIFIER_ELASTICC_WITH_MD)
-        
+
     else:
         clf = joblib.load(k.CLASSIFIER_ELASTICC_NO_MD)
-        
+
     return clf
+
 
 @profile
 def get_probabilities(clf, features, valid):
@@ -96,12 +97,12 @@ def slsn_classifier(data, metadata):
     Examples
     --------
     """
-    
+
     transformed, valid = fe.transform_data(data)
 
     if not valid.any():
         return np.zeros(len(data), dtype=float)
-    
+
     features = fe.parametrise(transformed[valid], metadata)
     clf = load_classifier(metadata)
     proba = get_probabilities(clf, features, valid)
@@ -110,7 +111,6 @@ def slsn_classifier(data, metadata):
 
 
 if __name__ == "__main__":
-
     globs = globals()
     path = os.path.dirname(__file__)
 

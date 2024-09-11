@@ -20,5 +20,5 @@ curdir = os.path.dirname(os.path.abspath(__file__))
 CLASSIFIER_ELASTICC_WITH_MD = curdir + "/data/models/SLSN_rainbow_MD.joblib"
 CLASSIFIER_ELASTICC_NO_MD = curdir + "/data/models/SLSN_rainbow_no_MD.joblib"
 MINIMUM_POINTS = 7
-PASSBANDS = ['u', 'g', 'r', 'i', 'z', 'Y']
+PASSBANDS = ["u", "g", "r", "i", "z", "Y"]
 MAXFEV = 500

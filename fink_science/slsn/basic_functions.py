@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+
 def compute_mean(x):
     """Compute mean of an array.
     Return -1 if the array is empty.
@@ -27,7 +28,7 @@ def compute_mean(x):
     else:
         return np.mean(x)
 
-    
+
 def compute_std(x):
     """Compute standard deviation of an array.
     Return -1 if the array is empty.
@@ -91,7 +92,6 @@ def keep_filter(ps, band):
 
 
 def get_max(x, absolute=False):
-
     """Returns maximum of an array. Returns -1 if array is empty
 
     Parameters
@@ -126,6 +126,7 @@ def get_max(x, absolute=False):
     else:
         return x.max()
 
+
 def translate(ps):
     """Translate a cmidPointTai list by substracting maxflux point
 
@@ -155,6 +156,7 @@ def translate(ps):
 
     else:
         return ps["cmidPointTai"] - ps["cmidPointTai"][np.argmax(ps["cpsFlux"])]
+
 
 def normalize(ps):
     """Normalize by dividing by a data frame of maximum

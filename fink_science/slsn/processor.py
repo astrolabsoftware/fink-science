@@ -24,8 +24,8 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(DoubleType())
 @profile
 def slsn_elasticc_no_md(
-        diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName,
-        ra, decl):
+    diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, decl
+):
     """High level spark wrapper for the slsn classifier on ELASTiCC data
 
     Parameters
@@ -59,18 +59,19 @@ def slsn_elasticc_no_md(
             "cpsFluxErr": cpsFluxErr,
             "cfilterName": cfilterName,
             "ra": ra,
-            "decl": decl
+            "decl": decl,
         }
     )
 
     proba = slsn_classifier(data, False)
     return pd.Series(proba)
 
+
 @pandas_udf(DoubleType())
 @profile
 def slsn_elasticc_with_md(
-        diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName,
-        ra, decl):
+    diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, decl
+):
     """High level spark wrapper for the slsn classifier on ELASTiCC data
 
     Parameters
@@ -90,7 +91,7 @@ def slsn_elasticc_with_md(
         Declination of the objects
     hostgal_zphot, hostgal_zphot_err: Spark DataFrame Column
         Redshift and redshift error of the host galaxy
-        -9 if object is in the milky way 
+        -9 if object is in the milky way
     hostgal_snsep: Spark DataFrame Column
         Distance from the host galaxy
 
@@ -113,7 +114,7 @@ def slsn_elasticc_with_md(
             "decl": decl,
             "hostgal_zphot": hostgal_zphot,
             "hostgal_zphot_err": hostgal_zphot_err,
-            "hostgal_snsep": hostgal_snsep
+            "hostgal_snsep": hostgal_snsep,
         }
     )
 
@@ -122,7 +123,6 @@ def slsn_elasticc_with_md(
 
 
 if __name__ == "__main__":
-
     globs = globals()
 
     # Run the test suite

@@ -29,7 +29,6 @@ def mvsr_left_transient(X, p1, p2, p3):
 
 
 if __name__ == "__main__":
-
     import sys
     import doctest
 
