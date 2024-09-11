@@ -1,5 +1,5 @@
 import numpy as np
-import pandas as pd
+import pandas as pd  # noqa: F401
 
 
 def compute_mean(x):

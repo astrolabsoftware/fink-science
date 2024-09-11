@@ -13,20 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from line_profiler import profile
-
-import pickle  # noqa: F401
 import warnings
-from scipy.optimize import curve_fit
-
 import pandas as pd
 import numpy as np
-from numpy.linalg import LinAlgError
-
 import fink_science.slsn.kernel as k
 import fink_science.slsn.basic_functions as base
 from light_curve.light_curve_py import RainbowFit
 from light_curve.light_curve_py import warnings as rainbow_warnings
-
 from pandas.testing import assert_frame_equal  # noqa: F401
 
 

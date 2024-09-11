@@ -24,7 +24,7 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(DoubleType())
 @profile
 def slsn_elasticc_no_md(
-    diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, decl
+    diaObjectId, cmidPointTai, cpsFlux, cpsFluxErr, cfilterName, ra, decl
 ):
     """High level spark wrapper for the slsn classifier on ELASTiCC data
 
@@ -70,7 +70,8 @@ def slsn_elasticc_no_md(
 @pandas_udf(DoubleType())
 @profile
 def slsn_elasticc_with_md(
-    diaObjectId, cmidPoinTai, cpsFlux, cpsFluxErr, cfilterName, ra, decl
+    diaObjectId, cmidPointTai, cpsFlux, cpsFluxErr, cfilterName,
+    ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_snsep
 ):
     """High level spark wrapper for the slsn classifier on ELASTiCC data
 
