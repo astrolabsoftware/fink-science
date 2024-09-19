@@ -91,16 +91,12 @@ def keep_filter(ps, band):
     return [np.array(_col)[mask].astype(type(_col[0])) for _col in ps]
 
 
-def get_max(x, absolute=False):
+def get_max(x):
     """Returns maximum of an array. Returns -1 if array is empty
 
     Parameters
     ----------
     x: np.array
-
-    absolute: bool
-        If true returns absolute maximum.
-        Default is False.
 
     Returns
     -------
@@ -113,18 +109,12 @@ def get_max(x, absolute=False):
     True
     >>> get_max(np.array([])) == -1
     True
-    >>> get_max(np.array([1, 8, -62]), absolute=True) == -62
-    True
     """
 
     if len(x) == 0:
         return -1
 
-    elif absolute:
-        return max(x, key=abs)
-
-    else:
-        return x.max()
+    return np.max(x)
 
 
 def translate(ps):
