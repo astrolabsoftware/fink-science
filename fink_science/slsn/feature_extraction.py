@@ -164,7 +164,7 @@ def apply_rainbow(pds):
     band_wave_aa = {"u": 3751, "g": 4742, "r": 6173, "i": 7502, "z": 8679, "Y": 9711}
 
     fitter = RainbowFit.from_angstrom(
-        band_wave_aa, with_baseline=False, temperature="Tsigmoid", bolometric="linexp"
+        band_wave_aa, with_baseline=False, temperature="sigmoid", bolometric="linexp"
     )  # ,
 
     try:
