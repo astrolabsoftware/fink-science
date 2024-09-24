@@ -147,7 +147,7 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     >>> args += [F.lit(''), F.lit(model_path)]
     >>> df = df.withColumn('pIa2', snn_ia(*args))
 
-    >>> assert(df.filter(df['pIa2'] > 0.5).count()>5)
+    >>> df.filter(df['pIa2'] > 0.5).count()>5
     True
 
     # Check robustness wrt i-band
@@ -273,7 +273,7 @@ def snn_ia_elasticc(
     >>> args += [F.lit('elasticc_ia')]
     >>> df = df.withColumn('pIa', snn_ia_elasticc(*args))
 
-    >>> assert(df.filter(df['pIa'] > 0.5).count()>5)
+    >>> df.filter(df['pIa'] > 0.5).count()>5
     True
     """
     # No a priori cuts
@@ -417,7 +417,7 @@ def snn_broad_elasticc(
     >>> pdf = df.select('preds').toPandas()
 
     # At least 5 objects have been classified as class 0
-    >>> assert(np.sum(pdf['preds'].apply(lambda x: np.argmax(x) == 0))>5)
+    >>> np.sum(pdf['preds'].apply(lambda x: np.argmax(x) == 0))>5
     True
     """
     # No a priori cuts
