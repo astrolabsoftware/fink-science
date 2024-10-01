@@ -101,12 +101,12 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog
     ...         df['id'], df['ra'], df['dec'],
     ...         F.lit(1.0), F.lit('simbad'), F.lit('main_type')))
     >>> df.show() # doctest: +NORMALIZE_WHITESPACE
-    +---+----------+-----------+---------+
-    | id|        ra|        dec|cdsxmatch|
-    +---+----------+-----------+---------+
-    |  a|26.8566983|-26.9677112|     LPV*|
-    |  b|  26.24497|-26.7569436|     Star|
-    +---+----------+-----------+---------+
+    +---+----------+-----------+------------+
+    | id|        ra|        dec|   cdsxmatch|
+    +---+----------+-----------+------------+
+    |  a|26.8566983|-26.9677112|LongPeriodV*|
+    |  b|  26.24497|-26.7569436|        Star|
+    +---+----------+-----------+------------+
     <BLANKLINE>
     """
     # If nothing
