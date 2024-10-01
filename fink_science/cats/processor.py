@@ -147,25 +147,25 @@ def predict_nn(
     error = psFluxErr.apply(lambda x: norm_column(x))
 
     flux = keras.utils.pad_sequences(flux,
-                                     maxlen=140,
+                                     maxlen=395,
                                      value=-999.0,
                                      padding='post',
                                      dtype=np.float32)
 
     mjd = keras.utils.pad_sequences(mjd,
-                                    maxlen=140,
+                                    maxlen=395,
                                     value=-999.0,
                                     padding='post',
                                     dtype=np.float32)
 
     error = keras.utils.pad_sequences(error,
-                                      maxlen=140,
+                                      maxlen=395,
                                       value=-999.0,
                                       padding='post',
                                       dtype=np.float32)
 
     band = keras.utils.pad_sequences(filters,
-                                     maxlen=140,
+                                     maxlen=395,
                                      value=0.0,
                                      padding='post',
                                      dtype=np.uint8)
@@ -182,16 +182,11 @@ def predict_nn(
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/cats_models/model_fold0.h5'
+        model_path = curdir + '/data/models/cats_models/best_model_1.keras'
     else:
         model_path = model.values[0]
 
-    NN = tf.keras.models.load_model(
-        model_path,
-        custom_objects={
-            'RectifiedAdam': optimizers.RectifiedAdam
-        }
-    )
+    NN = tf.keras.models.load_model(model_path)
 
     preds = NN.predict([lc, meta])
 
