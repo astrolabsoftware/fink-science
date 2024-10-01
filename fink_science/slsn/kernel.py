@@ -17,8 +17,8 @@ import os
 from fink_science import __file__
 
 curdir = os.path.dirname(os.path.abspath(__file__))
-CLASSIFIER_ELASTICC = curdir + "/data/models/SLSN_elasticc_alerts.joblib"
-MINIMUM_POINTS = 3
-COLOR_PAIR = [2, 3]
-NORMALIZING_BAND = COLOR_PAIR[0]
+CLASSIFIER_ELASTICC_WITH_MD = curdir + "/data/models/SLSN_rainbow_MD.joblib"
+CLASSIFIER_ELASTICC_NO_MD = curdir + "/data/models/SLSN_rainbow_no_MD.joblib"
+MINIMUM_POINTS = 7
+PASSBANDS = ["u", "g", "r", "i", "z", "Y"]
 MAXFEV = 500
