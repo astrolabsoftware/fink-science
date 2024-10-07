@@ -23,7 +23,6 @@ from pyspark.sql.types import ArrayType, FloatType
 
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow_addons import optimizers
 
 from fink_science import __file__
 from fink_science.cats.utilities import norm_column
