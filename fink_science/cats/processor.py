@@ -28,9 +28,6 @@ from fink_science import __file__
 from fink_science.cats.utilities import norm_column
 from fink_science.tester import spark_unit_tests
 
-tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
-
-
 @pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 @profile
 def predict_nn(
