@@ -110,7 +110,7 @@ def predict_nn(
     >>> df = df.withColumn('preds', predict_nn(*args))
     >>> df = df.withColumn('argmax', F.expr('array_position(preds, array_max(preds)) - 1'))
     >>> df.filter(df['argmax'] == 0).count()
-    65 
+    65
     """
 
     import tensorflow as tf
