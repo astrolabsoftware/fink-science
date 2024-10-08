@@ -112,6 +112,7 @@ def predict_nn(
     >>> df.filter(df['argmax'] == 0).count()
     65 
     """
+
     import tensorflow as tf
     from tensorflow import keras
 
