@@ -520,7 +520,7 @@ def rfscore_rainbow_elasticc(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/elasticc_rainbow_earlyIa.pkl'
+        model = curdir + '/data/models/elasticc_rainbow_earlyIa_after_leak.pkl'
         clf = pickle.load(open(model, 'rb'))
 
     candid = pd.Series(range(len(midPointTai)))
