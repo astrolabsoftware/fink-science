@@ -21,16 +21,9 @@ import pandas as pd
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import ArrayType, FloatType
 
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow_addons import optimizers
-
 from fink_science import __file__
 from fink_science.cats.utilities import norm_column
 from fink_science.tester import spark_unit_tests
-
-tf.optimizers.RectifiedAdam = optimizers.RectifiedAdam
-
 
 @pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 @profile
@@ -117,8 +110,11 @@ def predict_nn(
     >>> df = df.withColumn('preds', predict_nn(*args))
     >>> df = df.withColumn('argmax', F.expr('array_position(preds, array_max(preds)) - 1'))
     >>> df.filter(df['argmax'] == 0).count()
-    55
+    65
     """
+
+    import tensorflow as tf
+    from tensorflow import keras
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
 
@@ -147,25 +143,25 @@ def predict_nn(
     error = psFluxErr.apply(lambda x: norm_column(x))
 
     flux = keras.utils.pad_sequences(flux,
-                                     maxlen=140,
+                                     maxlen=395,
                                      value=-999.0,
                                      padding='post',
                                      dtype=np.float32)
 
     mjd = keras.utils.pad_sequences(mjd,
-                                    maxlen=140,
+                                    maxlen=395,
                                     value=-999.0,
                                     padding='post',
                                     dtype=np.float32)
 
     error = keras.utils.pad_sequences(error,
-                                      maxlen=140,
+                                      maxlen=395,
                                       value=-999.0,
                                       padding='post',
                                       dtype=np.float32)
 
     band = keras.utils.pad_sequences(filters,
-                                     maxlen=140,
+                                     maxlen=395,
                                      value=0.0,
                                      padding='post',
                                      dtype=np.uint8)
@@ -182,16 +178,11 @@ def predict_nn(
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/cats_models/model_fold0.h5'
+        model_path = curdir + '/data/models/cats_models/best_model_1.keras'
     else:
         model_path = model.values[0]
 
-    NN = tf.keras.models.load_model(
-        model_path,
-        custom_objects={
-            'RectifiedAdam': optimizers.RectifiedAdam
-        }
-    )
+    NN = tf.keras.models.load_model(model_path)
 
     preds = NN.predict([lc, meta])
 
