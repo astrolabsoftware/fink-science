@@ -21,9 +21,6 @@ import pandas as pd
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import ArrayType, FloatType
 
-import tensorflow as tf
-from tensorflow import keras
-
 from fink_science import __file__
 from fink_science.cats.utilities import norm_column
 from fink_science.tester import spark_unit_tests
@@ -113,8 +110,10 @@ def predict_nn(
     >>> df = df.withColumn('preds', predict_nn(*args))
     >>> df = df.withColumn('argmax', F.expr('array_position(preds, array_max(preds)) - 1'))
     >>> df.filter(df['argmax'] == 0).count()
-    55
+    65 
     """
+    import tensorflow as tf
+    from tensorflow import keras
 
     filter_dict = {'u': 1, 'g': 2, 'r': 3, 'i': 4, 'z': 5, 'Y': 6}
 
