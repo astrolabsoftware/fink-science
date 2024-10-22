@@ -357,9 +357,9 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                 # TODO: understand if 2*period value (double-peaked lightcurve) is required
                 # TODO: extend `estimate_sso_parameters` to take p0 per filter for H & G
                 p0 = [
-                    outdic["H_1"],
-                    outdic["G1_1"],
-                    outdic["G2_1"],
+                    outdic.get("H_1", outdic["H_2"]),
+                    outdic.get("G1_1", outdic["G1_2"]),
+                    outdic.get("G2_1", outdic["G2_2"]),
                     np.radians(outdic["alpha0"]),
                     np.radians(outdic["delta0"]),
                     outdic["period"] / 24.,
