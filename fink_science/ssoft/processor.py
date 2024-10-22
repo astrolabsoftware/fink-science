@@ -64,8 +64,8 @@ COLUMNS = {
     'std_astrometry': {'type': 'double', 'description': 'Astrometry: standard deviation of the angular separation between observations and ephemerides, in arcsecond'},
     'skew_astrometry': {'type': 'double', 'description': 'Astrometry: skewness of the angular separation between observations and ephemerides'},
     'kurt_astrometry': {'type': 'double', 'description': 'Astrometry: kurtosis of the angular separation between observations and ephemerides'},
-    'synodic_period': {'type': 'double', 'description': 'Synodic period estimated, in hour'},
-    'synodic_period_chi2red': {'type': 'double', 'description': 'Reduced chi-square for the period estimation'},
+    'period': {'type': 'double', 'description': 'Sidereal period estimated, in hour. Available only from 2024.10'},
+    'period_chi2red': {'type': 'double', 'description': 'Reduced chi-square for the period estimation. Available only from 2024.10'},
     'n_obs': {'type': 'int', 'description': 'Number of observations in Fink'},
     'n_obs_1': {'type': 'int', 'description': 'Number of observations for the ZTF filter band g in Fink'},
     'n_obs_2': {'type': 'int', 'description': 'Number of observations for the ZTF filter band r in Fink'},
@@ -76,6 +76,33 @@ COLUMNS = {
     'status': {'type': 'int', 'description': 'Code for quality `status` (least square convergence): -2: failure, -1 : improper input parameters status returned from MINPACK, 0 : the maximum number of function evaluations is exceeded, 1 : gtol termination condition is satisfied, 2 : ftol termination condition is satisfied, 3 : xtol termination condition is satisfied, 4 : Both ftol and xtol termination conditions are satisfied.'},
     'flag': {'type': 'int', 'description': 'TBD'},
     'version': {'type': 'str', 'description': 'Version of the SSOFT YYYY.MM'},
+}
+
+COLUMNS_SSHG1G2 = {
+    'G1_1': {'type': 'double', 'description': 'G1 phase parameter for the ZTF filter band g'},
+    'G1_2': {'type': 'double', 'description': 'G1 phase parameter for the ZTF filter band r'},
+    'G2_1': {'type': 'double', 'description': 'G2 phase parameter for the ZTF filter band g'},
+    'G2_2': {'type': 'double', 'description': 'G2 phase parameter for the ZTF filter band r'},
+    'a_b': {'type': 'double', 'description': 'a/b ratio of the ellipsoid (a>=b>=c).'},
+    'a_c': {'type': 'double', 'description': 'a/c ratio of the ellipsoid (a>=b>=c).'},
+    'phi0': {'type': 'double', 'description': 'Initial rotation phase at reference time t0, in radian'},
+    'alpha0': {'type': 'double', 'description': 'Right ascension of the spin axis (EQJ2000), in degree'},
+    'delta0': {'type': 'double', 'description': 'Declination of the spin axis (EQJ2000), in degree'},
+    'alpha0_alt': {'type': 'double', 'description': 'Flipped `alpha0`: (`alpha0` + 180) modulo 360, in degree'},
+    'delta0_alt': {'type': 'double', 'description': 'Flipped `delta0`: -`delta0`, in degree'},
+    'obliquity': {'type': 'double', 'description': 'Obliquity of the spin axis, in degree'},
+    'err_G1_1': {'type': 'double', 'description': 'Uncertainty on the G1 phase parameter for the ZTF filter band g'},
+    'err_G1_2': {'type': 'double', 'description': 'Uncertainty on the G1 phase parameter for the ZTF filter band r'},
+    'err_G2_1': {'type': 'double', 'description': 'Uncertainty on the G2 phase parameter for the ZTF filter band g'},
+    'err_G2_2': {'type': 'double', 'description': 'Uncertainty on the G2 phase parameter for the ZTF filter band r'},
+    'err_a_b': {'type': 'double', 'description': 'Uncertainty on a/b'},
+    'err_a_c': {'type': 'double', 'description': 'Uncertainty on a/c'},
+    'err_phi0': {'type': 'double', 'description': 'Uncertainty on the initial rotation phase, in radian'},
+    'err_alpha0': {'type': 'double', 'description': 'Uncertainty on the right ascension of the spin axis (EQJ2000), in degree'},
+    'err_delta0': {'type': 'double', 'description': 'Uncertainty on the declination of the spin axis (EQJ2000), in degree'},
+    'max_cos_lambda': {'type': 'double', 'description': 'Maximum of the absolute value of the cosine for the aspect angle'},
+    'mean_cos_lambda': {'type': 'double', 'description': 'Mean of the absolute value of the cosine for the aspect angle'},
+    'min_cos_lambda': {'type': 'double', 'description': 'Minimum of the absolute value of the cosine for the aspect angle'},
 }
 
 COLUMNS_SHG1G2 = {
@@ -198,7 +225,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
         Use only the former on the Spark Cluster (local installation of ephemcc),
         otherwise use `rest` to call the ssodnet web service.
     model: str
-        Model name. Available: HG, HG1G2, SHG1G2
+        Model name. Available: HG, HG1G2, SHG1G2, SSHG1G2
     sb_method: str
         Specify the single-band lomb scargle implementation to use.
         See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
@@ -223,6 +250,13 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
         'SHG1G2': {
             'p0': [15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
             'bounds': ([0, 0, 0, 3e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
+        },
+        'SSHG1G2': {
+            'p0': [15.0, 0.15, 0.15, np.pi, 0.0, 1, 1.05, 1.05, 0.0],
+            'bounds': (
+                [0, 0, 0, 3e-1, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+                [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
+            )
         },
     }
 
@@ -269,7 +303,9 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
             out.append({'fit': 2, 'status': -2})
         else:
 
-            if model.values[0] == 'SHG1G2':
+            # TODO: for SSHG1G2, d'abord faire SHG1G2
+            if model.values[0] in ['SSHG1G2', 'SHG1G2']:
+                # Both needs to use SHG1G2
                 outdic = estimate_sso_params(
                     pdf['i:magpsf_red'].values,
                     pdf['i:sigmapsf'].values,
@@ -277,9 +313,10 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     pdf['i:fid'].values,
                     np.deg2rad(pdf['i:ra'].values),
                     np.deg2rad(pdf['i:dec'].values),
-                    p0=MODELS[model.values[0]]['p0'],
-                    bounds=MODELS[model.values[0]]['bounds'],
-                    model=model.values[0],
+                    jd=pdf["i:jd"].to_numpy(),
+                    p0=MODELS['SHG1G2']['p0'],
+                    bounds=MODELS['SHG1G2']['bounds'],
+                    model='SHG1G2',
                     normalise_to_V=False
                 )
             else:
@@ -305,14 +342,50 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     sb_method=sb_method.values[0],
                     Nterms_base=1,
                     Nterms_band=1,
-                    period_range=(1. / 24., 30.)  # 1h to 1 month
+                    period_range=(1. / 24., 30.),  # 1h to 1 month
+                    lt_correction=True,
                 )
 
-                outdic["synodic_period"] = period
-                outdic["synodic_period_chi2red"] = chi2red_period
+                outdic["period"] = period
+                outdic["period_chi2red"] = chi2red_period
             else:
-                outdic["synodic_period"] = np.nan
-                outdic["synodic_period_chi2red"] = np.nan
+                outdic["period"] = np.nan
+                outdic["period_chi2red"] = np.nan
+
+            # Full inversion using pre-computed SHG1G2 & period
+            if (model.values[0] == "SSHG1G2") and ~np.isnan(outdic["period"]):
+                # TODO: understand if 2*period value (double-peaked lightcurve) is required
+                # TODO: extend `estimate_sso_parameters` to take p0 per filter for H & G
+                p0 = [
+                    outdic["H_1"],
+                    outdic["G1_1"],
+                    outdic["G2_1"],
+                    np.radians(outdic["alpha0"]),
+                    np.radians(outdic["delta0"]),
+                    outdic["period"] / 24.,
+                    1.05,
+                    1.05,
+                    0.0,
+                ]
+
+                # Constrained Fit
+                # in-place replacement of parameters `outdic`
+                outdic = estimate_sso_params(
+                    pdf['i:magpsf_red'].values,
+                    pdf['i:sigmapsf'].values,
+                    np.deg2rad(pdf['Phase'].values),
+                    pdf['i:fid'].values,
+                    ra=np.deg2rad(pdf['i:ra'].values),
+                    dec=np.deg2rad(pdf['i:dec'].values),
+                    jd=pdf["i:jd"].to_numpy(),
+                    p0=p0,
+                    bounds=MODELS['SSHG1G2']['bounds'],
+                    model='SSHG1G2',
+                    normalise_to_V=False
+                )
+
+                # need to repopulate this field from the periodogram estimation
+                outdic["period_chi2red"] = chi2red_period
 
             # Add astrometry
             fink_coord = SkyCoord(ra=pdf['i:ra'].values * u.deg, dec=pdf['i:dec'].values * u.deg)
@@ -659,7 +732,7 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
     pdf['sso_name'] = sso_name
     pdf['sso_number'] = sso_number
 
-    if model == 'SHG1G2':
+    if model in ['SSHG1G2', 'SHG1G2']:
         # compute obliquity
         pdf['obliquity'] = extract_obliquity(
             pdf.sso_name,
