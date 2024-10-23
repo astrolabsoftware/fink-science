@@ -43,7 +43,6 @@ jobs:
 
     - name: Run test suites
       run: |
-        pip install fink-utils==0.29.1
         rm -f /tmp/forest_*.onnx
         ./run_tests.sh
         curl -s https://codecov.io/bash | bash
