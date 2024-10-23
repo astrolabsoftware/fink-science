@@ -687,6 +687,7 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
     ...     version=None,
     ...     ephem_method="rest",
     ...     sb_method="fastnifty")
+    <BLANKLINE>
     >>> assert len(ssoft_hg) == 3, ssoft_hg
     >>> assert "G_1" in ssoft_hg.columns
 
@@ -699,6 +700,7 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
     ...     version=None,
     ...     ephem_method="rest",
     ...     sb_method="fastnifty")
+    <BLANKLINE>
     >>> assert len(ssoft_hg1g2) == 3, ssoft_hg12
     >>> assert "G1_1" in ssoft_hg1g2.columns
 
@@ -711,6 +713,7 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
     ...     version=None,
     ...     ephem_method="rest",
     ...     sb_method="fastnifty")
+    <BLANKLINE>
     >>> assert len(ssoft_shg1g2) == 3, ssoft_shg1g2
     >>> assert "R" in ssoft_shg1g2.columns
 
@@ -723,6 +726,7 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
     ...     version=None,
     ...     ephem_method="rest",
     ...     sb_method="fastnifty")
+    <BLANKLINE>
     >>> assert len(ssoft_sshg1g2) == 3, ssoft_sshg1g2
     >>> assert "a_b" in ssoft_sshg1g2.columns
     """
