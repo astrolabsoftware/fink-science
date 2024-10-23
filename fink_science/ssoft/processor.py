@@ -14,6 +14,7 @@
 # limitations under the License.
 """ This file contains scripts and definition for the SSO Fink Table
 """
+import os
 import io
 import re
 import sys
@@ -29,6 +30,9 @@ from pyspark.sql.types import MapType, FloatType, StringType
 from fink_utils.sso.utils import get_miriade_data
 from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.periods import estimate_synodic_period
+
+from fink_science import __file__
+from fink_science.tester import spark_unit_tests
 
 import numpy as np
 import pandas as pd
@@ -204,6 +208,12 @@ def process_regex(regex, data):
 def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, method, model, sb_method):
     """ Extract phase and spin parameters from Fink alert data using Apache Spark
 
+    Notes
+    -----
+    For the SSHG1G2 model, the strategy is the following:
+    1. Compute parameters as if it was SHG2G1 model (incl. period estimation)
+    2. Using previously computed parameters, compute parameters from SSHG1G2
+
     Parameters
     ----------
     ssnamenr: str
@@ -252,7 +262,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
             'bounds': ([0, 0, 0, 3e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
         },
         'SSHG1G2': {
-            'p0': [15.0, 0.15, 0.15, np.pi, 0.0, 1, 1.05, 1.05, 0.0],
+            'p0': [15.0, 0.15, 0.15, np.pi, 0.0, 5., 1.05, 1.05, 0.0],
             'bounds': (
                 [0, 0, 0, 3e-1, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
                 [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
@@ -305,6 +315,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
 
             # TODO: for SSHG1G2, d'abord faire SHG1G2
             if model.values[0] in ['SSHG1G2', 'SHG1G2']:
+                initial_model = "SHG1G2"
                 # Both needs to use SHG1G2
                 outdic = estimate_sso_params(
                     pdf['i:magpsf_red'].values,
@@ -314,20 +325,21 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     np.deg2rad(pdf['i:ra'].values),
                     np.deg2rad(pdf['i:dec'].values),
                     jd=pdf["i:jd"].to_numpy(),
-                    p0=MODELS['SHG1G2']['p0'],
-                    bounds=MODELS['SHG1G2']['bounds'],
-                    model='SHG1G2',
+                    p0=MODELS[initial_model]['p0'],
+                    bounds=MODELS[initial_model]['bounds'],
+                    model=initial_model,
                     normalise_to_V=False
                 )
             else:
+                initial_model = model.values[0]
                 outdic = estimate_sso_params(
                     pdf['i:magpsf_red'].values,
                     pdf['i:sigmapsf'].values,
                     np.deg2rad(pdf['Phase'].values),
                     pdf['i:fid'].values,
-                    p0=MODELS[model.values[0]]['p0'],
-                    bounds=MODELS[model.values[0]]['bounds'],
-                    model=model.values[0],
+                    p0=MODELS[initial_model]['p0'],
+                    bounds=MODELS[initial_model]['bounds'],
+                    model=initial_model,
                     normalise_to_V=False
                 )
 
@@ -338,7 +350,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                 period, chi2red_period = estimate_synodic_period(
                     pdf=pdf,
                     phyparam=outdic,
-                    flavor=model.values[0],
+                    flavor=initial_model,
                     sb_method=sb_method.values[0],
                     Nterms_base=1,
                     Nterms_band=1,
@@ -360,8 +372,8 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     outdic.get("H_1", outdic["H_2"]),
                     outdic.get("G1_1", outdic["G1_2"]),
                     outdic.get("G2_1", outdic["G2_2"]),
-                    np.radians(outdic["alpha0"]),
-                    np.radians(outdic["delta0"]),
+                    np.deg2rad(outdic["alpha0"]),
+                    np.deg2rad(outdic["delta0"]),
                     outdic["period"] / 24.,
                     1.05,
                     1.05,
@@ -641,7 +653,7 @@ def aggregate_sso_data(output_filename=None):
 
     return df_agg
 
-def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=50, frac=None, model='SHG1G2', version=None, sb_method="auto") -> pd.DataFrame:
+def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=50, frac=None, model='SHG1G2', version=None, sb_method="auto", ephem_method='ephemcc') -> pd.DataFrame:
     """ Build the Fink Flat Table from scratch
 
     Parameters
@@ -667,11 +679,80 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
         See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
         If nifty-ls is installed, one can also specify fastnifty. Although
         in this case it does not work yet for Nterms_* higher than 1.
+    ephem_method: str
+        Method to compute ephemerides: `ephemcc` (default), or `rest`.
 
     Returns
     ----------
     pdf: pd.DataFrame
         Pandas DataFrame with all the SSOFT data.
+
+    Examples
+    --------
+    >>> ssoft_hg = build_the_ssoft(
+    ...     aggregated_filename=aggregated_filename,
+    ...     bft_filename=None,
+    ...     nproc=1,
+    ...     nmin=50,
+    ...     frac=None,
+    ...     model='HG',
+    ...     version=None,
+    ...     ephem_method="rest",
+    ...     sb_method="fastnifty") # doctest: +ELLIPSIS
+
+    >>> assert len(ssoft_hg) == 3, ssoft_hg
+    >>> assert "G_1" in ssoft_hg.columns
+
+    >>> ssoft_hg1g2 = build_the_ssoft(
+    ...     aggregated_filename=aggregated_filename,
+    ...     bft_filename=None,
+    ...     nproc=1,
+    ...     nmin=50,
+    ...     frac=None,
+    ...     model='HG1G2',
+    ...     version=None,
+    ...     ephem_method="rest",
+    ...     sb_method="fastnifty") # doctest: +ELLIPSIS
+
+    >>> assert len(ssoft_hg1g2) == 3, ssoft_hg12
+    >>> assert "G1_1" in ssoft_hg1g2.columns
+
+    >>> ssoft_shg1g2 = build_the_ssoft(
+    ...     aggregated_filename=aggregated_filename,
+    ...     bft_filename=None,
+    ...     nproc=1,
+    ...     nmin=50,
+    ...     frac=None,
+    ...     model='SHG1G2',
+    ...     version=None,
+    ...     ephem_method="rest",
+    ...     sb_method="fastnifty") # doctest: +ELLIPSIS
+    4 SSO objects in Fink
+    3 SSO objects with more than 50 measurements
+    ...
+    BFT not found -- downloading...
+
+    # 3 asteroids & 1 comet (<50 measurements)
+    >>> assert len(ssoft_shg1g2) == 3, ssoft_shg1g2
+    >>> assert "R" in ssoft_shg1g2.columns
+
+    >>> ssoft_sshg1g2 = build_the_ssoft(
+    ...     aggregated_filename=aggregated_filename,
+    ...     bft_filename=None,
+    ...     nproc=1,
+    ...     nmin=50,
+    ...     frac=None,
+    ...     model='SSHG1G2',
+    ...     version=None,
+    ...     ephem_method="rest",
+    ...     sb_method="fastnifty")
+    4 SSO objects in Fink
+    3 SSO objects with more than 50 measurements
+    ...
+    BFT not found -- downloading...
+
+    >>> assert len(ssoft_sshg1g2) == 3, ssoft_sshg1g2
+    >>> assert "a_b" in ssoft_sshg1g2.columns
     """
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
@@ -718,7 +799,7 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
                 'cfid',
                 'cra',
                 'cdec',
-                F.lit('ephemcc'),
+                F.lit(ephem_method),
                 F.lit(model),
                 F.lit(sb_method)
             )
@@ -755,5 +836,11 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
 if __name__ == "__main__":
     """
     """
-    import doctest
-    sys.exit(doctest.testmod()[0])
+    globs = globals()
+    path = os.path.dirname(__file__)
+
+    aggregated_filename = 'file://{}/data/alerts/sso_aggregated_2024.09_test_sample.parquet'.format(path)
+    globs["aggregated_filename"] = aggregated_filename
+
+    # Run the test suite
+    spark_unit_tests(globs)
