@@ -4,7 +4,6 @@
     Transients
     https://arxiv.org/abs/2404.18165
 """
-import math
 
 from line_profiler import profile
 import os
