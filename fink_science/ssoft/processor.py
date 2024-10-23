@@ -573,8 +573,7 @@ def extract_obliquity(sso_name, alpha0, delta0, bft_filename=None):
     cols = ['sso_name', 'orbital_elements.node_longitude.value', 'orbital_elements.inclination.value']
     if bft_filename is None:
         print('BFT not found -- downloading...')
-        r = requests.get('https://ssp.imcce.fr/data/ssoBFT-latest_Asteroid.parquet')
-        pdf_bft = pd.read_parquet(io.BytesIO(r.content), columns=cols)
+        pdf_bft = rocks.load_bft(columns=cols)
     else:
         pdf_bft = pd.read_parquet(bft_filename, columns=cols)
 
