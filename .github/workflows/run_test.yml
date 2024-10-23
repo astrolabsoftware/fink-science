@@ -24,6 +24,7 @@ jobs:
     - name: Set up env [1/2]
       run: |
         echo "FINK_SCIENCE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+        echo "ROCKS_CACHE_DIR=no-cache" >> $GITHUB_ENV
         echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
         echo "${BINPATH}" >> $GITHUB_PATH
 
