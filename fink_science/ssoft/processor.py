@@ -15,11 +15,9 @@
 """ This file contains scripts and definition for the SSO Fink Table
 """
 import os
-import io
 import re
 import sys
 import time
-import requests
 import datetime
 
 from pyspark.sql import SparkSession
@@ -40,7 +38,11 @@ from scipy.stats import skew, kurtosis
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
+import logging
+
 import rocks
+
+_LOG = logging.getLogger(__name__)
 
 COLUMNS = {
     'ssnamenr': {'type': 'str', 'description': 'Designation (name or number) of the object from MPC archive as given by ZTF'},
@@ -549,7 +551,7 @@ def angular_separation(lon1, lat1, lon2, lat2):
 
     return np.arctan2(np.hypot(num1, num2), denominator)
 
-def extract_obliquity(sso_name, alpha0, delta0, bft_filename=None):
+def extract_obliquity(sso_name, alpha0, delta0):
     """ Extract obliquity using spin values, and the BFT information
 
     Parameters
@@ -560,10 +562,6 @@ def extract_obliquity(sso_name, alpha0, delta0, bft_filename=None):
         RA of the pole [degree]
     delta0: np.array or pd.Series of double
         DEC of the pole [degree]
-    bft_filename: str, optional
-        If given, read the BFT (parquet format). If not specified,
-        download the latest version of the BFT (can be long).
-        Default is None (unspecified).
 
     Returns
     ----------
@@ -571,11 +569,7 @@ def extract_obliquity(sso_name, alpha0, delta0, bft_filename=None):
         Obliquity for each object [degree]
     """
     cols = ['sso_name', 'orbital_elements.node_longitude.value', 'orbital_elements.inclination.value']
-    if bft_filename is None:
-        print('BFT not found -- downloading...')
-        pdf_bft = rocks.load_bft(columns=cols)
-    else:
-        pdf_bft = pd.read_parquet(bft_filename, columns=cols)
+    pdf_bft = rocks.load_bft(columns=cols)
 
     sub = pdf_bft[cols]
 
@@ -652,17 +646,13 @@ def aggregate_sso_data(output_filename=None):
 
     return df_agg
 
-def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=50, frac=None, model='SHG1G2', version=None, sb_method="auto", ephem_method='ephemcc') -> pd.DataFrame:
+def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, model='SHG1G2', version=None, sb_method="auto", ephem_method='ephemcc') -> pd.DataFrame:
     """ Build the Fink Flat Table from scratch
 
     Parameters
     ----------
     aggregated_filename: str, optional
         If given, read aggregated data on HDFS. Default is None.
-    bft_filename: str, optional
-        If given, read the BFT (parquet format). If not specified,
-        download the latest version of the BFT (can be long).
-        Default is None (unspecified).
     nproc: int, optional
         Number of cores to used. Default is 80.
     nmin: int, optional
@@ -690,46 +680,39 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
     --------
     >>> ssoft_hg = build_the_ssoft(
     ...     aggregated_filename=aggregated_filename,
-    ...     bft_filename=None,
     ...     nproc=1,
     ...     nmin=50,
     ...     frac=None,
     ...     model='HG',
     ...     version=None,
     ...     ephem_method="rest",
-    ...     sb_method="fastnifty") # doctest: +ELLIPSIS
+    ...     sb_method="fastnifty")
 
     >>> assert len(ssoft_hg) == 3, ssoft_hg
     >>> assert "G_1" in ssoft_hg.columns
 
     >>> ssoft_hg1g2 = build_the_ssoft(
     ...     aggregated_filename=aggregated_filename,
-    ...     bft_filename=None,
     ...     nproc=1,
     ...     nmin=50,
     ...     frac=None,
     ...     model='HG1G2',
     ...     version=None,
     ...     ephem_method="rest",
-    ...     sb_method="fastnifty") # doctest: +ELLIPSIS
+    ...     sb_method="fastnifty")
 
     >>> assert len(ssoft_hg1g2) == 3, ssoft_hg12
     >>> assert "G1_1" in ssoft_hg1g2.columns
 
     >>> ssoft_shg1g2 = build_the_ssoft(
     ...     aggregated_filename=aggregated_filename,
-    ...     bft_filename=None,
     ...     nproc=1,
     ...     nmin=50,
     ...     frac=None,
     ...     model='SHG1G2',
     ...     version=None,
     ...     ephem_method="rest",
-    ...     sb_method="fastnifty") # doctest: +ELLIPSIS
-    4 SSO objects in Fink
-    3 SSO objects with more than 50 measurements
-    ...
-    BFT not found -- downloading...
+    ...     sb_method="fastnifty")
 
     # 3 asteroids & 1 comet (<50 measurements)
     >>> assert len(ssoft_shg1g2) == 3, ssoft_shg1g2
@@ -737,7 +720,6 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
 
     >>> ssoft_sshg1g2 = build_the_ssoft(
     ...     aggregated_filename=aggregated_filename,
-    ...     bft_filename=None,
     ...     nproc=1,
     ...     nmin=50,
     ...     frac=None,
@@ -745,10 +727,6 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
     ...     version=None,
     ...     ephem_method="rest",
     ...     sb_method="fastnifty")
-    4 SSO objects in Fink
-    3 SSO objects with more than 50 measurements
-    ...
-    BFT not found -- downloading...
 
     >>> assert len(ssoft_sshg1g2) == 3, ssoft_sshg1g2
     >>> assert "a_b" in ssoft_sshg1g2.columns
@@ -761,14 +739,14 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
         version = '{}.{:02d}'.format(now.year, now.month)
 
     if aggregated_filename is None:
-        print('Reconstructing SSO data...')
+        _LOG.info('Reconstructing SSO data...')
         t0 = time.time()
         aggregated_filename = 'sso_aggregated_{}'.format(version)
         aggregate_sso_data(output_filename=aggregated_filename)
-        print('Time to reconstruct SSO data: {:.2f} seconds'.format(time.time() - t0))
+        _LOG.info('Time to reconstruct SSO data: {:.2f} seconds'.format(time.time() - t0))
     df_ztf = spark.read.format('parquet').load(aggregated_filename)
 
-    print('{:,} SSO objects in Fink'.format(df_ztf.count()))
+    _LOG.info('{:,} SSO objects in Fink'.format(df_ztf.count()))
 
     df = df_ztf\
         .withColumn('nmeasurements', F.size(df_ztf['cra']))\
@@ -776,14 +754,14 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
         .repartition(nproc)\
         .cache()
 
-    print('{:,} SSO objects with more than {} measurements'.format(df.count(), nmin))
+    _LOG.info('{:,} SSO objects with more than {} measurements'.format(df.count(), nmin))
 
     if frac is not None:
         if frac >= 1:
-            print('`frac` should be between 0 and 1.')
+            _LOG.warning('`frac` should be between 0 and 1.')
             sys.exit()
         df = df.sample(fraction=frac, seed=0).cache()
-        print('SAMPLE: {:,} SSO objects with more than {} measurements'.format(df.count(), nmin))
+        _LOG.info('SAMPLE: {:,} SSO objects with more than {} measurements'.format(df.count(), nmin))
 
     cols = ['ssnamenr', 'params']
     t0 = time.time()
@@ -804,7 +782,7 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
             )
         ).select(cols).toPandas()
 
-    print('Time to extract parameters: {:.2f} seconds'.format(time.time() - t0))
+    _LOG.info('Time to extract parameters: {:.2f} seconds'.format(time.time() - t0))
 
     pdf = pd.concat([pdf, pd.json_normalize(pdf.params)], axis=1).drop('params', axis=1)
 
@@ -818,7 +796,6 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
             pdf.sso_name,
             pdf.alpha0,
             pdf.delta0,
-            bft_filename=bft_filename
         )
 
         # add flipped spins
