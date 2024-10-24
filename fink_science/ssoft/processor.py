@@ -106,6 +106,7 @@ COLUMNS_SSHG1G2 = {
     'err_phi0': {'type': 'double', 'description': 'Uncertainty on the initial rotation phase, in radian'},
     'err_alpha0': {'type': 'double', 'description': 'Uncertainty on the right ascension of the spin axis (EQJ2000), in degree'},
     'err_delta0': {'type': 'double', 'description': 'Uncertainty on the declination of the spin axis (EQJ2000), in degree'},
+    'err_period': {'type': 'double', 'description': 'Uncertainty on the sidereal period, in hour. Available only from 2024.10'},
     'max_cos_lambda': {'type': 'double', 'description': 'Maximum of the absolute value of the cosine for the aspect angle'},
     'mean_cos_lambda': {'type': 'double', 'description': 'Mean of the absolute value of the cosine for the aspect angle'},
     'min_cos_lambda': {'type': 'double', 'description': 'Minimum of the absolute value of the cosine for the aspect angle'},
@@ -397,6 +398,9 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     model='SSHG1G2',
                     normalise_to_V=False
                 )
+
+                # day to hour units
+                outdic["period"] = 24 * outdic["period"]
 
                 # need to repopulate this field from the periodogram estimation
                 outdic["period_chi2red"] = chi2red_period
