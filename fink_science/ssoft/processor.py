@@ -267,7 +267,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
         'SSHG1G2': {
             'p0': [15.0, 0.15, 0.15, np.pi, 0.0, 5., 1.05, 1.05, 0.0],
             'bounds': (
-                [0, 0, 0, 3e-1, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+                [0, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
                 [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
             )
         },
