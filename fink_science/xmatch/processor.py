@@ -41,6 +41,9 @@ from fink_tns.utils import download_catalog
 
 from typing import Any
 
+_LOG = logging.getLogger(__name__)
+
+
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog: str, cols: str) -> pd.Series:
@@ -279,7 +282,7 @@ def xmatch_cds(
     return df_out
 
 
-def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
+def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     """ Cross-match Fink data from a Spark DataFrame with the latest TNS catalog
 
     Parameters
@@ -288,8 +291,10 @@ def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
         Spark Dataframe
     distmaxarcsec: float, optional
         Cross-match radius in arcsecond. Default is 1.5 arcsecond.
-    input_catalog_filename: str, optional
-        Filename of a TNS catalog to read. Default is None, in
+    tns_raw_output: str, optional
+        Folder that contains raw TNS catalog. Inside, it is expected
+        to find the file `tns_raw.parquet` downloaded using
+        `fink-broker/bin/download_tns.py`. Default is "", in
         which case the catalog will be downloaded. Beware that
         to download the catalog, you need to set environment variables:
         - TNS_API_MARKER: path to the TNS API marker (tns_marker.txt)
@@ -305,8 +310,8 @@ def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
     >>> df = spark.read.load(ztf_alert_sample)
 
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> path = curdir + '/data/catalogs/tns.parquet'
-    >>> df_tns = xmatch_tns(df, input_catalog_filename=path)
+    >>> path = curdir + '/data/catalogs'
+    >>> df_tns = xmatch_tns(df, tns_raw_output=path)
     >>> 'tns' in df_tns.columns
     True
 
@@ -314,13 +319,19 @@ def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
     1
 
     """
-    if input_catalog_filename is None:
-        with open(os.environ["TNS_API_MARKER"]) as f:
-            tns_marker = f.read().replace("\n", "")
+    if tns_raw_output == "":
+        _LOG.info("Downloading the latest TNS catalog")
+        if "TNS_API_MARKER" in os.environ and "TNS_API_KEY" in os.environ:
+            with open(os.environ["TNS_API_MARKER"]) as f:
+                tns_marker = f.read().replace("\n", "")
 
-        pdf_tns = download_catalog(os.environ["TNS_API_KEY"], tns_marker)
+            pdf_tns = download_catalog(os.environ["TNS_API_KEY"], tns_marker)
+        else:
+            _LOG.warning("TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master.")
+            _LOG.warning("Skipping crossmatch with TNS.")
+            return df
     else:
-        pdf_tns = pd.read_parquet(input_catalog_filename)
+        pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, 'tns_raw.parquet'))
 
     # Filter TNS confirmed data
     f1 = ~pdf_tns["type"].isna()
