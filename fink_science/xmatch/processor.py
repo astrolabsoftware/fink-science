@@ -282,7 +282,7 @@ def xmatch_cds(
     return df_out
 
 
-def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
+def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=None):
     """ Cross-match Fink data from a Spark DataFrame with the latest TNS catalog
 
     Parameters
@@ -291,8 +291,10 @@ def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
         Spark Dataframe
     distmaxarcsec: float, optional
         Cross-match radius in arcsecond. Default is 1.5 arcsecond.
-    input_catalog_filename: str, optional
-        Filename of a TNS catalog to read. Default is None, in
+    tns_raw_output: str, optional
+        Folder that contains raw TNS catalog. Inside, it is expected
+        to find the file `tns_raw.parquet` downloaded using
+        `fink-broker/bin/download_tns.py`. Default is None, in
         which case the catalog will be downloaded. Beware that
         to download the catalog, you need to set environment variables:
         - TNS_API_MARKER: path to the TNS API marker (tns_marker.txt)
@@ -308,8 +310,8 @@ def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
     >>> df = spark.read.load(ztf_alert_sample)
 
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> path = curdir + '/data/catalogs/tns.parquet'
-    >>> df_tns = xmatch_tns(df, input_catalog_filename=path)
+    >>> path = curdir + '/data/catalogs'
+    >>> df_tns = xmatch_tns(df, tns_raw_output=path)
     >>> 'tns' in df_tns.columns
     True
 
@@ -329,7 +331,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
             _LOG.warning("Skipping crossmatch with TNS.")
             return df
     else:
-        pdf_tns = pd.read_parquet(input_catalog_filename)
+        pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, 'tns_raw.parquet'))
 
     # Filter TNS confirmed data
     f1 = ~pdf_tns["type"].isna()
