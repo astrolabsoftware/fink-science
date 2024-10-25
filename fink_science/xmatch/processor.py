@@ -325,7 +325,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
 
             pdf_tns = download_catalog(os.environ["TNS_API_KEY"], tns_marker)
         else:
-           _LOG.warning("TNS_API_MARKER and TNS_API_KEY are not defined as env var.") 
+           _LOG.warning("TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master.") 
            _LOG.warning("Skipping crossmatch with TNS.")
            return df
     else:
