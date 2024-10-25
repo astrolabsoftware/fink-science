@@ -399,11 +399,13 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     normalise_to_V=False
                 )
 
-                # day to hour units
-                outdic["period"] = 24 * outdic["period"]
+                # Only if the fit is successful
+                if "period" in outdic:
+                    # day to hour units
+                    outdic["period"] = 24 * outdic["period"]
 
-                # need to repopulate this field from the periodogram estimation
-                outdic["period_chi2red"] = chi2red_period
+                    # need to repopulate this field from the periodogram estimation
+                    outdic["period_chi2red"] = chi2red_period
 
             # Add astrometry
             fink_coord = SkyCoord(ra=pdf['i:ra'].values * u.deg, dec=pdf['i:dec'].values * u.deg)
