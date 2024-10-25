@@ -319,6 +319,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
     """
     if input_catalog_filename is None:
         if "TNS_API_MARKER" in os.environ and "TNS_API_KEY" in os.environ:
+            _LOG.info("Downloading the latest TNS catalog")
             with open(os.environ["TNS_API_MARKER"]) as f:
                 tns_marker = f.read().replace("\n", "")
 
