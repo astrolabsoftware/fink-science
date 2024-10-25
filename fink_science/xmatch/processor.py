@@ -41,6 +41,10 @@ from fink_tns.utils import download_catalog
 
 from typing import Any
 
+import logging
+_LOG = logging.getLogger(__name__)
+
+
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog: str, cols: str) -> pd.Series:
@@ -315,10 +319,15 @@ def xmatch_tns(df, distmaxarcsec=1.5, input_catalog_filename=None):
 
     """
     if input_catalog_filename is None:
-        with open(os.environ["TNS_API_MARKER"]) as f:
-            tns_marker = f.read().replace("\n", "")
+        if "TNS_API_MARKER" in os.environ and "TNS_API_KEY" in os.environ:
+            with open(os.environ["TNS_API_MARKER"]) as f:
+                tns_marker = f.read().replace("\n", "")
 
-        pdf_tns = download_catalog(os.environ["TNS_API_KEY"], tns_marker)
+            pdf_tns = download_catalog(os.environ["TNS_API_KEY"], tns_marker)
+        else:
+           _LOG.warning("TNS_API_MARKER and TNS_API_KEY are not defined as env var.") 
+           _LOG.warning("Skipping crossmatch with TNS.")
+           return df
     else:
         pdf_tns = pd.read_parquet(input_catalog_filename)
 
