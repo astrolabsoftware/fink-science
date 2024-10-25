@@ -282,7 +282,7 @@ def xmatch_cds(
     return df_out
 
 
-def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=None):
+def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     """ Cross-match Fink data from a Spark DataFrame with the latest TNS catalog
 
     Parameters
@@ -294,7 +294,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=None):
     tns_raw_output: str, optional
         Folder that contains raw TNS catalog. Inside, it is expected
         to find the file `tns_raw.parquet` downloaded using
-        `fink-broker/bin/download_tns.py`. Default is None, in
+        `fink-broker/bin/download_tns.py`. Default is "", in
         which case the catalog will be downloaded. Beware that
         to download the catalog, you need to set environment variables:
         - TNS_API_MARKER: path to the TNS API marker (tns_marker.txt)
@@ -319,9 +319,9 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=None):
     1
 
     """
-    if input_catalog_filename is None:
+    if tns_raw_output == "":
+        _LOG.info("Downloading the latest TNS catalog")
         if "TNS_API_MARKER" in os.environ and "TNS_API_KEY" in os.environ:
-            _LOG.info("Downloading the latest TNS catalog")
             with open(os.environ["TNS_API_MARKER"]) as f:
                 tns_marker = f.read().replace("\n", "")
 
