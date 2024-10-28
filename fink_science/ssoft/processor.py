@@ -14,11 +14,10 @@
 # limitations under the License.
 """ This file contains scripts and definition for the SSO Fink Table
 """
-import io
+import os
 import re
 import sys
 import time
-import requests
 import datetime
 
 from pyspark.sql import SparkSession
@@ -30,13 +29,20 @@ from fink_utils.sso.utils import get_miriade_data
 from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.periods import estimate_synodic_period
 
+from fink_science import __file__
+from fink_science.tester import spark_unit_tests
+
 import numpy as np
 import pandas as pd
 from scipy.stats import skew, kurtosis
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
+import logging
+
 import rocks
+
+_LOG = logging.getLogger(__name__)
 
 COLUMNS = {
     'ssnamenr': {'type': 'str', 'description': 'Designation (name or number) of the object from MPC archive as given by ZTF'},
@@ -64,8 +70,8 @@ COLUMNS = {
     'std_astrometry': {'type': 'double', 'description': 'Astrometry: standard deviation of the angular separation between observations and ephemerides, in arcsecond'},
     'skew_astrometry': {'type': 'double', 'description': 'Astrometry: skewness of the angular separation between observations and ephemerides'},
     'kurt_astrometry': {'type': 'double', 'description': 'Astrometry: kurtosis of the angular separation between observations and ephemerides'},
-    'synodic_period': {'type': 'double', 'description': 'Synodic period estimated, in hour'},
-    'synodic_period_chi2red': {'type': 'double', 'description': 'Reduced chi-square for the period estimation'},
+    'period': {'type': 'double', 'description': 'Sidereal period estimated, in hour. Available only from 2024.10'},
+    'period_chi2red': {'type': 'double', 'description': 'Reduced chi-square for the period estimation. Available only from 2024.10'},
     'n_obs': {'type': 'int', 'description': 'Number of observations in Fink'},
     'n_obs_1': {'type': 'int', 'description': 'Number of observations for the ZTF filter band g in Fink'},
     'n_obs_2': {'type': 'int', 'description': 'Number of observations for the ZTF filter band r in Fink'},
@@ -76,6 +82,34 @@ COLUMNS = {
     'status': {'type': 'int', 'description': 'Code for quality `status` (least square convergence): -2: failure, -1 : improper input parameters status returned from MINPACK, 0 : the maximum number of function evaluations is exceeded, 1 : gtol termination condition is satisfied, 2 : ftol termination condition is satisfied, 3 : xtol termination condition is satisfied, 4 : Both ftol and xtol termination conditions are satisfied.'},
     'flag': {'type': 'int', 'description': 'TBD'},
     'version': {'type': 'str', 'description': 'Version of the SSOFT YYYY.MM'},
+}
+
+COLUMNS_SSHG1G2 = {
+    'G1_1': {'type': 'double', 'description': 'G1 phase parameter for the ZTF filter band g'},
+    'G1_2': {'type': 'double', 'description': 'G1 phase parameter for the ZTF filter band r'},
+    'G2_1': {'type': 'double', 'description': 'G2 phase parameter for the ZTF filter band g'},
+    'G2_2': {'type': 'double', 'description': 'G2 phase parameter for the ZTF filter band r'},
+    'a_b': {'type': 'double', 'description': 'a/b ratio of the ellipsoid (a>=b>=c).'},
+    'a_c': {'type': 'double', 'description': 'a/c ratio of the ellipsoid (a>=b>=c).'},
+    'phi0': {'type': 'double', 'description': 'Initial rotation phase at reference time t0, in radian'},
+    'alpha0': {'type': 'double', 'description': 'Right ascension of the spin axis (EQJ2000), in degree'},
+    'delta0': {'type': 'double', 'description': 'Declination of the spin axis (EQJ2000), in degree'},
+    'alpha0_alt': {'type': 'double', 'description': 'Flipped `alpha0`: (`alpha0` + 180) modulo 360, in degree'},
+    'delta0_alt': {'type': 'double', 'description': 'Flipped `delta0`: -`delta0`, in degree'},
+    'obliquity': {'type': 'double', 'description': 'Obliquity of the spin axis, in degree'},
+    'err_G1_1': {'type': 'double', 'description': 'Uncertainty on the G1 phase parameter for the ZTF filter band g'},
+    'err_G1_2': {'type': 'double', 'description': 'Uncertainty on the G1 phase parameter for the ZTF filter band r'},
+    'err_G2_1': {'type': 'double', 'description': 'Uncertainty on the G2 phase parameter for the ZTF filter band g'},
+    'err_G2_2': {'type': 'double', 'description': 'Uncertainty on the G2 phase parameter for the ZTF filter band r'},
+    'err_a_b': {'type': 'double', 'description': 'Uncertainty on a/b'},
+    'err_a_c': {'type': 'double', 'description': 'Uncertainty on a/c'},
+    'err_phi0': {'type': 'double', 'description': 'Uncertainty on the initial rotation phase, in radian'},
+    'err_alpha0': {'type': 'double', 'description': 'Uncertainty on the right ascension of the spin axis (EQJ2000), in degree'},
+    'err_delta0': {'type': 'double', 'description': 'Uncertainty on the declination of the spin axis (EQJ2000), in degree'},
+    'err_period': {'type': 'double', 'description': 'Uncertainty on the sidereal period, in hour. Available only from 2024.10'},
+    'max_cos_lambda': {'type': 'double', 'description': 'Maximum of the absolute value of the cosine for the aspect angle'},
+    'mean_cos_lambda': {'type': 'double', 'description': 'Mean of the absolute value of the cosine for the aspect angle'},
+    'min_cos_lambda': {'type': 'double', 'description': 'Minimum of the absolute value of the cosine for the aspect angle'},
 }
 
 COLUMNS_SHG1G2 = {
@@ -177,6 +211,12 @@ def process_regex(regex, data):
 def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, method, model, sb_method):
     """ Extract phase and spin parameters from Fink alert data using Apache Spark
 
+    Notes
+    -----
+    For the SSHG1G2 model, the strategy is the following:
+    1. Compute parameters as if it was SHG2G1 model (incl. period estimation)
+    2. Using previously computed parameters, compute parameters from SSHG1G2
+
     Parameters
     ----------
     ssnamenr: str
@@ -198,7 +238,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
         Use only the former on the Spark Cluster (local installation of ephemcc),
         otherwise use `rest` to call the ssodnet web service.
     model: str
-        Model name. Available: HG, HG1G2, SHG1G2
+        Model name. Available: HG, HG1G2, SHG1G2, SSHG1G2
     sb_method: str
         Specify the single-band lomb scargle implementation to use.
         See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
@@ -223,6 +263,13 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
         'SHG1G2': {
             'p0': [15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
             'bounds': ([0, 0, 0, 3e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
+        },
+        'SSHG1G2': {
+            'p0': [15.0, 0.15, 0.15, np.pi, 0.0, 5., 1.05, 1.05, 0.0],
+            'bounds': (
+                [0, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+                [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
+            )
         },
     }
 
@@ -269,7 +316,10 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
             out.append({'fit': 2, 'status': -2})
         else:
 
-            if model.values[0] == 'SHG1G2':
+            # TODO: for SSHG1G2, d'abord faire SHG1G2
+            if model.values[0] in ['SSHG1G2', 'SHG1G2']:
+                initial_model = "SHG1G2"
+                # Both needs to use SHG1G2
                 outdic = estimate_sso_params(
                     pdf['i:magpsf_red'].values,
                     pdf['i:sigmapsf'].values,
@@ -277,20 +327,22 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     pdf['i:fid'].values,
                     np.deg2rad(pdf['i:ra'].values),
                     np.deg2rad(pdf['i:dec'].values),
-                    p0=MODELS[model.values[0]]['p0'],
-                    bounds=MODELS[model.values[0]]['bounds'],
-                    model=model.values[0],
+                    jd=pdf["i:jd"].to_numpy(),
+                    p0=MODELS[initial_model]['p0'],
+                    bounds=MODELS[initial_model]['bounds'],
+                    model=initial_model,
                     normalise_to_V=False
                 )
             else:
+                initial_model = model.values[0]
                 outdic = estimate_sso_params(
                     pdf['i:magpsf_red'].values,
                     pdf['i:sigmapsf'].values,
                     np.deg2rad(pdf['Phase'].values),
                     pdf['i:fid'].values,
-                    p0=MODELS[model.values[0]]['p0'],
-                    bounds=MODELS[model.values[0]]['bounds'],
-                    model=model.values[0],
+                    p0=MODELS[initial_model]['p0'],
+                    bounds=MODELS[initial_model]['bounds'],
+                    model=initial_model,
                     normalise_to_V=False
                 )
 
@@ -301,18 +353,59 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                 period, chi2red_period = estimate_synodic_period(
                     pdf=pdf,
                     phyparam=outdic,
-                    flavor=model.values[0],
+                    flavor=initial_model,
                     sb_method=sb_method.values[0],
                     Nterms_base=1,
                     Nterms_band=1,
-                    period_range=(1. / 24., 30.)  # 1h to 1 month
+                    period_range=(1. / 24., 30.),  # 1h to 1 month
+                    lt_correction=True,
                 )
 
-                outdic["synodic_period"] = period
-                outdic["synodic_period_chi2red"] = chi2red_period
+                outdic["period"] = period
+                outdic["period_chi2red"] = chi2red_period
             else:
-                outdic["synodic_period"] = np.nan
-                outdic["synodic_period_chi2red"] = np.nan
+                outdic["period"] = np.nan
+                outdic["period_chi2red"] = np.nan
+
+            # Full inversion using pre-computed SHG1G2 & period
+            if (model.values[0] == "SSHG1G2") and ~np.isnan(outdic["period"]):
+                # TODO: understand if 2*period value (double-peaked lightcurve) is required
+                # TODO: extend `estimate_sso_parameters` to take p0 per filter for H & G
+                p0 = [
+                    outdic.get("H_1", outdic["H_2"]),
+                    outdic.get("G1_1", outdic["G1_2"]),
+                    outdic.get("G2_1", outdic["G2_2"]),
+                    np.deg2rad(outdic["alpha0"]),
+                    np.deg2rad(outdic["delta0"]),
+                    outdic["period"] / 24.,
+                    1.05,
+                    1.05,
+                    0.0,
+                ]
+
+                # Constrained Fit
+                # in-place replacement of parameters `outdic`
+                outdic = estimate_sso_params(
+                    pdf['i:magpsf_red'].values,
+                    pdf['i:sigmapsf'].values,
+                    np.deg2rad(pdf['Phase'].values),
+                    pdf['i:fid'].values,
+                    ra=np.deg2rad(pdf['i:ra'].values),
+                    dec=np.deg2rad(pdf['i:dec'].values),
+                    jd=pdf["i:jd"].to_numpy(),
+                    p0=p0,
+                    bounds=MODELS['SSHG1G2']['bounds'],
+                    model='SSHG1G2',
+                    normalise_to_V=False
+                )
+
+                # Only if the fit is successful
+                if "period" in outdic:
+                    # day to hour units
+                    outdic["period"] = 24 * outdic["period"]
+
+                    # need to repopulate this field from the periodogram estimation
+                    outdic["period_chi2red"] = chi2red_period
 
             # Add astrometry
             fink_coord = SkyCoord(ra=pdf['i:ra'].values * u.deg, dec=pdf['i:dec'].values * u.deg)
@@ -464,7 +557,7 @@ def angular_separation(lon1, lat1, lon2, lat2):
 
     return np.arctan2(np.hypot(num1, num2), denominator)
 
-def extract_obliquity(sso_name, alpha0, delta0, bft_filename=None):
+def extract_obliquity(sso_name, alpha0, delta0):
     """ Extract obliquity using spin values, and the BFT information
 
     Parameters
@@ -475,10 +568,6 @@ def extract_obliquity(sso_name, alpha0, delta0, bft_filename=None):
         RA of the pole [degree]
     delta0: np.array or pd.Series of double
         DEC of the pole [degree]
-    bft_filename: str, optional
-        If given, read the BFT (parquet format). If not specified,
-        download the latest version of the BFT (can be long).
-        Default is None (unspecified).
 
     Returns
     ----------
@@ -486,12 +575,7 @@ def extract_obliquity(sso_name, alpha0, delta0, bft_filename=None):
         Obliquity for each object [degree]
     """
     cols = ['sso_name', 'orbital_elements.node_longitude.value', 'orbital_elements.inclination.value']
-    if bft_filename is None:
-        print('BFT not found -- downloading...')
-        r = requests.get('https://ssp.imcce.fr/data/ssoBFT-latest_Asteroid.parquet')
-        pdf_bft = pd.read_parquet(io.BytesIO(r.content), columns=cols)
-    else:
-        pdf_bft = pd.read_parquet(bft_filename, columns=cols)
+    pdf_bft = rocks.load_bft(columns=cols)
 
     sub = pdf_bft[cols]
 
@@ -568,17 +652,13 @@ def aggregate_sso_data(output_filename=None):
 
     return df_agg
 
-def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=50, frac=None, model='SHG1G2', version=None, sb_method="auto") -> pd.DataFrame:
+def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, model='SHG1G2', version=None, sb_method="auto", ephem_method='ephemcc') -> pd.DataFrame:
     """ Build the Fink Flat Table from scratch
 
     Parameters
     ----------
     aggregated_filename: str, optional
         If given, read aggregated data on HDFS. Default is None.
-    bft_filename: str, optional
-        If given, read the BFT (parquet format). If not specified,
-        download the latest version of the BFT (can be long).
-        Default is None (unspecified).
     nproc: int, optional
         Number of cores to used. Default is 80.
     nmin: int, optional
@@ -594,11 +674,67 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
         See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
         If nifty-ls is installed, one can also specify fastnifty. Although
         in this case it does not work yet for Nterms_* higher than 1.
+    ephem_method: str
+        Method to compute ephemerides: `ephemcc` (default), or `rest`.
 
     Returns
     ----------
     pdf: pd.DataFrame
         Pandas DataFrame with all the SSOFT data.
+
+    Examples
+    --------
+    >>> ssoft_hg = build_the_ssoft(
+    ...     aggregated_filename=aggregated_filename,
+    ...     nproc=1,
+    ...     nmin=50,
+    ...     frac=None,
+    ...     model='HG',
+    ...     version=None,
+    ...     ephem_method="rest",
+    ...     sb_method="fastnifty")
+    <BLANKLINE>
+    >>> assert len(ssoft_hg) == 3, ssoft_hg
+    >>> assert "G_1" in ssoft_hg.columns
+
+    >>> ssoft_hg1g2 = build_the_ssoft(
+    ...     aggregated_filename=aggregated_filename,
+    ...     nproc=1,
+    ...     nmin=50,
+    ...     frac=None,
+    ...     model='HG1G2',
+    ...     version=None,
+    ...     ephem_method="rest",
+    ...     sb_method="fastnifty")
+    <BLANKLINE>
+    >>> assert len(ssoft_hg1g2) == 3, ssoft_hg12
+    >>> assert "G1_1" in ssoft_hg1g2.columns
+
+    >>> ssoft_shg1g2 = build_the_ssoft(
+    ...     aggregated_filename=aggregated_filename,
+    ...     nproc=1,
+    ...     nmin=50,
+    ...     frac=None,
+    ...     model='SHG1G2',
+    ...     version=None,
+    ...     ephem_method="rest",
+    ...     sb_method="fastnifty")
+    <BLANKLINE>
+    >>> assert len(ssoft_shg1g2) == 3, ssoft_shg1g2
+    >>> assert "R" in ssoft_shg1g2.columns
+
+    >>> ssoft_sshg1g2 = build_the_ssoft(
+    ...     aggregated_filename=aggregated_filename,
+    ...     nproc=1,
+    ...     nmin=50,
+    ...     frac=None,
+    ...     model='SSHG1G2',
+    ...     version=None,
+    ...     ephem_method="rest",
+    ...     sb_method="fastnifty")
+    <BLANKLINE>
+    >>> assert len(ssoft_sshg1g2) == 3, ssoft_sshg1g2
+    >>> assert "a_b" in ssoft_sshg1g2.columns
     """
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
@@ -608,14 +744,14 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
         version = '{}.{:02d}'.format(now.year, now.month)
 
     if aggregated_filename is None:
-        print('Reconstructing SSO data...')
+        _LOG.info('Reconstructing SSO data...')
         t0 = time.time()
         aggregated_filename = 'sso_aggregated_{}'.format(version)
         aggregate_sso_data(output_filename=aggregated_filename)
-        print('Time to reconstruct SSO data: {:.2f} seconds'.format(time.time() - t0))
+        _LOG.info('Time to reconstruct SSO data: {:.2f} seconds'.format(time.time() - t0))
     df_ztf = spark.read.format('parquet').load(aggregated_filename)
 
-    print('{:,} SSO objects in Fink'.format(df_ztf.count()))
+    _LOG.info('{:,} SSO objects in Fink'.format(df_ztf.count()))
 
     df = df_ztf\
         .withColumn('nmeasurements', F.size(df_ztf['cra']))\
@@ -623,14 +759,14 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
         .repartition(nproc)\
         .cache()
 
-    print('{:,} SSO objects with more than {} measurements'.format(df.count(), nmin))
+    _LOG.info('{:,} SSO objects with more than {} measurements'.format(df.count(), nmin))
 
     if frac is not None:
         if frac >= 1:
-            print('`frac` should be between 0 and 1.')
+            _LOG.warning('`frac` should be between 0 and 1.')
             sys.exit()
         df = df.sample(fraction=frac, seed=0).cache()
-        print('SAMPLE: {:,} SSO objects with more than {} measurements'.format(df.count(), nmin))
+        _LOG.info('SAMPLE: {:,} SSO objects with more than {} measurements'.format(df.count(), nmin))
 
     cols = ['ssnamenr', 'params']
     t0 = time.time()
@@ -645,13 +781,13 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
                 'cfid',
                 'cra',
                 'cdec',
-                F.lit('ephemcc'),
+                F.lit(ephem_method),
                 F.lit(model),
                 F.lit(sb_method)
             )
         ).select(cols).toPandas()
 
-    print('Time to extract parameters: {:.2f} seconds'.format(time.time() - t0))
+    _LOG.info('Time to extract parameters: {:.2f} seconds'.format(time.time() - t0))
 
     pdf = pd.concat([pdf, pd.json_normalize(pdf.params)], axis=1).drop('params', axis=1)
 
@@ -659,13 +795,12 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
     pdf['sso_name'] = sso_name
     pdf['sso_number'] = sso_number
 
-    if model == 'SHG1G2':
+    if model in ['SSHG1G2', 'SHG1G2']:
         # compute obliquity
         pdf['obliquity'] = extract_obliquity(
             pdf.sso_name,
             pdf.alpha0,
             pdf.delta0,
-            bft_filename=bft_filename
         )
 
         # add flipped spins
@@ -682,5 +817,11 @@ def build_the_ssoft(aggregated_filename=None, bft_filename=None, nproc=80, nmin=
 if __name__ == "__main__":
     """
     """
-    import doctest
-    sys.exit(doctest.testmod()[0])
+    globs = globals()
+    path = os.path.dirname(__file__)
+
+    aggregated_filename = 'file://{}/data/alerts/sso_aggregated_2024.09_test_sample.parquet'.format(path)
+    globs["aggregated_filename"] = aggregated_filename
+
+    # Run the test suite
+    spark_unit_tests(globs)

@@ -44,7 +44,7 @@ setuptools.setup(
             'data/models/snn_models/elasticc_binary_broad/*/*.pt',
             'data/models/snn_models/elasticc_binary_broad/*/*.json',
             'data/models/snn_models/elasticc_binary_broad/*/*.txt',
-            'data/models/cats_models/model_fold0.h5',
+            'data/models/cats_models/best_model_1.keras',
             'data/models/t2/*/*.pb',
             'data/models/t2/*/*/variables*',
             'data/models/anomaly_detection/*.csv',

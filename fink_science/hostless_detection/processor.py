@@ -130,7 +130,8 @@ def run_potential_hostless(
         c4 = finkclass[index] in CONFIGS["finkclass"]
         c5 = tnsclass[index] in CONFIGS["tnsclass"]
         c6 = abs(deltat[index]) <= CONFIGS["cutout_timeframe"]
-        if ((c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5) and c6):
+        c7 = sum(magpsf[index] <= CONFIGS["cutout_magnitude"]) > CONFIGS["minimum_number_of_alerts"]
+        if ((c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5) and c6 and c7):
             if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
                 science_stamp = cutoutScience[index]
                 template_stamp = cutoutTemplate[index]

@@ -14,6 +14,7 @@
 # limitations under the License.
 from line_profiler import profile
 
+from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import StringType, MapType
@@ -36,7 +37,12 @@ from fink_science.xmatch.utils import extract_mangrove, MANGROVE_COLS
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
+from fink_tns.utils import download_catalog
+
 from typing import Any
+
+_LOG = logging.getLogger(__name__)
+
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
@@ -274,6 +280,130 @@ def xmatch_cds(
         df_out = df_out.withColumnRenamed('main_type', 'cdsxmatch')
 
     return df_out
+
+
+def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
+    """ Cross-match Fink data from a Spark DataFrame with the latest TNS catalog
+
+    Parameters
+    ----------
+    df: Spark DataFrame
+        Spark Dataframe
+    distmaxarcsec: float, optional
+        Cross-match radius in arcsecond. Default is 1.5 arcsecond.
+    tns_raw_output: str, optional
+        Folder that contains raw TNS catalog. Inside, it is expected
+        to find the file `tns_raw.parquet` downloaded using
+        `fink-broker/bin/download_tns.py`. Default is "", in
+        which case the catalog will be downloaded. Beware that
+        to download the catalog, you need to set environment variables:
+        - TNS_API_MARKER: path to the TNS API marker (tns_marker.txt)
+        - TNS_API_KEY: path to the TNS API key (tns_api.key)
+
+    Returns
+    ---------
+    df: Spark DataFrame
+        Spark DataFrame with new columns from the xmatch added
+
+    Examples
+    ---------
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    >>> curdir = os.path.dirname(os.path.abspath(__file__))
+    >>> path = curdir + '/data/catalogs'
+    >>> df_tns = xmatch_tns(df, tns_raw_output=path)
+    >>> 'tns' in df_tns.columns
+    True
+
+    >>> df_tns.filter(df_tns["tns"] != "").count()
+    1
+
+    """
+    if tns_raw_output == "":
+        _LOG.info("Downloading the latest TNS catalog")
+        if "TNS_API_MARKER" in os.environ and "TNS_API_KEY" in os.environ:
+            with open(os.environ["TNS_API_MARKER"]) as f:
+                tns_marker = f.read().replace("\n", "")
+
+            pdf_tns = download_catalog(os.environ["TNS_API_KEY"], tns_marker)
+        else:
+            _LOG.warning("TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master.")
+            _LOG.warning("Skipping crossmatch with TNS.")
+            return df
+    else:
+        pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, 'tns_raw.parquet'))
+
+    # Filter TNS confirmed data
+    f1 = ~pdf_tns["type"].isna()
+    pdf_tns_filt = pdf_tns[f1]
+
+    spark = SparkSession.builder.getOrCreate()
+    pdf_tns_filt_b = spark.sparkContext.broadcast(pdf_tns_filt)
+
+    @pandas_udf(StringType(), PandasUDFType.SCALAR)
+    def crossmatch_with_tns(objectid, ra, dec):
+        """Spark pandas_udf to crossmatch ZTF alerts with TNS
+
+        Parameters
+        ----------
+        objectid: pd.Series of str
+            Alert objectId
+        ra: pd.Series of double
+            Alert RA position
+        dec: pd.Series of double
+            Alert Dec position
+
+        Returns
+        -------
+        to_return: pd.Series of str
+            TNS type for the alert. `Unknown` if no match.
+        """
+        pdf = pdf_tns_filt_b.value
+        ra2, dec2, type2 = pdf["ra"], pdf["declination"], pdf["type"]
+
+        # create catalogs
+        catalog_ztf = SkyCoord(
+            ra=np.array(ra, dtype=float) * u.degree,
+            dec=np.array(dec, dtype=float) * u.degree,
+        )
+        catalog_tns = SkyCoord(
+            ra=np.array(ra2, dtype=float) * u.degree,
+            dec=np.array(dec2, dtype=float) * u.degree,
+        )
+
+        # cross-match
+        _, _, _ = catalog_tns.match_to_catalog_sky(catalog_ztf)
+
+        sub_pdf = pd.DataFrame({
+            "objectId": objectid.to_numpy(),
+            "ra": ra.to_numpy(),
+            "dec": dec.to_numpy(),
+        })
+
+        # cross-match
+        idx2, d2d2, _ = catalog_ztf.match_to_catalog_sky(catalog_tns)
+
+        # set separation length
+        sep_constraint2 = d2d2.degree < distmaxarcsec / 3600.
+
+        sub_pdf["TNS"] = [""] * len(sub_pdf)
+        sub_pdf["TNS"][sep_constraint2] = type2.to_numpy()[idx2[sep_constraint2]]
+
+        # Here we take the first match
+        # What if there are many? AT & SN?
+        to_return = objectid.apply(
+            lambda x: ""
+            if x not in sub_pdf["objectId"].to_numpy()
+            else sub_pdf["TNS"][sub_pdf["objectId"] == x].to_numpy()[0]
+        )
+
+        return to_return
+
+    df = df.withColumn(
+        "tns", crossmatch_with_tns(df["objectId"], df["candidate.ra"], df["candidate.dec"])
+    )
+
+    return df
 
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)

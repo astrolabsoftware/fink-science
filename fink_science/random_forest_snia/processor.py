@@ -498,10 +498,10 @@ def rfscore_rainbow_elasticc(
     >>> df = df.withColumn('pIa', rfscore_rainbow_elasticc(*args))
 
     >>> df.filter(df['pIa'] > 0.5).count()
-    79
+    90
 
     >>> df.filter(df['pIa'] == -1.0).count()
-    153
+    141
     """
     # dt is a column of floats
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
@@ -520,7 +520,7 @@ def rfscore_rainbow_elasticc(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/elasticc_rainbow_earlyIa.pkl'
+        model = curdir + '/data/models/elasticc_rainbow_earlyIa_after_leak.pkl'
         clf = pickle.load(open(model, 'rb'))
 
     candid = pd.Series(range(len(midPointTai)))

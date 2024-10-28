@@ -26,5 +26,6 @@
     "SN Ib-pec", "SN Ib/c", "SN Ibn", "SN Ic", "SN Ic-BL",
     "SN Ic-pec", "SN Icn", "SN II", "SN II-pec", "SN IIb",
     "SN IIL", "SN IIn", "SN IIn-pec", "SN IIP", "TDE"],
-  "cutout_timeframe": 45
+  "cutout_timeframe": 45,
+  "cutout_magnitude": 19.5
 }
