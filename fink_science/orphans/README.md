@@ -1,1 +1,0 @@
-# Orphan GRB afterglow classifier
