@@ -26,6 +26,7 @@ from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import MapType, FloatType, StringType
 
 from fink_utils.sso.utils import get_miriade_data
+from fink_utils.sso.utils import compute_light_travel_correction
 from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.periods import estimate_synodic_period
 
@@ -369,6 +370,8 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
 
             # Full inversion using pre-computed SHG1G2 & period
             if (model.values[0] == "SSHG1G2") and ~np.isnan(outdic["period"]):
+                jd_lt = compute_light_travel_correction(pdf["i:jd"], pdf["Dobs"])
+
                 # TODO: understand if 2*period value (double-peaked lightcurve) is required
                 # TODO: extend `estimate_sso_parameters` to take p0 per filter for H & G
                 p0 = [
@@ -392,7 +395,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     pdf['i:fid'].values,
                     ra=np.deg2rad(pdf['i:ra'].values),
                     dec=np.deg2rad(pdf['i:dec'].values),
-                    jd=pdf["i:jd"].to_numpy(),
+                    jd=jd_lt.to_numpy(),
                     p0=p0,
                     bounds=MODELS['SSHG1G2']['bounds'],
                     model='SSHG1G2',
