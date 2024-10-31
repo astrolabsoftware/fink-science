@@ -119,6 +119,8 @@ COLUMNS_SHG1G2 = {
     'G2_1': {'type': 'double', 'description': 'G2 phase parameter for the ZTF filter band g'},
     'G2_2': {'type': 'double', 'description': 'G2 phase parameter for the ZTF filter band r'},
     'R': {'type': 'double', 'description': 'Oblateness of the object'},
+    'a_b': {'type': 'double', 'description': 'a/b ratio of the ellipsoid (a>=b>=c). Estimation based on the fit residuals and the oblateness.'},
+    'a_c': {'type': 'double', 'description': 'a/c ratio of the ellipsoid (a>=b>=c). Estimation based on the fit residuals and the oblateness.'},
     'alpha0': {'type': 'double', 'description': 'Right ascension of the spin axis (EQJ2000), in degree'},
     'delta0': {'type': 'double', 'description': 'Declination of the spin axis (EQJ2000), in degree'},
     'alpha0_alt': {'type': 'double', 'description': 'Flipped `alpha0`: (`alpha0` + 180) modulo 360, in degree'},
@@ -293,7 +295,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
 
         pdf_sso = pdf_sso.sort_values('i:jd')
 
-        if method.values[0] == 'ephemcc':
+        if method.to_numpy()[0] == 'ephemcc':
             # hardcoded for the Spark cluster!
             parameters = {
                 'outdir': '/tmp/ramdisk/spins',
@@ -301,7 +303,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                 'userconf': '/tmp/.eproc-4.3',
                 'iofile': '/tmp/default-ephemcc-observation.xml'
             }
-        elif method.values[0] == 'rest':
+        elif method.to_numpy()[0] == 'rest':
             parameters = {}
         pdf = get_miriade_data(
             pdf_sso,
@@ -309,7 +311,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
             rplane='1',
             tcoor=5,
             withecl=False,
-            method=method.values[0],
+            method=method.to_numpy()[0],
             parameters=parameters
         )
 
@@ -318,16 +320,16 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
         else:
 
             # TODO: for SSHG1G2, d'abord faire SHG1G2
-            if model.values[0] in ['SSHG1G2', 'SHG1G2']:
+            if model.to_numpy()[0] in ['SSHG1G2', 'SHG1G2']:
                 initial_model = "SHG1G2"
                 # Both needs to use SHG1G2
                 outdic = estimate_sso_params(
-                    pdf['i:magpsf_red'].values,
-                    pdf['i:sigmapsf'].values,
-                    np.deg2rad(pdf['Phase'].values),
-                    pdf['i:fid'].values,
-                    np.deg2rad(pdf['i:ra'].values),
-                    np.deg2rad(pdf['i:dec'].values),
+                    pdf['i:magpsf_red'].to_numpy(),
+                    pdf['i:sigmapsf'].to_numpy(),
+                    np.deg2rad(pdf['Phase'].to_numpy()),
+                    pdf['i:fid'].to_numpy(),
+                    np.deg2rad(pdf['i:ra'].to_numpy()),
+                    np.deg2rad(pdf['i:dec'].to_numpy()),
                     jd=pdf["i:jd"].to_numpy(),
                     p0=MODELS[initial_model]['p0'],
                     bounds=MODELS[initial_model]['bounds'],
@@ -335,19 +337,19 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     normalise_to_V=False
                 )
             else:
-                initial_model = model.values[0]
+                initial_model = model.to_numpy()[0]
                 outdic = estimate_sso_params(
-                    pdf['i:magpsf_red'].values,
-                    pdf['i:sigmapsf'].values,
-                    np.deg2rad(pdf['Phase'].values),
-                    pdf['i:fid'].values,
+                    pdf['i:magpsf_red'].to_numpy(),
+                    pdf['i:sigmapsf'].to_numpy(),
+                    np.deg2rad(pdf['Phase'].to_numpy()),
+                    pdf['i:fid'].to_numpy(),
                     p0=MODELS[initial_model]['p0'],
                     bounds=MODELS[initial_model]['bounds'],
                     model=initial_model,
                     normalise_to_V=False
                 )
 
-            filts = np.unique(pdf['i:fid'].values)
+            filts = np.unique(pdf['i:fid'].to_numpy())
             is_fit_ok = np.all(["H_{}".format(filt) in outdic for filt in filts])
             if is_fit_ok:
                 # Add synodic period estimation
@@ -355,7 +357,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     pdf=pdf,
                     phyparam=outdic,
                     flavor=initial_model,
-                    sb_method=sb_method.values[0],
+                    sb_method=sb_method.to_numpy()[0],
                     Nterms_base=1,
                     Nterms_band=1,
                     period_range=(1. / 24., 30.),  # 1h to 1 month
@@ -381,20 +383,20 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     np.deg2rad(outdic["alpha0"]),
                     np.deg2rad(outdic["delta0"]),
                     outdic["period"] / 24.,
-                    1.05,
-                    1.05,
+                    outdic["a_b"],
+                    outdic["a_c"],
                     0.0,
                 ]
 
                 # Constrained Fit
                 # in-place replacement of parameters `outdic`
                 outdic = estimate_sso_params(
-                    pdf['i:magpsf_red'].values,
-                    pdf['i:sigmapsf'].values,
-                    np.deg2rad(pdf['Phase'].values),
-                    pdf['i:fid'].values,
-                    ra=np.deg2rad(pdf['i:ra'].values),
-                    dec=np.deg2rad(pdf['i:dec'].values),
+                    pdf['i:magpsf_red'].to_numpy(),
+                    pdf['i:sigmapsf'].to_numpy(),
+                    np.deg2rad(pdf['Phase'].to_numpy()),
+                    pdf['i:fid'].to_numpy(),
+                    ra=np.deg2rad(pdf['i:ra'].to_numpy()),
+                    dec=np.deg2rad(pdf['i:dec'].to_numpy()),
                     jd=jd_lt.to_numpy(),
                     p0=p0,
                     bounds=MODELS['SSHG1G2']['bounds'],
