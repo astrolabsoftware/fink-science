@@ -727,6 +727,7 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
     <BLANKLINE>
     >>> assert len(ssoft_shg1g2) == 3, ssoft_shg1g2
     >>> assert "R" in ssoft_shg1g2.columns
+    >>> assert "a_b" in ssoft_shg1g2.columns
 
     >>> ssoft_sshg1g2 = build_the_ssoft(
     ...     aggregated_filename=aggregated_filename,
