@@ -81,8 +81,6 @@ do
  # Skip Spark if needed
  if [[ "$NO_SPARK" = true ]] && [[ ${filename##*/} = 'processor.py' ]] ; then
    echo '[NO SPARK] skipping' $filename
- elif [[ ${filename#*/} = 'anomaly_detection/processor.py' ]]; then
-   echo "skip anomaly"
  else
    echo $filename
    # Run test suite + coverage
