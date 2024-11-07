@@ -805,7 +805,10 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
     ...     sb_method="fastnifty")
     <BLANKLINE>
     >>> assert len(ssoft_sshg1g2) == 3, ssoft_sshg1g2
-    >>> assert "a_b" in ssoft_sshg1g2.columns
+    >>> assert "a_b_00" in ssoft_sshg1g2.columns
+    >>> assert "a_b_01" in ssoft_sshg1g2.columns
+    >>> assert "a_b_10" in ssoft_sshg1g2.columns
+    >>> assert "a_b_11" in ssoft_sshg1g2.columns
     """
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
