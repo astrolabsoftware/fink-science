@@ -869,7 +869,7 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
     pdf['sso_name'] = sso_name
     pdf['sso_number'] = sso_number
 
-    if model in ['SSHG1G2', 'SHG1G2']:
+    if model == 'SHG1G2':
         # compute obliquity
         pdf['obliquity'] = extract_obliquity(
             pdf.sso_name,
