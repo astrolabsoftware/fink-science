@@ -25,7 +25,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import MapType, FloatType, StringType
 
-from fink_utils.sso.utils import query_miriade, get_miriade_data
+from fink_utils.sso.utils import query_miriade, query_miriade_epehemcc, get_miriade_data
 from fink_utils.sso.utils import compute_light_travel_correction
 from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.periods import estimate_synodic_period
@@ -41,7 +41,6 @@ import astropy.units as u
 
 import logging
 
-import rocks
 
 _LOG = logging.getLogger(__name__)
 
@@ -409,8 +408,12 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                 synodic_period_days = outdic["period"] / 24.
 
                 # compute phase shit
-                eph_t = query_miriade(ssname, pdf["i:jd"], tcoor=2)
-                eph_tp = query_miriade(ssname, pdf["i:jd"] + synodic_period_days, tcoor=2)
+                if method.to_numpy()[0] == 'ephemcc':
+                    eph_t = query_miriade_epehemcc(ssname, pdf["i:jd"], tcoor=2, parameters=parameters)
+                    eph_tp = query_miriade_epehemcc(ssname, pdf["i:jd"] + synodic_period_days, tcoor=2, parameters=parameters)
+                elif method.to_numpy()[0] == 'rest':
+                    eph_t = query_miriade(ssname, pdf["i:jd"], tcoor=2)
+                    eph_tp = query_miriade(ssname, pdf["i:jd"] + synodic_period_days, tcoor=2)
                 angle = [
                     angle_between_vectors(
                         eph_t.loc[i, ["px", "py", "pz"]],
@@ -577,6 +580,8 @@ def rockify(ssnamenr: pd.Series):
     sso_number: np.array of int
         SSO numbers according to quaero
     """
+    import rocks
+
     # prune names
     ssnamenr_alt = correct_ztf_mpc_names(ssnamenr.values)
 
@@ -644,6 +649,8 @@ def extract_obliquity(sso_name, alpha0, delta0):
     obliquity: np.array of double
         Obliquity for each object [degree]
     """
+    import rocks
+
     cols = ['sso_name', 'orbital_elements.node_longitude.value', 'orbital_elements.inclination.value']
     pdf_bft = rocks.load_bft(columns=cols)
 
