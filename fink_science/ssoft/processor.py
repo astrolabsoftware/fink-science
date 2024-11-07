@@ -25,7 +25,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import MapType, FloatType, StringType
 
-from fink_utils.sso.utils import get_miriade_data
+from fink_utils.sso.utils import query_miriade, get_miriade_data
 from fink_utils.sso.utils import compute_light_travel_correction
 from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.periods import estimate_synodic_period
@@ -210,6 +210,36 @@ def process_regex(regex, data):
     parameters = m.groupdict()
     return parameters
 
+def angle_between_vectors(v1, v2):
+    """Compute the angle between two 3D vectors.
+
+    Parameters
+    ----------
+    v1 : list or np.ndarray
+        The first 3D vector.
+    v2 : list or np.ndarray
+        The second 3D vector.
+
+    Returns
+    -------
+    float
+        The angle between the two vectors in radians.
+    """
+    v1 = np.array(v1)
+    v2 = np.array(v2)
+
+    dot_product = np.dot(v1, v2)
+    norm_v1 = np.linalg.norm(v1)
+    norm_v2 = np.linalg.norm(v2)
+
+    cos_theta = dot_product / (norm_v1 * norm_v2)
+
+    # Clip to handle numerical issues
+    angle = np.arccos(np.clip(cos_theta, -1.0, 1.0))
+
+    return angle
+
+
 @pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
 def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, method, model, sb_method):
     """ Extract phase and spin parameters from Fink alert data using Apache Spark
@@ -372,45 +402,80 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
 
             # Full inversion using pre-computed SHG1G2 & period
             if (model.values[0] == "SSHG1G2") and ~np.isnan(outdic["period"]):
+                # Light travel correction
                 jd_lt = compute_light_travel_correction(pdf["i:jd"], pdf["Dobs"])
 
-                # TODO: understand if 2*period value (double-peaked lightcurve) is required
-                # TODO: extend `estimate_sso_parameters` to take p0 per filter for H & G
-                p0 = [
-                    outdic.get("H_1", outdic["H_2"]),
-                    outdic.get("G1_1", outdic["G1_2"]),
-                    outdic.get("G2_1", outdic["G2_2"]),
-                    np.deg2rad(outdic["alpha0"]),
-                    np.deg2rad(outdic["delta0"]),
-                    outdic["period"] / 24.,
-                    outdic["a_b"],
-                    outdic["a_c"],
-                    0.0,
+                # synodic period
+                synodic_period_days = outdic["period"] / 24.
+
+                # compute phase shit
+                eph_t = query_miriade(ssname, pdf["i:jd"], tcoor=2)
+                eph_tp = query_miriade(ssname, pdf["i:jd"] + synodic_period_days, tcoor=2)
+                angle = [
+                    angle_between_vectors(
+                        eph_t.loc[i, ["px", "py", "pz"]],
+                        eph_tp.loc[i, ["px", "py", "pz"]]
+                    ) for i in range(len(pdf))
                 ]
+                phase_shift = np.median(angle)
 
-                # Constrained Fit
-                # in-place replacement of parameters `outdic`
-                outdic = estimate_sso_params(
-                    pdf['i:magpsf_red'].to_numpy(),
-                    pdf['i:sigmapsf'].to_numpy(),
-                    np.deg2rad(pdf['Phase'].to_numpy()),
-                    pdf['i:fid'].to_numpy(),
-                    ra=np.deg2rad(pdf['i:ra'].to_numpy()),
-                    dec=np.deg2rad(pdf['i:dec'].to_numpy()),
-                    jd=jd_lt.to_numpy(),
-                    p0=p0,
-                    bounds=MODELS['SSHG1G2']['bounds'],
-                    model='SSHG1G2',
-                    normalise_to_V=False
-                )
+                # loop over 4 cases -- append _ij to outdic
+                configurations = {
+                    "00": [outdic["alpha0"], outdic["delta0"], phase_shift],
+                    "01": [outdic["alpha0"], outdic["delta0"], -phase_shift],
+                    "10": [(outdic["alpha0"] + 180) % 360, -outdic["delta0"], phase_shift],
+                    "11": [(outdic["alpha0"] + 180) % 360, -outdic["delta0"], -phase_shift],
+                }
 
-                # Only if the fit is successful
-                if "period" in outdic:
-                    # day to hour units
-                    outdic["period"] = 24 * outdic["period"]
+                outdic_final = {}
+                for key in configurations.keys():
+                    # compute sidereal period
+                    sidereal_period_days = synodic_period_days * 2 * np.pi / (2 * np.pi + configurations[key][2])
 
-                    # need to repopulate this field from the periodogram estimation
-                    outdic["period_chi2red"] = chi2red_period
+                    # TODO: extend `estimate_sso_parameters` to take p0 per filter for H & G
+                    p0 = [
+                        outdic.get("H_1", outdic["H_2"]),
+                        outdic.get("G1_1", outdic["G1_2"]),
+                        outdic.get("G2_1", outdic["G2_2"]),
+                        np.deg2rad(configurations[key][0]),
+                        np.deg2rad(configurations[key][1]),
+                        sidereal_period_days,
+                        outdic["a_b"],
+                        outdic["a_c"],
+                        0.0,
+                    ]
+
+                    # Constrained Fit
+                    # in-place replacement of parameters `outdic`
+                    outdic_tmp = estimate_sso_params(
+                        pdf['i:magpsf_red'].to_numpy(),
+                        pdf['i:sigmapsf'].to_numpy(),
+                        np.deg2rad(pdf['Phase'].to_numpy()),
+                        pdf['i:fid'].to_numpy(),
+                        ra=np.deg2rad(pdf['i:ra'].to_numpy()),
+                        dec=np.deg2rad(pdf['i:dec'].to_numpy()),
+                        jd=jd_lt.to_numpy(),
+                        p0=p0,
+                        bounds=MODELS['SSHG1G2']['bounds'],
+                        model='SSHG1G2',
+                        normalise_to_V=False
+                    )
+
+                    # Only if the fit is successful
+                    if "period" in outdic_tmp:
+                        # day to hour units
+                        outdic_tmp["period"] = 24 * outdic_tmp["period"]
+
+                        # need to repopulate this field from the periodogram estimation
+                        outdic_tmp["period_chi2red"] = chi2red_period
+
+                    # rename
+                    outdic_tmp = {k + "_{}".format(key): v for k, v in outdic_tmp.items()}
+
+                    # append
+                    outdic_final = {**outdic_final, **outdic_tmp}
+                outdic_final["phase_shift_deg"] = np.rad2deg(phase_shift)
+                outdic = outdic_final
 
             # Add astrometry
             fink_coord = SkyCoord(ra=pdf['i:ra'].values * u.deg, dec=pdf['i:dec'].values * u.deg)
@@ -740,7 +805,10 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
     ...     sb_method="fastnifty")
     <BLANKLINE>
     >>> assert len(ssoft_sshg1g2) == 3, ssoft_sshg1g2
-    >>> assert "a_b" in ssoft_sshg1g2.columns
+    >>> assert "a_b_00" in ssoft_sshg1g2.columns
+    >>> assert "a_b_01" in ssoft_sshg1g2.columns
+    >>> assert "a_b_10" in ssoft_sshg1g2.columns
+    >>> assert "a_b_11" in ssoft_sshg1g2.columns
     """
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
@@ -801,7 +869,7 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
     pdf['sso_name'] = sso_name
     pdf['sso_number'] = sso_number
 
-    if model in ['SSHG1G2', 'SHG1G2']:
+    if model == 'SHG1G2':
         # compute obliquity
         pdf['obliquity'] = extract_obliquity(
             pdf.sso_name,
