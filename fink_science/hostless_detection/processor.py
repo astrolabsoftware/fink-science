@@ -106,7 +106,7 @@ def run_potential_hostless(
     ...         df["tnsclass"],
     ...         df["candidate.jd"] - df["candidate.jdstarthist"]))
     >>> df.filter(df.kstest_static[0] >= 0).count()
-    3
+    0
     """
     # load the configuration file
     hostless_science_class = HostLessExtragalactic(CONFIGS)
@@ -130,7 +130,7 @@ def run_potential_hostless(
         c4 = finkclass[index] in CONFIGS["finkclass"]
         c5 = tnsclass[index] in CONFIGS["tnsclass"]
         c6 = abs(deltat[index]) <= CONFIGS["cutout_timeframe"]
-        c7 = sum(magpsf[index] <= CONFIGS["cutout_magnitude"]) > CONFIGS["minimum_number_of_alerts"]
+        c7 = magpsf[index][-1] <= CONFIGS["cutout_magnitude"]
         if ((c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5) and c6 and c7):
             if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
                 science_stamp = cutoutScience[index]
