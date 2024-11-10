@@ -29,7 +29,7 @@ def run_potential_hostless(
         cutoutTemplate: pd.Series, snn_snia_vs_nonia: pd.Series,
         snn_sn_vs_all: pd.Series, rf_snia_vs_nonia: pd.Series,
         rf_kn_vs_nonkn: pd.Series, finkclass: pd.Series, tnsclass: pd.Series,
-        deltat: pd.Series) -> pd.Series:
+        deltat: pd.Series, roid: pd.Series) -> pd.Series:
     """
     Runs potential hostless candidate detection using
 
@@ -57,9 +57,12 @@ def run_potential_hostless(
         Fink derived classification tags
     tnsclass: pd.Series
         Tag from cross-referencing with the TNS database
-    deltat
+    deltat: pd.Series
         Delta time between `candidate.jd` and the first variation time
          at 3 sigma (`candidate.jdstarthist`).
+    roid: pd.Series
+        Series containing SSO label (int).
+        Each row contains one label.
 
     Returns
     ----------
@@ -104,7 +107,8 @@ def run_potential_hostless(
     ...         df["rf_kn_vs_nonkn"],
     ...         df["finkclass"],
     ...         df["tnsclass"],
-    ...         df["candidate.jd"] - df["candidate.jdstarthist"]))
+    ...         df["candidate.jd"] - df["candidate.jdstarthist"],
+    ...         df["roid"]))
     >>> df.filter(df.kstest_static[0] >= 0).count()
     0
     """
@@ -131,7 +135,8 @@ def run_potential_hostless(
         c5 = tnsclass[index] in CONFIGS["tnsclass"]
         c6 = abs(deltat[index]) <= CONFIGS["cutout_timeframe"]
         c7 = magpsf[index][-1] <= CONFIGS["cutout_magnitude"]
-        if ((c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5) and c6 and c7):
+        c8 = roid[index] != 3
+        if ((c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5) and c6 and c7 and c8):
             if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
                 science_stamp = cutoutScience[index]
                 template_stamp = cutoutTemplate[index]
