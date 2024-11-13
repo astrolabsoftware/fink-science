@@ -888,6 +888,12 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
         pdf['alpha0_alt'] = (pdf['alpha0'] + 180) % 360
         pdf['delta0_alt'] = - pdf['delta0']
 
+    if model == "SSHG1G2":
+        pdf["obliquity_00"] = extract_obliquity(pdf.sso_name, pdf.alpha0_00, pdf.delta0_00)
+        pdf["obliquity_01"] = extract_obliquity(pdf.sso_name, pdf.alpha0_01, pdf.delta0_01)
+        pdf["obliquity_10"] = extract_obliquity(pdf.sso_name, pdf.alpha0_10, pdf.delta0_10)
+        pdf["obliquity_11"] = extract_obliquity(pdf.sso_name, pdf.alpha0_11, pdf.delta0_11)
+
     pdf['version'] = version
 
     pdf['flag'] = 0
