@@ -20,6 +20,8 @@ import sys
 import time
 import datetime
 
+from line_profiler import profile
+
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
@@ -240,6 +242,7 @@ def angle_between_vectors(v1, v2):
 
 
 @pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
+@profile
 def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, method, model, sb_method):
     """ Extract phase and spin parameters from Fink alert data using Apache Spark
 
@@ -409,7 +412,10 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
 
                 # compute phase shit
                 if method.to_numpy()[0] == 'ephemcc':
-                    eph_t = query_miriade_epehemcc(ssname, pdf["i:jd"], tcoor=2, parameters=parameters)
+                    # Get previous ephemerides
+                    eph_t = pd.DataFrame({"px": pdf["px"], "py": pdf["py"], "pz": pdf["pz"]})
+
+                    # Get shifted ephemerides
                     eph_tp = query_miriade_epehemcc(ssname, pdf["i:jd"] + synodic_period_days, tcoor=2, parameters=parameters)
                 elif method.to_numpy()[0] == 'rest':
                     eph_t = query_miriade(ssname, pdf["i:jd"], tcoor=2)
