@@ -38,7 +38,7 @@ MODEL_COLUMNS = [
     'median_buffer_range_percentage_10', 'skew', 'stetson_K',
 ]
 
-ANOMALY_MODELS = ['', '_beta', '_anais', '_emille', '_julien', '_maria'] # noqa
+ANOMALY_MODELS = ['_beta', '_anais', '_emille', '_julien', '_maria'] # noqa
 
 
 class TwoBandModel:
