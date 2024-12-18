@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-# from fink_utils.photometry.conversion import dc_mag, apparent_flux
-from fink_utils.photometry.utils import is_source_behind
+# from fink_utils.photometry.conversion import dc_mag, is_source_behind
+from fink_utils.photometry.utils import apparent_flux
 # from fink_utils.spark.utils import concat_col
 # from pyspark.sql.functions import pandas_udf
 # from pyspark.sql.types import ArrayType, DoubleType, BooleanType, StringType, MapType
