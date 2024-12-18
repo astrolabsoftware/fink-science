@@ -12,7 +12,7 @@ from fink_science import __file__
 import os
 
 RELEASE = 22
-CTAO_PATH = 'CTAO_blazars_ztfdr{}.parquet'.format(RELEASE)
+CTAO_PATH = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
 
 @pandas_udf(MapType(StringType(), ArrayType(DoubleType())))
 @profile
