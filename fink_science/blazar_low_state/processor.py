@@ -9,7 +9,7 @@ from fink_science.blazar_low_state.utils import low_state_
 
 
 RELEASE = 22
-CTAO_PATH = 'CTAO_blazars_ztfdr{}.parquet'.format(RELEASE)
+CTAO_PATH = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
 
 '''
 parDF=spark.read.parquet("blazar_test_dataset_202411_12_agg.parquet") #?
