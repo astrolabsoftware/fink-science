@@ -49,7 +49,7 @@ def standardized_flux_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> tuple:
         
         for filter in pdf['cfid'].unique():
             maskFilt = pdf['cfid'] == filter
-            median = precomputed_data['Array of Medians'].values[0][filter - 1]
+            median = CTAO_data['Array of Medians'].values[0][filter - 1]
             std_flux[maskFilt] = flux_dc[maskFilt] / median
             sigma_std_flux[maskFilt] = sigma_flux_dc[maskFilt] / median
     
