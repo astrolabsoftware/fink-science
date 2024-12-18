@@ -133,7 +133,7 @@ def low_state_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.ndarray:
         3FGL Name, ZTF Name, Arrays of Medians, Computed Threshold, Observed Threshold, Redshift, Final Threshold
     Returns
     -------
-    out: np.ndarray[np.float64]
+    out: np.ndarray of np.float64
         Array of ratios for:
         Mean over threshold of the last but one alert
         Mean over threshold of the last alert
