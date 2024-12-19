@@ -17,8 +17,7 @@ def quiescent_state(
         candid: pd.Series,
         objectId: pd.Series,
         cstd_flux: pd.Series,
-        cjd: pd.Series
-        ) -> pd.Series:
+        cjd: pd.Series) -> pd.Series:
     """Returns an array containing:
             The mean over threshold ratio of the last but one alert
             The mean over threshold ratio of the last alert

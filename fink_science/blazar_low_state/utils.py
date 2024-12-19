@@ -5,7 +5,7 @@ import pandas as pd
 def instantness_criterion(
         pdf: pd.DataFrame,
         CTAO_blazar: pd.DataFrame
-        ) -> np.float64:
+    ) -> np.float64:
     """Returns the standardized flux of the last measurement
        over the precomputed threshold ratio
 
