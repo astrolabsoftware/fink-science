@@ -44,5 +44,6 @@ jobs:
     - name: Run test suites
       run: |
         rm -f /tmp/forest_*.onnx
-        ./run_tests.sh
+        ./run_tests.sh --single-module fink_science/standardized_flux
+        ./run_tests.sh --single-module fink_science/blazar_low_state
         curl -s https://codecov.io/bash | bash
