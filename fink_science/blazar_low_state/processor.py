@@ -1,3 +1,5 @@
+from line_profiler import profile
+
 import pandas as pd
 
 from pyspark.sql.functions import pandas_udf
