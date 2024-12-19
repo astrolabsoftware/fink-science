@@ -90,12 +90,12 @@ def robustness_criterion(
         return np.nan
 
     maskNan = ~pd.isnull(flux)
+    mtime = time[maskNan]
+    mtimestart = mtime.iloc[0]
+    mtimestop = mtime.iloc[-1]
     if maskNan.sum() > 1:
-        return (
-            np.trapz(flux[maskNan], x=time[maskNan])
-            / (time[maskNan].iloc[-1] - time[maskNan].iloc[0])
-            / threshold
-        )
+        integral = np.trapz(flux[maskNan], x=time)
+        return integral / (mtimestop - mtimestart) / threshold
     else:
         return np.nan
 
