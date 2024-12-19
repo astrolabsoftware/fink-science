@@ -4,8 +4,7 @@ import pandas as pd
 
 def instantness_criterion(
         pdf: pd.DataFrame,
-        CTAO_blazar: pd.DataFrame
-    ) -> np.float64:
+        CTAO_blazar: pd.DataFrame) -> np.float64:
     """Returns the standardized flux of the last measurement
        over the precomputed threshold ratio
 
@@ -31,11 +30,11 @@ def instantness_criterion(
 
     try:
         threshold = np.array(
-                CTAO_blazar.loc[
-                    CTAO_blazar['ZTF Name'] == name,
-                    'Final Threshold'
-                ].values[0]
-            )
+            CTAO_blazar.loc[
+                CTAO_blazar['ZTF Name'] == name,
+                'Final Threshold'
+            ].values[0]
+        )
     except IndexError:
         threshold = np.nan
 
@@ -47,8 +46,7 @@ def instantness_criterion(
 
 def robustness_criterion(
         pdf: pd.DataFrame,
-        CTAO_blazar: pd.DataFrame
-        ) -> np.float64:
+        CTAO_blazar: pd.DataFrame) -> np.float64:
     """Returns the sliding mean over 30 days of the standardized flux
        over the precomputed threshold ratio
 
@@ -75,11 +73,11 @@ def robustness_criterion(
 
     try:
         threshold = np.array(
-                CTAO_blazar.loc[
-                    CTAO_blazar['ZTF Name'] == name,
-                    'Final Threshold'
-                ].values[0]
-            )
+            CTAO_blazar.loc[
+                CTAO_blazar['ZTF Name'] == name,
+                'Final Threshold'
+            ].values[0]
+        )
     except IndexError:
         threshold = np.nan
 
@@ -93,17 +91,18 @@ def robustness_criterion(
 
     maskNan = ~pd.isnull(flux)
     if maskNan.sum() > 1:
-        return (np.trapz(flux[maskNan], x=time[maskNan])
-                / (time[maskNan].iloc[-1] - time[maskNan].iloc[0])
-                / threshold)
+        return (
+            np.trapz(flux[maskNan], x=time[maskNan])
+            / (time[maskNan].iloc[-1] - time[maskNan].iloc[0])
+            / threshold
+        )
     else:
         return np.nan
 
 
 def quiescent_state_(
         pdf: pd.DataFrame,
-        CTAO_blazar: pd.DataFrame
-        ) -> np.ndarray:
+        CTAO_blazar: pd.DataFrame) -> np.ndarray:
     """Returns an array containing:
             The mean over threshold ratio of the last but one alert
             The mean over threshold ratio of the last alert
