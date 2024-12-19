@@ -14,19 +14,21 @@ import os
 RELEASE = 22
 CTAO_PATH = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
 
+
 @pandas_udf(MapType(StringType(), ArrayType(DoubleType())))
 @profile
-def standardized_flux(candid: pd.Series, 
-                      objectId: pd.Series, 
-                      cdistnr: pd.Series, 
-                      cmagpsf: pd.Series, 
-                      csigmapsf: pd.Series, 
-                      cmagnr: pd.Series, 
-                      csigmagnr: pd.Series, 
-                      cisdiffpos: pd.Series, 
+def standardized_flux(candid: pd.Series,
+                      objectId: pd.Series,
+                      cdistnr: pd.Series,
+                      cmagpsf: pd.Series,
+                      csigmapsf: pd.Series,
+                      cmagnr: pd.Series,
+                      csigmagnr: pd.Series,
+                      cisdiffpos: pd.Series,
                       cfid: pd.Series,
                       cjd: pd.Series) -> pd.Series:
-    """Calls the standardized_flux_ function for the distributed Spark Pandas UDF environment
+    """Calls the standardized_flux_ function
+       for the distributed Spark Pandas UDF environment
 
     Parameters
     ----------
@@ -35,7 +37,8 @@ def standardized_flux(candid: pd.Series,
     objectId: pd.Series
         ZTF ID of the sources
     cdistnr: pd.Series
-        distance between the alert position and the closest source of each alert
+        distance between the alert position
+        and the closest source of each alert
     cmagpsf: pd.Series
         magnitude from the history of each alert
     csigmapsf: pd.Series
@@ -43,9 +46,11 @@ def standardized_flux(candid: pd.Series,
     cmagnr: pd.Series
         magnitude of the closest source from the history of each alert
     csigmagnr: pd.Series
-        error on the magnitude of the closest source from the history of each alert
+        error on the magnitude of the closest source
+        from the history of each alert
     cisdiffpos: pd.Series
-        Variation sign from the history of each alert (+1 is positive variation, -1 else)
+        Variation sign from the history of each alert
+        (+1 is positive variation, -1 else)
     cfid: pd.Series
         filter used during the exposure in the history of each alert
     cjd: pd.Series
@@ -58,17 +63,17 @@ def standardized_flux(candid: pd.Series,
     """
 
     CTAO_blazar = pd.read_parquet(CTAO_PATH)
-    
+
     pdf = pd.DataFrame(
         {
-            "candid": candid, 
-            "objectId": objectId, 
-            "cdistnr": cdistnr, 
-            "cmagpsf": cmagpsf, 
-            "csigmapsf": csigmapsf, 
-            "cmagnr": cmagnr, 
-            "csigmagnr": csigmagnr, 
-            "cisdiffpos": cisdiffpos, 
+            "candid": candid,
+            "objectId": objectId,
+            "cdistnr": cdistnr,
+            "cmagpsf": cmagpsf,
+            "csigmapsf": csigmapsf,
+            "cmagnr": cmagnr,
+            "csigmagnr": csigmagnr,
+            "cisdiffpos": cisdiffpos,
             "cfid": cfid,
             "cjd": cjd
         }
@@ -92,8 +97,9 @@ def standardized_flux(candid: pd.Series,
         )
         std_flux = standardized_flux_(sub, CTAO_blazar)
         out.append({'flux': std_flux[0], 'sigma': std_flux[1]})
-    
+
     return pd.Series(out)
+
 
 if __name__ == "__main__":
     """Execute the test suite"""
