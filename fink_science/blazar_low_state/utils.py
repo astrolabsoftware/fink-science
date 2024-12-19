@@ -1,48 +1,6 @@
 import numpy as np
 import pandas as pd
 
-#from fink_utils.photometry.conversion import dc_mag, apparent_flux
-#from fink_utils.photometry.utils import is_source_behind
-#from fink_utils.spark.utils import concat_col
-#from pyspark.sql.functions import pandas_udf
-#from pyspark.sql.types import ArrayType, DoubleType, BooleanType, StringType, MapType
-
-
-#RELEASE = 22
-#CTAO_PATH = 'CTAO_blazars_ztfdr{}.parquet'.format(RELEASE)
-
-'''
-parDF=spark.read.parquet("blazar_test_dataset_202411_12_agg.parquet") #?
-
-COLUMNS = [
-    'distnr', 
-    'magpsf', 
-    'sigmapsf', 
-    'magnr', 
-    'sigmagnr', 
-    'isdiffpos', 
-    'fid',
-    'jd'
-]
-
-for key in COLUMNS:
-    parDF = concat_col(parDF, colname=key, prefix="c")
-
-CCOLUMNS = [
-    'candid',
-    'objectId',
-    'cdistnr',  
-    'cmagpsf', 
-    'csigmapsf', 
-    'cmagnr', 
-    'csigmagnr', 
-    'cisdiffpos', 
-    'cfid', 
-    'cjd'
-]
-
-parDF = parDF.select(CCOLUMNS)
-'''
 
 def instantness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.float64:
     """Returns the standardized flux of the last measurement over the precomputed threshold ratio
@@ -117,7 +75,7 @@ def robustness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.flo
     else:
         return np.nan
 
-def low_state_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.ndarray:
+def quiescent_state_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.ndarray:
     """Returns an array containing:
             The mean over threshold ratio of the last but one alert
             The mean over threshold ratio of the last alert
