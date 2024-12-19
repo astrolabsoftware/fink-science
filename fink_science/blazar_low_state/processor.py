@@ -10,11 +10,32 @@ CTAO_PATH = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
 
 
 @pandas_udf(ArrayType(DoubleType()))
+@profile
 def quiescent_state(candid: pd.Series, 
               objectId: pd.Series, 
               cstd_flux: pd.Series, 
               cjd: pd.Series) -> pd.Series:
-    """doc"""
+    """Returns an array containing:
+            The mean over threshold ratio of the last but one alert
+            The mean over threshold ratio of the last alert
+            The standardized flux over threshold ratio of the last alert
+
+    Parameters
+    ----------
+    pdf: pd.core.frame.DataFrame
+        Pandas DataFrame of the alert history containing:
+        candid, ojbectId, cdistnr, cmagpsf, csigmapsf, cmagnr, csigmagnr, cisdiffpos, cfid, cjd, cstd_flux, csigma_std_flux
+    CTAO_blazar: pd.core.frame.DataFrame
+        Pandas DataFrame of the monitored sources containing:
+        3FGL Name, ZTF Name, Arrays of Medians, Computed Threshold, Observed Threshold, Redshift, Final Threshold
+    Returns
+    -------
+    out: pd.Series of np.ndarray of np.float64
+        Array of ratios for:
+        Mean over threshold of the last but one alert
+        Mean over threshold of the last alert
+        Measurement over threshold of the last alert
+    """
 
     CTAO_blazar = pd.read_parquet(CTAO_PATH)
     pdf = pd.DataFrame(
