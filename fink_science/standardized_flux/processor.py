@@ -11,9 +11,6 @@ from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 import os
 
-RELEASE = 22
-CTAO_PATH = 'file://{}/standardized_flux/'.format(fink_science_path)
-
 
 @pandas_udf(MapType(StringType(), ArrayType(DoubleType())))
 @profile
@@ -125,6 +122,9 @@ def standardized_flux(candid: pd.Series,
     64
     """
 
+    path = os.path.dirname(__file__)
+    CTAO_PATH = 'file://{}/'.format(path)
+    RELEASE = 22
     CTAO_filename = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
     CTAO_blazar = pd.read_parquet(CTAO_PATH + CTAO_filename)
 
@@ -171,7 +171,6 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
     ztf_alert_sample = "file://{}/data/alerts/datatest/".format(path)
-    globs["fink_science_path"] = path
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
