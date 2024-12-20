@@ -1,3 +1,5 @@
+!pip install fsspec
+
 from line_profiler import profile
 
 import pandas as pd
