@@ -60,6 +60,69 @@ def standardized_flux(candid: pd.Series,
     ------
     out: pd.Series
         Standardized flux and uncertainties in the history of each alert
+
+    Example
+    -------
+    >>> import os
+    >>> from fink_utils.spark.utils import concat_col
+    >>> import pyspark.sql.functions as F
+
+    >>> filename = 'CTAO_blazar_datatest_v20-12-24.parquet'
+    >>> parDF_ex = spark_ex.read.parquet(ztf_alert_sample + filename)
+
+    # Required alert columns
+    >>> what = [
+    ...     'distnr',
+    ...     'magpsf',
+    ...     'sigmapsf',
+    ...     'magnr',
+    ...     'sigmagnr',
+    ...     'isdiffpos',
+    ...     'fid',
+    ...     'jd'
+    >>> ]
+
+    # Concatenation
+    >>> prefix = 'c'
+    >>> for key in what:
+    ...     parDF_ex = concat_col(parDF_ex, colname=key, prefix=prefix)
+
+    # Run the module
+    >>> args = [
+    ...     'candid',
+    ...     'objectId',
+    ...     'cdistnr',
+    ...     'cmagpsf',
+    ...     'csigmapsf',
+    ...     'cmagnr',
+    ...     'csigmagnr',
+    ...     'cisdiffpos',
+    ...     'cfid',
+    ...     'cjd'
+    >>> ]
+    >>> parDF_ex = parDF_ex.withColumn(
+    ...     'container',
+    ...     standardized_flux(*args)
+    >>> )
+    >>> parDF_ex = parDF_ex.withColumn(
+    ...     'cstd_flux',
+    ...     parDF_ex['container'].getItem('flux')
+    >>> )
+    >>> parDF_ex = parDF_ex.withColumn(
+    ...     'csigma_std_flux',
+    ...     parDF_ex['container'].getItem('sigma')
+    >>> )
+
+    # Drop temporary columns
+    >>> what_prefix = [prefix + key for key in what]
+    >>> parDF_ex = parDF_ex.drop('container')
+    >>> parDF_ex = parDF_ex.drop(*what_prefix)
+
+    # Test
+    >>> count = parDF_ex.filter(F.array_max(parDF_ex['cstd_flux']) < 1).count()
+    307
+    >>> count = parDF_ex.filter(F.array_max(parDF_ex['cstd_flux']) > 1).count()
+    661
     """
 
     CTAO_blazar = pd.read_parquet(CTAO_PATH)
