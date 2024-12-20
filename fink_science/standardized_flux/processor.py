@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     globs = globals()
     path = os.path.dirname(__file__)
-    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest/".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
