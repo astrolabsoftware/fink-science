@@ -126,7 +126,7 @@ def standardized_flux(candid: pd.Series,
     CTAO_PATH = 'file://{}/'.format(path)
     RELEASE = 22
     CTAO_filename = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
-    CTAO_blazar = spark.read.parquet(CTAO_PATH + CTAO_filename)
+    CTAO_blazar = pd.read_parquet(CTAO_PATH + CTAO_filename)
 
     pdf = pd.DataFrame(
         {
