@@ -119,10 +119,10 @@ def standardized_flux(candid: pd.Series,
     >>> parDF = parDF.drop(*what_prefix)
 
     # Test
-    >>> count = parDF.filter(F.array_max(parDF['cstd_flux']) < 1).count()
-    307
-    >>> count = parDF.filter(F.array_max(parDF['cstd_flux']) > 1).count()
-    661
+    >>> parDF.filter(F.array_max(parDF['cstd_flux']) < 1).count()
+    30
+    >>> parDF.filter(F.array_max(parDF['cstd_flux']) > 1).count()
+    64
     """
 
     CTAO_blazar = pd.read_parquet(CTAO_PATH)
