@@ -68,7 +68,7 @@ def standardized_flux(candid: pd.Series,
     >>> import pyspark.sql.functions as F
 
     >>> filename = 'CTAO_blazar_datatest_v20-12-24.parquet'
-    >>> parDF_ex = spark_ex.read.parquet(ztf_alert_sample + filename)
+    >>> parDF = spark.read.parquet(ztf_alert_sample + filename)
 
     # Required alert columns
     >>> what = [
@@ -85,7 +85,7 @@ def standardized_flux(candid: pd.Series,
     # Concatenation
     >>> prefix = 'c'
     >>> for key in what:
-    ...     parDF_ex = concat_col(parDF_ex, colname=key, prefix=prefix)
+    ...     parDF = concat_col(parDF, colname=key, prefix=prefix)
 
     # Run the module
     >>> args = [
@@ -100,28 +100,28 @@ def standardized_flux(candid: pd.Series,
     ...     'cfid',
     ...     'cjd'
     >>> ]
-    >>> parDF_ex = parDF_ex.withColumn(
+    >>> parDF = parDF.withColumn(
     ...     'container',
     ...     standardized_flux(*args)
     >>> )
-    >>> parDF_ex = parDF_ex.withColumn(
+    >>> parDF = parDF.withColumn(
     ...     'cstd_flux',
-    ...     parDF_ex['container'].getItem('flux')
+    ...     parDF['container'].getItem('flux')
     >>> )
-    >>> parDF_ex = parDF_ex.withColumn(
+    >>> parDF = parDF.withColumn(
     ...     'csigma_std_flux',
-    ...     parDF_ex['container'].getItem('sigma')
+    ...     parDF['container'].getItem('sigma')
     >>> )
 
     # Drop temporary columns
     >>> what_prefix = [prefix + key for key in what]
-    >>> parDF_ex = parDF_ex.drop('container')
-    >>> parDF_ex = parDF_ex.drop(*what_prefix)
+    >>> parDF = parDF.drop('container')
+    >>> parDF = parDF.drop(*what_prefix)
 
     # Test
-    >>> count = parDF_ex.filter(F.array_max(parDF_ex['cstd_flux']) < 1).count()
+    >>> count = parDF.filter(F.array_max(parDF['cstd_flux']) < 1).count()
     307
-    >>> count = parDF_ex.filter(F.array_max(parDF_ex['cstd_flux']) > 1).count()
+    >>> count = parDF.filter(F.array_max(parDF['cstd_flux']) > 1).count()
     661
     """
 
