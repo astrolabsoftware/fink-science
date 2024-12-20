@@ -80,7 +80,7 @@ def standardized_flux(candid: pd.Series,
     ...     'isdiffpos',
     ...     'fid',
     ...     'jd'
-    >>> ]
+    ... ]
 
     # Concatenation
     >>> prefix = 'c'
@@ -99,19 +99,19 @@ def standardized_flux(candid: pd.Series,
     ...     'cisdiffpos',
     ...     'cfid',
     ...     'cjd'
-    >>> ]
+    ... ]
     >>> parDF = parDF.withColumn(
     ...     'container',
     ...     standardized_flux(*args)
-    >>> )
+    ... )
     >>> parDF = parDF.withColumn(
     ...     'cstd_flux',
     ...     parDF['container'].getItem('flux')
-    >>> )
+    ... )
     >>> parDF = parDF.withColumn(
     ...     'csigma_std_flux',
     ...     parDF['container'].getItem('sigma')
-    >>> )
+    ... )
 
     # Drop temporary columns
     >>> what_prefix = [prefix + key for key in what]
