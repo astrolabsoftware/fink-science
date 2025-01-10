@@ -56,6 +56,7 @@ def quiescent_state(
         Mean over threshold of the last but one alert
         Mean over threshold of the last alert
         Measurement over threshold of the last alert
+        All the default values are set to -1 as it is an unphysical value
 
     Examples
     --------
