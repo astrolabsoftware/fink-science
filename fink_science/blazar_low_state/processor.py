@@ -115,7 +115,7 @@ def quiescent_state(
     >>> what_prefix = [prefix + key for key in what]
     >>> parDF = parDF.drop('container')
 
-    # Run the module
+    # Test the module
     >>> args = ['candid', 'objectId', 'cstd_flux', 'cjd']
     >>> parDF = parDF.withColumn('blazar_stats', quiescent_state(*args))
 
