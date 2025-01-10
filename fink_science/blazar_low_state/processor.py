@@ -158,6 +158,7 @@ def quiescent_state(
 
     return pd.Series(out)
 
+
 if __name__ == "__main__":
     """Execute the test suite"""
 
