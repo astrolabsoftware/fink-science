@@ -1,3 +1,17 @@
+# Copyright 2025 AstroLab Software
+# Author: Julian Hamo
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from line_profiler import profile
 
 import pandas as pd
@@ -10,6 +24,8 @@ from fink_science.standardized_flux.utils import standardized_flux_
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 import os
+
+RELEASE = 22
 
 
 @pandas_udf(MapType(StringType(), ArrayType(DoubleType())))
@@ -64,8 +80,7 @@ def standardized_flux(candid: pd.Series,
     >>> from fink_utils.spark.utils import concat_col
     >>> import pyspark.sql.functions as F
 
-    >>> filename = 'CTAO_blazar_datatest_v20-12-24.parquet'
-    >>> parDF = spark.read.parquet(ztf_alert_sample + filename)
+    >>> parDF = spark.read.parquet(ztf_alert_sample)
 
     # Required alert columns
     >>> what = [
@@ -122,11 +137,10 @@ def standardized_flux(candid: pd.Series,
     64
     """
 
-    path = os.path.dirname(__file__)
-    CTAO_PATH = 'file://{}/'.format(path)
-    RELEASE = 22
+    path = os.path.dirname(os.path.abspath(__file__))
+    CTAO_PATH = os.path.join(path, 'data/catalogs')
     CTAO_filename = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
-    CTAO_blazar = pd.read_parquet(CTAO_PATH + CTAO_filename)
+    CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
 
     pdf = pd.DataFrame(
         {
@@ -169,8 +183,9 @@ if __name__ == "__main__":
     """Execute the test suite"""
 
     globs = globals()
-    path = os.path.dirname(__file__)
-    ztf_alert_sample = "file://{}/data/alerts/datatest/".format(path)
+    path = os.path.join(os.path.dirname(__file__), 'data/alerts/datatest')
+    filename = 'CTAO_blazar_datatest_v20-12-24.parquet'
+    ztf_alert_sample = "file://{}/{}".format(path, filename)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite
