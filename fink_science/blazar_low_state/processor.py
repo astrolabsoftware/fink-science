@@ -1,3 +1,17 @@
+# Copyright 2025 AstroLab Software
+# Author: Julian Hamo
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from line_profiler import profile
 
 import pandas as pd
@@ -6,9 +20,11 @@ from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import ArrayType, DoubleType
 from fink_science.blazar_low_state.utils import quiescent_state_
 
+from fink_science.tester import spark_unit_tests
+from fink_science import __file__
+import os
 
 RELEASE = 22
-CTAO_PATH = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
 
 
 @pandas_udf(ArrayType(DoubleType()))
@@ -43,9 +59,79 @@ def quiescent_state(
 
     Examples
     --------
+    >>> import os
+    >>> import numpy as np
+    >>> import pandas as pd
+    >>> from fink_utils.spark.utils import concat_col
+    >>> import pyspark.sql.functions as F
+    >>> from fink_science.standardized_flux.processor import standardized_flux
+
+    >>> parDF = spark.read.parquet(ztf_alert_sample)
+
+    # Required alert columns
+    >>> what = [
+    ...     'distnr',
+    ...     'magpsf',
+    ...     'sigmapsf',
+    ...     'magnr',
+    ...     'sigmagnr',
+    ...     'isdiffpos',
+    ...     'fid',
+    ...     'jd'
+    ... ]
+
+    # Concatenation
+    >>> prefix = 'c'
+    >>> for key in what:
+    ...     parDF = concat_col(parDF, colname=key, prefix=prefix)
+
+    # Preliminary module
+    >>> args = [
+    ...     'candid',
+    ...     'objectId',
+    ...     'cdistnr',
+    ...     'cmagpsf',
+    ...     'csigmapsf',
+    ...     'cmagnr',
+    ...     'csigmagnr',
+    ...     'cisdiffpos',
+    ...     'cfid',
+    ...     'cjd'
+    ... ]
+    >>> parDF = parDF.withColumn(
+    ...     'container',
+    ...     standardized_flux(*args)
+    ... )
+    >>> parDF = parDF.withColumn(
+    ...     'cstd_flux',
+    ...     parDF['container'].getItem('flux')
+    ... )
+    >>> parDF = parDF.withColumn(
+    ...     'csigma_std_flux',
+    ...     parDF['container'].getItem('sigma')
+    ... )
+
+    # Drop temporary columns
+    >>> what_prefix = [prefix + key for key in what]
+    >>> parDF = parDF.drop('container')
+
+    # Run the module
+    >>> args = ['candid', 'objectId', 'cstd_flux', 'cjd']
+    >>> parDF = parDF.withColumn('blazar_stats', quiescent_state(*args))
+
+    # Test
+    >>> stats = parDF.select('blazar_stats').toPandas()['blazar_stats']
+    >>> stats = np.array(stats.to_list())
+    >>> stats[pd.isnull(stats)] = np.nan
+    >>> (stats.sum(axis=-1) == -3).sum()
+    320
     """
 
-    CTAO_blazar = pd.read_parquet(CTAO_PATH)
+    path = os.path.dirname(os.path.abspath(__file__))
+    CTAO_PATH = os.path.join(path, 'data/catalogs')
+    CTAO_filename = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
+    CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
+
     pdf = pd.DataFrame(
         {
             "candid": candid,
@@ -57,6 +143,9 @@ def quiescent_state(
     out = []
     for candid_ in pdf["candid"]:
         tmp = pdf[pdf["candid"] == candid_]
+        if len(tmp["cstd_flux"].to_numpy()[0]) == 0:
+            out.append([-1., -1., -1.])
+            continue
         sub = pd.DataFrame(
             {
                 "candid": tmp["candid"].to_numpy()[0],
@@ -68,3 +157,15 @@ def quiescent_state(
         out.append(quiescent_state_(sub, CTAO_blazar))
 
     return pd.Series(out)
+
+if __name__ == "__main__":
+    """Execute the test suite"""
+
+    globs = globals()
+    path = os.path.join(os.path.dirname(__file__), 'data/alerts/datatest')
+    filename = 'CTAO_blazar_datatest_v20-12-24.parquet'
+    ztf_alert_sample = "file://{}/{}".format(path, filename)
+    globs["ztf_alert_sample"] = ztf_alert_sample
+
+    # Run the test suite
+    spark_unit_tests(globs)
