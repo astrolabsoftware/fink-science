@@ -85,7 +85,7 @@ def quiescent_state(
     >>> for key in what:
     ...     parDF = concat_col(parDF, colname=key, prefix=prefix)
 
-    # Preliminary module
+    # Preliminary module run
     >>> args = [
     ...     'candid',
     ...     'objectId',
