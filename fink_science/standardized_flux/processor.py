@@ -183,7 +183,7 @@ if __name__ == "__main__":
     """Execute the test suite"""
 
     globs = globals()
-    path = os.path.join(os.path.dirname(__file__), 'data/alerts/datatest')
+    path = os.path.join(os.path.dirname(__file__), 'data/alerts')
     filename = 'CTAO_blazar_datatest_v20-12-24.parquet'
     ztf_alert_sample = "file://{}/{}".format(path, filename)
     globs["ztf_alert_sample"] = ztf_alert_sample
