@@ -77,7 +77,7 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
     from pyspark.sql import SparkSession
     from pyspark import SparkConf
 
-    spark = SparkSession.builder.getOrCreate()
+    spark = SparkSession.builder.config('spark.sql.legacy.parquet.nanosAsLong', True).getOrCreate()
 
     conf = SparkConf()
     confdic = {
