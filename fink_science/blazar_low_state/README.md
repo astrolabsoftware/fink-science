@@ -10,3 +10,4 @@ These quantities are:
 
 If the last two ratio are below one, the source is considered to be in a quiescent state.
 If the source is in a quiescent state but the first ratio is above one, this quiescent state is considered to have just started.
+By default, all value are set to -1 as it is an unphysical value.
