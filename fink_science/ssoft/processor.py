@@ -243,7 +243,7 @@ def angle_between_vectors(v1, v2):
 
 @pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
 @profile
-def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, method, model, sb_method):
+def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, method, model, sb_method, uid):
     """ Extract phase and spin parameters from Fink alert data using Apache Spark
 
     Notes
@@ -279,6 +279,8 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
         See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
         If nifty-ls is installed, one can also specify fastnifty. Although
         in this case it does not work yet for Nterms_* higher than 1.
+    uid: int
+        Unique ID used internally when writing files on disk by eproc.
 
     Returns
     ----------
@@ -344,7 +346,8 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
             tcoor=5,
             withecl=False,
             method=method.to_numpy()[0],
-            parameters=parameters
+            parameters=parameters,
+            uid=int(uid.to_numpy()[index] * 1e7)
         )
 
         if 'i:magpsf_red' not in pdf.columns:
@@ -871,7 +874,8 @@ def build_the_ssoft(aggregated_filename=None, nproc=80, nmin=50, frac=None, mode
                 'cdec',
                 F.lit(ephem_method),
                 F.lit(model),
-                F.lit(sb_method)
+                F.lit(sb_method),
+                F.rand(42),
             )
         ).select(cols).toPandas()
 
