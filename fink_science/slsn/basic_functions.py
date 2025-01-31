@@ -145,7 +145,7 @@ def translate(ps):
         return []
 
     else:
-        return ps["cmidPointTai"] - ps["cmidPointTai"][np.argmax(ps["cpsFlux"])]
+        return np.array(ps["cmidPointTai"]) - ps["cmidPointTai"][np.argmax(ps["cpsFlux"])]
 
 
 def normalize(ps):
@@ -179,6 +179,6 @@ def normalize(ps):
         return ps[["cpsFlux", "cpsFluxErr"]]
 
     else:
-        ps["cpsFlux"] = ps["cpsFlux"] / ps["peak"]
-        ps["cpsFluxErr"] = ps["cpsFluxErr"] / ps["peak"]
+        ps["cpsFlux"] = np.array(ps["cpsFlux"]) / np.array(ps["peak"])
+        ps["cpsFluxErr"] = np.array(ps["cpsFluxErr"]) / np.array(ps["peak"])
         return ps[["cpsFlux", "cpsFluxErr"]]
