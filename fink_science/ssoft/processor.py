@@ -313,6 +313,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
     # loop over SSO
     out = []
     for index, ssname in enumerate(ssnamenr.values):
+        uid_object = int(uid.to_numpy()[index] * 1e7)
 
         # First get ephemerides data
         pdf_sso = pd.DataFrame(
@@ -347,7 +348,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
             withecl=False,
             method=method.to_numpy()[0],
             parameters=parameters,
-            uid=int(uid.to_numpy()[index] * 1e7)
+            uid=uid_object
         )
 
         if 'i:magpsf_red' not in pdf.columns:
@@ -419,7 +420,7 @@ def estimate_sso_params_spark(ssnamenr, magpsf, sigmapsf, jd, fid, ra, dec, meth
                     eph_t = pd.DataFrame({"px": pdf["px"], "py": pdf["py"], "pz": pdf["pz"]})
 
                     # Get shifted ephemerides
-                    eph_tp = query_miriade_epehemcc(ssname, pdf["i:jd"] + synodic_period_days, tcoor=2, parameters=parameters)
+                    eph_tp = query_miriade_epehemcc(ssname, pdf["i:jd"] + synodic_period_days, tcoor=2, parameters=parameters, uid=uid_object)
                 elif method.to_numpy()[0] == 'rest':
                     eph_t = query_miriade(ssname, pdf["i:jd"], tcoor=2)
                     eph_tp = query_miriade(ssname, pdf["i:jd"] + synodic_period_days, tcoor=2)
