@@ -159,7 +159,7 @@ def parametrise(transformed, metadata, target_col=""):
 
     return df_parameters
 
-
+@profile
 def apply_rainbow(pds):
     band_wave_aa = {"u": 3751, "g": 4742, "r": 6173, "i": 7502, "z": 8679, "Y": 9711}
 
