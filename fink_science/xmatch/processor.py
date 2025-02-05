@@ -46,9 +46,12 @@ _LOG = logging.getLogger(__name__)
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
-def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog: str, cols: str) -> pd.Series:
-    """ Query the CDSXmatch service to find identified objects
-    in alerts. The catalog queried is the SIMBAD bibliographical database.
+def cdsxmatch(
+    objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog: str, cols: str
+) -> pd.Series:
+    """Query the CDSXmatch service to find identified objects in alerts.
+
+    The catalog queried is the SIMBAD bibliographical database.
 
     I/O specifically designed for use as `pandas_udf` in `select` or
     `withColumn` dataframe methods
@@ -72,7 +75,7 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog
         Comma-separated column names to get from the external catalog
 
     Returns
-    ----------
+    -------
     out: pandas.Series of string
         Return Pandas DataFrame with a new single column
         containing comma-separated values of extra-columns.
@@ -82,7 +85,7 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog
         If the request Failed (no match at all), return Column of Fail.
 
     Examples
-    -----------
+    --------
     Simulate fake data
     >>> ra = [26.8566983, 26.24497]
     >>> dec = [-26.9677112, -26.7569436]
@@ -127,69 +130,76 @@ def cdsxmatch(objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog
 
         # Send the request!
         r = requests.post(
-            'http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync',
+            "http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync",
             data={
-                'request': 'xmatch',
-                'distMaxArcsec': distmaxarcsec.values[0],
-                'selection': 'all',
-                'RESPONSEFORMAT': 'csv',
-                'cat2': extcatalog.values[0],
-                'cols2': cols.values[0],
-                'colRA1': 'ra_in',
-                'colDec1': 'dec_in'},
-            files={'cat1': table}
+                "request": "xmatch",
+                "distMaxArcsec": distmaxarcsec.to_numpy()[0],
+                "selection": "all",
+                "RESPONSEFORMAT": "csv",
+                "cat2": extcatalog.to_numpy()[0],
+                "cols2": cols.to_numpy()[0],
+                "colRA1": "ra_in",
+                "colDec1": "dec_in",
+            },
+            files={"cat1": table},
         )
 
         if r.status_code != 200:
             names = ["Fail {}".format(r.status_code)] * len(objectId)
             return pd.Series(names)
         else:
-            cols = cols.values[0].split(',')
+            cols = cols.to_numpy()[0].split(",")
             pdf = pd.read_csv(io.BytesIO(r.content))
 
             if pdf.empty:
-                name = ','.join(["Unknown"] * len(cols))
+                name = ",".join(["Unknown"] * len(cols))
                 names = [name] * len(objectId)
                 return pd.Series(names)
 
             # join
-            pdf_in = pd.DataFrame({'objectId_in': objectId})
-            pdf_in.index = pdf_in['objectId_in']
+            pdf_in = pd.DataFrame({"objectId_in": objectId})
+            pdf_in.index = pdf_in["objectId_in"]
 
             # Remove duplicates (keep the one with minimum distance)
-            pdf_nodedup = pdf.loc[pdf.groupby('objectId').angDist.idxmin()]
-            pdf_nodedup.index = pdf_nodedup['objectId']
+            pdf_nodedup = pdf.loc[pdf.groupby("objectId").angDist.idxmin()]
+            pdf_nodedup.index = pdf_nodedup["objectId"]
 
             pdf_out = pdf_in.join(pdf_nodedup)
 
             # only for SIMBAD as we use `main_type` for our classification
-            if 'main_type' in pdf_out.columns:
-                pdf_out['main_type'] = pdf_out['main_type'].replace(np.nan, 'Unknown')
+            if "main_type" in pdf_out.columns:
+                pdf_out["main_type"] = pdf_out["main_type"].replace(np.nan, "Unknown")
 
             if len(cols) > 1:
                 # Concatenate all columns in one
                 # use comma-separated values
                 cols = [i.strip() for i in cols]
                 pdf_out = pdf_out[cols]
-                pdf_out['concat_cols'] = pdf_out.apply(lambda x: ','.join(x.astype(str).values.tolist()), axis=1)
-                return pdf_out['concat_cols']
+                pdf_out["concat_cols"] = pdf_out.apply(
+                    lambda x: ",".join(x.astype(str).to_numpy().tolist()), axis=1
+                )
+                return pdf_out["concat_cols"]
             elif len(cols) == 1:
                 # single column to return
                 return pdf_out[cols[0]].astype(str)
 
     except (ConnectionError, TimeoutError, ValueError) as ce:
         logging.warning("XMATCH failed " + repr(ce))
-        ncols = len(cols.values[0].split(','))
-        name = ','.join(["Fail"] * ncols)
+        ncols = len(cols.to_numpy()[0].split(","))
+        name = ",".join(["Fail"] * ncols)
         names = [name] * len(objectId)
         return pd.Series(names)
 
+
 def xmatch_cds(
-        df, catalogname='simbad', distmaxarcsec=1.0,
-        cols_in=['candidate.candid', 'candidate.ra', 'candidate.dec'],
-        cols_out=['main_type'],
-        types=['string']):
-    """ Cross-match Fink data from a Spark DataFrame with a catalog in CDS
+    df,
+    catalogname="simbad",
+    distmaxarcsec=1.0,
+    cols_in=None,
+    cols_out=None,
+    types=None,
+):
+    """Cross-match Fink data from a Spark DataFrame with a catalog in CDS
 
     Parameters
     ----------
@@ -210,12 +220,12 @@ def xmatch_cds(
         Should be SQL syntax (str=string, etc.)
 
     Returns
-    ---------
+    -------
     df_out: Spark DataFrame
         Spark DataFrame with new columns from the xmatch added
 
     Examples
-    ---------
+    --------
     >>> df = spark.read.load(ztf_alert_sample)
 
     # Simbad
@@ -253,37 +263,43 @@ def xmatch_cds(
     >>> 'SPICY' in df_spicy.columns
     True
     """
+    if cols_in is None:
+        cols_in = ["candidate.candid", "candidate.ra", "candidate.dec"]
+    if cols_out is None:
+        cols_out = ["main_type"]
+    if types is None:
+        types = ["string"]
+
     df_out = df.withColumn(
-        'xmatch',
+        "xmatch",
         cdsxmatch(
             df[cols_in[0]],
             df[cols_in[1]],
             df[cols_in[2]],
             F.lit(distmaxarcsec),
             F.lit(catalogname),
-            F.lit(','.join(cols_out))
-        )
-    ).withColumn('xmatch_split', F.split('xmatch', ','))
+            F.lit(",".join(cols_out)),
+        ),
+    ).withColumn("xmatch_split", F.split("xmatch", ","))
 
     for index, col_, type_ in zip(range(len(cols_out)), cols_out, types):
         df_out = df_out.withColumn(
-            col_,
-            F.col('xmatch_split').getItem(index).astype(type_)
+            col_, F.col("xmatch_split").getItem(index).astype(type_)
         )
 
-    df_out = df_out.drop('xmatch', 'xmatch_split')
+    df_out = df_out.drop("xmatch", "xmatch_split")
 
     # Keep compatibility with previous definitions
-    if 'main_type' in df_out.columns:
+    if "main_type" in df_out.columns:
         # remove previous declaration if any
-        df_out = df_out.drop('cdsxmatch')
-        df_out = df_out.withColumnRenamed('main_type', 'cdsxmatch')
+        df_out = df_out.drop("cdsxmatch")
+        df_out = df_out.withColumnRenamed("main_type", "cdsxmatch")
 
     return df_out
 
 
 def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
-    """ Cross-match Fink data from a Spark DataFrame with the latest TNS catalog
+    """Cross-match Fink data from a Spark DataFrame with the latest TNS catalog
 
     Parameters
     ----------
@@ -301,12 +317,12 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         - TNS_API_KEY: path to the TNS API key (tns_api.key)
 
     Returns
-    ---------
+    -------
     df: Spark DataFrame
         Spark DataFrame with new columns from the xmatch added
 
     Examples
-    ---------
+    --------
     >>> df = spark.read.load(ztf_alert_sample)
 
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
@@ -327,12 +343,14 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
             pdf_tns = download_catalog(os.environ["TNS_API_KEY"], tns_marker)
         else:
-            _LOG.warning("TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master.")
+            _LOG.warning(
+                "TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master."
+            )
             _LOG.warning("Skipping crossmatch with TNS.")
             df = df.withColumn("tns", F.lit(""))
             return df
     else:
-        pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, 'tns_raw.parquet'))
+        pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, "tns_raw.parquet"))
 
     # Filter TNS confirmed data
     f1 = ~pdf_tns["type"].isna()
@@ -385,7 +403,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         idx2, d2d2, _ = catalog_ztf.match_to_catalog_sky(catalog_tns)
 
         # set separation length
-        sep_constraint2 = d2d2.degree < distmaxarcsec / 3600.
+        sep_constraint2 = d2d2.degree < distmaxarcsec / 3600.0
 
         sub_pdf["TNS"] = [""] * len(sub_pdf)
         sub_pdf["TNS"][sep_constraint2] = type2.to_numpy()[idx2[sep_constraint2]]
@@ -401,7 +419,8 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         return to_return
 
     df = df.withColumn(
-        "tns", crossmatch_with_tns(df["objectId"], df["candidate.ra"], df["candidate.dec"])
+        "tns",
+        crossmatch_with_tns(df["objectId"], df["candidate.ra"], df["candidate.dec"]),
     )
 
     return df
@@ -410,7 +429,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
-    """ Crossmatch alerts with user-defined catalogs
+    """Crossmatch alerts with user-defined catalogs
 
     Currently supporting:
     - GCVS
@@ -432,12 +451,12 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
         Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
 
     Returns
-    ----------
+    -------
     type: str
         Object type from the catalog. `Unknown` if no match.
 
     Examples
-    ----------
+    --------
     >>> from pyspark.sql.functions import lit
 
     Simulate fake data
@@ -516,55 +535,54 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
     +---+-----------+-----------+-----------------+
     <BLANKLINE>
     """
-    pdf = pd.DataFrame(
-        {
-            'ra': ra.values,
-            'dec': dec.values,
-            'candid': range(len(ra))
-        }
-    )
+    pdf = pd.DataFrame({
+        "ra": ra.to_numpy(),
+        "dec": dec.to_numpy(),
+        "candid": range(len(ra)),
+    })
 
     curdir = os.path.dirname(os.path.abspath(__file__))
-    if catalog_name.values[0] == 'gcvs':
-        catalog = curdir + '/data/catalogs/gcvs.parquet'
+    if catalog_name.to_numpy()[0] == "gcvs":
+        catalog = curdir + "/data/catalogs/gcvs.parquet"
         ra2, dec2, type2 = extract_gcvs(catalog)
-    elif catalog_name.values[0] == 'vsx':
-        catalog = curdir + '/data/catalogs/vsx.parquet'
+    elif catalog_name.to_numpy()[0] == "vsx":
+        catalog = curdir + "/data/catalogs/vsx.parquet"
         ra2, dec2, type2 = extract_vsx(catalog)
-    elif catalog_name.values[0] == '3hsp':
-        catalog = curdir + '/data/catalogs/3hsp.csv'
+    elif catalog_name.to_numpy()[0] == "3hsp":
+        catalog = curdir + "/data/catalogs/3hsp.csv"
         ra2, dec2, type2 = extract_3hsp(catalog)
-    elif catalog_name.values[0] == '4lac':
-        catalog_h = curdir + '/data/catalogs/table-4LAC-DR3-h.fits'
-        catalog_l = curdir + '/data/catalogs/table-4LAC-DR3-l.fits'
+    elif catalog_name.to_numpy()[0] == "4lac":
+        catalog_h = curdir + "/data/catalogs/table-4LAC-DR3-h.fits"
+        catalog_l = curdir + "/data/catalogs/table-4LAC-DR3-l.fits"
         ra2, dec2, type2 = extract_4lac(catalog_h, catalog_l)
 
     # create catalogs
     catalog_ztf = SkyCoord(
-        ra=np.array(ra.values, dtype=float) * u.degree,
-        dec=np.array(dec.values, dtype=float) * u.degree
+        ra=np.array(ra.to_numpy(), dtype=float) * u.degree,
+        dec=np.array(dec.to_numpy(), dtype=float) * u.degree,
     )
 
     catalog_other = SkyCoord(
-        ra=np.array(ra2.values, dtype=float) * u.degree,
-        dec=np.array(dec2.values, dtype=float) * u.degree
+        ra=np.array(ra2.to_numpy(), dtype=float) * u.degree,
+        dec=np.array(dec2.to_numpy(), dtype=float) * u.degree,
     )
 
     pdf_merge, mask, idx2 = cross_match_astropy(
         pdf, catalog_ztf, catalog_other, radius_arcsec=radius_arcsec
     )
 
-    pdf_merge['Type'] = 'Unknown'
-    pdf_merge.loc[mask, 'Type'] = [
-        str(i).strip() for i in type2.astype(str).values[idx2]
+    pdf_merge["Type"] = "Unknown"
+    pdf_merge.loc[mask, "Type"] = [
+        str(i).strip() for i in type2.astype(str).to_numpy()[idx2]
     ]
 
-    return pdf_merge['Type']
+    return pdf_merge["Type"]
+
 
 @pandas_udf(MapType(StringType(), StringType()), PandasUDFType.SCALAR)
 @profile
 def crossmatch_mangrove(candid, ra, dec, radius_arcsec=None):
-    """ Crossmatch alerts with the Mangrove catalog
+    """Crossmatch alerts with the Mangrove catalog
 
     Parameters
     ----------
@@ -578,12 +596,12 @@ def crossmatch_mangrove(candid, ra, dec, radius_arcsec=None):
         Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
 
     Returns
-    ----------
+    -------
     type: str
         Object type from the catalog. `Unknown` if no match.
 
     Examples
-    ----------
+    --------
     >>> from pyspark.sql.functions import lit
 
     Simulate fake data
@@ -616,40 +634,36 @@ def crossmatch_mangrove(candid, ra, dec, radius_arcsec=None):
     2  3    0.312600  47.685900  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
     3  4    0.318208  29.592778  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
     """
-    pdf = pd.DataFrame(
-        {
-            'ra': ra.values,
-            'dec': dec.values,
-            'candid': range(len(ra))
-        }
-    )
+    pdf = pd.DataFrame({
+        "ra": ra.to_numpy(),
+        "dec": dec.to_numpy(),
+        "candid": range(len(ra)),
+    })
 
     curdir = os.path.dirname(os.path.abspath(__file__))
-    catalog = curdir + '/data/catalogs/mangrove_filtered.parquet'
+    catalog = curdir + "/data/catalogs/mangrove_filtered.parquet"
     ra2, dec2, payload = extract_mangrove(catalog)
 
     # create catalogs
     catalog_ztf = SkyCoord(
-        ra=np.array(ra.values, dtype=float) * u.degree,
-        dec=np.array(dec.values, dtype=float) * u.degree
+        ra=np.array(ra.to_numpy(), dtype=float) * u.degree,
+        dec=np.array(dec.to_numpy(), dtype=float) * u.degree,
     )
 
     catalog_other = SkyCoord(
-        ra=np.array(ra2.values, dtype=float) * u.degree,
-        dec=np.array(dec2.values, dtype=float) * u.degree
+        ra=np.array(ra2.to_numpy(), dtype=float) * u.degree,
+        dec=np.array(dec2.to_numpy(), dtype=float) * u.degree,
     )
 
     pdf_merge, mask, idx2 = cross_match_astropy(
         pdf, catalog_ztf, catalog_other, radius_arcsec=radius_arcsec
     )
 
-    default = {name: 'None' for name in MANGROVE_COLS}
-    pdf_merge['Type'] = [default for i in range(len(pdf_merge))]
-    pdf_merge.loc[mask, 'Type'] = [
-        i for i in np.array(payload)[idx2]
-    ]
+    default = {name: "None" for name in MANGROVE_COLS}
+    pdf_merge["Type"] = [default for i in range(len(pdf_merge))]
+    pdf_merge.loc[mask, "Type"] = [payload[i] for i in idx2]
 
-    return pdf_merge['Type']
+    return pdf_merge["Type"]
 
 
 if __name__ == "__main__":
@@ -658,7 +672,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite

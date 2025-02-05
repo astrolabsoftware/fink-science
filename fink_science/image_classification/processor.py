@@ -20,9 +20,10 @@ from pyspark.sql.types import StringType
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
 
+
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def labels_assignation(stamps: bytes) -> pd.Series:
-    """ Apply image classification on column of images
+    """Apply image classification on column of images
 
     Parameters
     ----------
@@ -55,7 +56,7 @@ def labels_assignation(stamps: bytes) -> pd.Series:
     >>> list(safe_clear_star['labels'] == 'safe_clear_extend')[0] == True
     True
     """
-    res = [img_labelisation(cutout) for cutout in stamps.values]
+    res = [img_labelisation(cutout) for cutout in stamps.to_numpy()]
 
     return pd.Series(res)
 
@@ -66,7 +67,9 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/image_classification_example.parquet'.format(path)
+    ztf_alert_sample = (
+        "file://{}/data/alerts/image_classification_example.parquet".format(path)
+    )
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite

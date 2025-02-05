@@ -1,9 +1,26 @@
+# Copyright 2022-2024 Fink Software
+# Author: Etienne Russeil
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import numpy as np
 import pandas as pd  # noqa: F401
 
 
 def compute_mean(x):
     """Compute mean of an array.
+
+    Notes
+    -----
     Return -1 if the array is empty.
 
     Parameters
@@ -22,7 +39,6 @@ def compute_mean(x):
     >>> compute_mean(np.array([])) == -1
     True
     """
-
     if len(x) == 0:
         return -1
     else:
@@ -31,6 +47,9 @@ def compute_mean(x):
 
 def compute_std(x):
     """Compute standard deviation of an array.
+
+    Notes
+    -----
     Return -1 if the array is empty.
 
     Parameters
@@ -49,7 +68,6 @@ def compute_std(x):
     >>> compute_std(np.array([])) == -1
     True
     """
-
     if len(x) == 0:
         return -1
     else:
@@ -61,7 +79,7 @@ def keep_filter(ps, band):
     Funtion that removes points from other bands than the one specified
 
     Parameters
-    ---------
+    ----------
     ps: pd.Series
         each rows of the dataframe. each entries must be numeric list.
     band: int
@@ -85,7 +103,6 @@ def keep_filter(ps, band):
     True
 
     """
-
     mask = ps["cfilterName"] == band
 
     return [np.array(_col)[mask].astype(type(_col[0])) for _col in ps]
@@ -110,7 +127,6 @@ def get_max(x):
     >>> get_max(np.array([])) == -1
     True
     """
-
     if len(x) == 0:
         return -1
 
@@ -140,12 +156,13 @@ def translate(ps):
     True
 
     """
-
     if len(ps["cmidPointTai"]) == 0:
         return []
 
     else:
-        return np.array(ps["cmidPointTai"]) - ps["cmidPointTai"][np.argmax(ps["cpsFlux"])]
+        return (
+            np.array(ps["cmidPointTai"]) - ps["cmidPointTai"][np.argmax(ps["cpsFlux"])]
+        )
 
 
 def normalize(ps):
@@ -174,7 +191,6 @@ def normalize(ps):
     >>> (np.array_equal(out2[0], np.array([]))) & (np.array_equal(out2[1], np.array([])))
     True
     """
-
     if len(ps["cpsFlux"]) == 0:
         return ps[["cpsFlux", "cpsFluxErr"]]
 

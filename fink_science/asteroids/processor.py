@@ -25,10 +25,11 @@ import numpy as np
 
 from fink_science.tester import spark_unit_tests
 
+
 @pandas_udf(IntegerType(), PandasUDFType.SCALAR)
 @profile
 def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
-    """ Determine if an alert is a potential Solar System object (SSO) using two criteria:
+    """Determine if an alert is a potential Solar System object (SSO) using two criteria:
 
     1. The alert has been flagged as an SSO by ZTF (MPC) within 5"
     2. The alert satisfies Fink criteria for a SSO
@@ -68,7 +69,7 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
         if exists within 30 arcsec [arcsec]
 
     Returns
-    ----------
+    -------
     out: integer
         3 if the alert has been flagged by ZTF as SSO
         2 if the alert has been flagged by Fink as SSO
@@ -76,7 +77,7 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
         0 if it is likely not a SSO
 
     Examples
-    ----------
+    --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
@@ -131,7 +132,7 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
 
     # Remove long trend (within the observation)
     f3 = nalerthist == 2
-    f4 = jd[f3].apply(lambda x: np.diff(x)[-1]) > (30. / (24. * 60.))
+    f4 = jd[f3].apply(lambda x: np.diff(x)[-1]) > (30.0 / (24.0 * 60.0))
     flags[f3 & f4] = 0
 
     # Remove very long trend (outside the current observation)
@@ -151,7 +152,9 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
         f_ndethist = ndethist <= 5
         f_nalerthist = nalerthist <= 5
 
-        mask_roid = f_distance1 & f_distance2 & f_relative_distance & f_ndethist & f_nalerthist
+        mask_roid = (
+            f_distance1 & f_distance2 & f_relative_distance & f_ndethist & f_nalerthist
+        )
         flags[mask_roid] = 3
 
     return pd.Series(flags)
@@ -162,7 +165,7 @@ if __name__ == "__main__":
 
     globs = globals()
     path = os.path.dirname(__file__)
-    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite

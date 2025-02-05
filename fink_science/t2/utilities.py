@@ -42,7 +42,10 @@ T2_COLS = [
     "SLSN-I",
 ]
 
+
 class LiteModel:
+    """Class for lite model"""
+
     @classmethod
     def from_file(cls, model_path):
         return LiteModel(tf.lite.Interpreter(model_path=model_path))
@@ -82,21 +85,25 @@ class LiteModel:
         count = inp.shape[0]
         out = np.zeros((count, self.output_shape[1]), dtype=self.output_dtype)
         for i in range(count):
-            self.interpreter.set_tensor(self.input_index, inp[i: i + 1])
+            self.interpreter.set_tensor(self.input_index, inp[i : i + 1])
             self.interpreter.invoke()
             out[i] = self.interpreter.get_tensor(self.output_index)[0]
         return out
 
-def get_lite_model(model_name: str = 'quantized-model-GR-noZ-28341-1654269564-0.5.1.dev73+g70f85f8-LL0.836.tflite'):
+
+def get_lite_model(
+    model_name: str = "quantized-model-GR-noZ-28341-1654269564-0.5.1.dev73+g70f85f8-LL0.836.tflite",
+):
     path = os.path.dirname(__file__)
-    model_path = (
-        f"{path}/data/models/{model_name}"
-    )
+    model_path = f"{path}/data/models/{model_name}"
     model = LiteModel.from_file(model_path=model_path)
     return model
 
-def get_model(model_name: str = 't2', model_id: str = "23057-1642540624-0.1.dev963+g309c9d8"):
-    """ Load pre-trained model for T2
+
+def get_model(
+    model_name: str = "t2", model_id: str = "23057-1642540624-0.1.dev963+g309c9d8"
+):
+    """Load pre-trained model for T2
 
     Parameters
     ----------
@@ -106,13 +113,11 @@ def get_model(model_name: str = 't2', model_id: str = "23057-1642540624-0.1.dev9
         Corresponding ID inside the foler (related to the version used to train)
 
     Returns
-    ----------
+    -------
     out: keras model
     """
     path = os.path.dirname(__file__)
-    model_path = (
-        f"{path}/data/models/{model_name}/model-{model_id}"
-    )
+    model_path = f"{path}/data/models/{model_name}/model-{model_id}"
 
     model = keras.models.load_model(
         model_path,
@@ -122,12 +127,17 @@ def get_model(model_name: str = 't2', model_id: str = "23057-1642540624-0.1.dev9
 
     return model
 
+
 def apply_selection_cuts_ztf(
-        magpsf: pd.Series, cdsxmatch: pd.Series,
-        jd: pd.Series, jdstarthist: pd.Series, roid: pd.Series,
-        minpoints: int = 2, maxndethist: int = 90) -> pd.Series:
-    """ Apply selection cuts to keep only alerts of interest
-    for T2 analysis
+    magpsf: pd.Series,
+    cdsxmatch: pd.Series,
+    jd: pd.Series,
+    jdstarthist: pd.Series,
+    roid: pd.Series,
+    minpoints: int = 2,
+    maxndethist: int = 90,
+) -> pd.Series:
+    """Apply selection cuts to keep only alerts of interest for T2 analysis
 
     Parameters
     ----------
@@ -148,7 +158,7 @@ def apply_selection_cuts_ztf(
         Each row contains one label.
 
     Returns
-    ---------
+    -------
     mask: pd.Series
         Series containing `True` if the alert is valid, `False` otherwise.
         Each row contains one boolean.
@@ -167,9 +177,9 @@ def apply_selection_cuts_ztf(
 
     return mask
 
+
 def extract_maxclass(dic: dict) -> str:
-    """ Extract the class with max probability
-    """
+    """Extract the class with max probability"""
     vals = list(dic.values())
     if -1.0 in vals:
         return ""

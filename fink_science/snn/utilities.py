@@ -17,8 +17,9 @@ import pandas as pd
 
 from fink_science.tester import regular_unit_tests
 
+
 def reformat_to_df(pred_probs, ids=None):
-    """ Reformat supernnova predictions to DataFrame.
+    """Reformat supernnova predictions to DataFrame.
 
     Taken from Anais's SuperNNova.
 
@@ -35,7 +36,7 @@ def reformat_to_df(pred_probs, ids=None):
         List of intial alert SNID
 
     Returns
-    ----------
+    -------
     preds_df: pd.DataFrame
         Pandas DataFrame, row={SNID  prob_class0  prob_class1  pred_class}
     """

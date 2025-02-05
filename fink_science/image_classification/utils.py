@@ -17,9 +17,13 @@ import io
 from astropy.io import fits
 import numpy as np
 
+
 def unzip_cutout(stamp):
-    """ Extract an image from a gzip format file
-    Image is contains on a fits format file. Due to a significant number of corrupted images,
+    """Extract an image from a gzip format file
+
+    Notes
+    -----
+    Image is contained on a fits format file. Due to a significant number of corrupted images,
     a correction step is applied to remove nan values, negative values and corrected the wrong
     shapes of the images
 
@@ -33,7 +37,7 @@ def unzip_cutout(stamp):
     out: 2D numpy array
         alert image after extraction from gzip format and correction of all kinds of problems
     """
-    with gzip.open(io.BytesIO(stamp), 'rb') as fits_file:
+    with gzip.open(io.BytesIO(stamp), "rb") as fits_file:
         with fits.open(io.BytesIO(fits_file.read())) as hdul:
             img = hdul[0].data[::-1]
             img = np.where(img < 0, 0, img)
@@ -44,11 +48,17 @@ def unzip_cutout(stamp):
                 return img_zeros
             return np.nan_to_num(img)
 
-def sigmoid(img):
-    """ Compute the sigmoid term of the normalization function, the alpha parameter is
-    the standard deviation of the image and the beta parameter is the mean of the image
 
-    Parameters:
+def sigmoid(img):
+    """Compute the sigmoid term of the normalization function
+
+    Notes
+    -----
+    the alpha parameter is the standard deviation of the image and
+    the beta parameter is the mean of the image
+
+    Parameters
+    ----------
     img: 2D numpy array
         alert image after extraction from gzip format
 
@@ -77,8 +87,9 @@ def sigmoid(img):
     exp_norm = np.exp(inv_norm)
     return 1 / (1 + exp_norm)
 
+
 def img_normalizer(img, vmin=0, vmax=1):
-    """ Compute a non-linear normalisation thanks to sigmoid function of the image.
+    """Compute a non-linear normalisation thanks to sigmoid function of the image.
 
     Parameters
     ----------

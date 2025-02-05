@@ -7,3 +7,4 @@ omit=
     setup.py
     dist/*
     $PWD/fink_science/tester.py
+    $PWD/fink_science/xmatch/alt/generate_fake_catalog.py

@@ -35,18 +35,20 @@ from fink_science.t2.utilities import T2_COLS
 
 from fink_science.tester import spark_unit_tests
 
+
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def maxclass(dic):
-    """ Extract t-he class with max probability
-    """
+    """Extract t-he class with max probability"""
     max_class_series = dic.apply(lambda x: extract_maxclass(x))
     return max_class_series
 
 
 @pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
 @profile
-def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name=None) -> pd.Series:
-    """ Return vector of probabilities from T2
+def t2(
+    candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name=None
+) -> pd.Series:
+    """Return vector of probabilities from T2
 
     Parameters
     ----------
@@ -63,12 +65,12 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
             * tinho
 
     Returns
-    ----------
+    -------
     probabilities: dictionnary (class>str, prob>float)
         Probability between 0 (non-Ia) and 1 (Ia).
 
     Examples
-    ----------
+    --------
     >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_science.asteroids.processor import roid_catcher
     >>> from fink_utils.spark.utils import concat_col
@@ -127,17 +129,16 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
     dates = jd.apply(lambda x: [x[0] - i for i in x])
 
     pdf = format_data_as_snana(
-        dates, magpsf, sigmapsf, fid, candid, mask,
-        filter_conversion_dic=ZTF_FILTER_MAP
+        dates, magpsf, sigmapsf, fid, candid, mask, filter_conversion_dic=ZTF_FILTER_MAP
     )
 
     pdf = pdf.rename(
         columns={
-            'SNID': 'object_id',
-            'MJD': 'mjd',
-            'FLUXCAL': 'flux',
-            'FLUXCALERR': 'flux_error',
-            'FLT': 'filter'
+            "SNID": "object_id",
+            "MJD": "mjd",
+            "FLUXCAL": "flux",
+            "FLUXCALERR": "flux_error",
+            "FLT": "filter",
         }
     )
 
@@ -146,19 +147,18 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
 
     if model_name is not None:
         # take the first element of the Series
-        model = get_lite_model(model_name=model_name.values[0])
+        model = get_lite_model(model_name=model_name.to_numpy()[0])
     else:
         # Load default pre-trained model
         model = get_lite_model()
 
     vals = []
-    for candid_ in candid[mask].values:
-
+    for candid_ in candid[mask].to_numpy():
         # one object at a time
-        sub = pdf[pdf['object_id'] == candid_]
+        sub = pdf[pdf["object_id"] == candid_]
 
         # Need all filters
-        if len(np.unique(sub['filter'])) != 2:
+        if len(np.unique(sub["filter"])) != 2:
             vals.append(default)
             continue
 
@@ -167,7 +167,7 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
             [candid_], sub, pb_wavelengths=ZTF_PB_WAVELENGTHS
         )
 
-        cols = set(list(ZTF_PB_WAVELENGTHS.keys())) & set(df_gp_mean.columns)
+        cols = set(ZTF_PB_WAVELENGTHS.keys()) & set(df_gp_mean.columns)
         robust_scale(df_gp_mean, cols)
         X = df_gp_mean[cols]
         X = np.asarray(X).astype("float32")
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite

@@ -30,7 +30,6 @@ def slsn_elasticc_no_md(
 
     Parameters
     ----------
-
     diaObjectId: Spark DataFrame Column
         Identification numbers of the objects
     cmidPoinTai: Spark DataFrame Column
@@ -50,18 +49,15 @@ def slsn_elasticc_no_md(
         ordered probabilities of being a slsn
         Return 0 if the minimum points number is not respected.
     """
-
-    data = pd.DataFrame(
-        {
-            "diaObjectId": diaObjectId,
-            "cmidPointTai": cmidPointTai,
-            "cpsFlux": cpsFlux,
-            "cpsFluxErr": cpsFluxErr,
-            "cfilterName": cfilterName,
-            "ra": ra,
-            "decl": decl,
-        }
-    )
+    data = pd.DataFrame({
+        "diaObjectId": diaObjectId,
+        "cmidPointTai": cmidPointTai,
+        "cpsFlux": cpsFlux,
+        "cpsFluxErr": cpsFluxErr,
+        "cfilterName": cfilterName,
+        "ra": ra,
+        "decl": decl,
+    })
 
     proba = slsn_classifier(data, False)
     return pd.Series(proba)
@@ -70,14 +66,21 @@ def slsn_elasticc_no_md(
 @pandas_udf(DoubleType())
 @profile
 def slsn_elasticc_with_md(
-    diaObjectId, cmidPointTai, cpsFlux, cpsFluxErr, cfilterName,
-    ra, decl, hostgal_zphot, hostgal_zphot_err, hostgal_snsep
+    diaObjectId,
+    cmidPointTai,
+    cpsFlux,
+    cpsFluxErr,
+    cfilterName,
+    ra,
+    decl,
+    hostgal_zphot,
+    hostgal_zphot_err,
+    hostgal_snsep,
 ):
     """High level spark wrapper for the slsn classifier on ELASTiCC data
 
     Parameters
     ----------
-
     diaObjectId: Spark DataFrame Column
         Identification numbers of the objects
     cmidPoinTai: Spark DataFrame Column
@@ -103,21 +106,18 @@ def slsn_elasticc_with_md(
         ordered probabilities of being a slsn
         Return 0 if the minimum points number is not respected.
     """
-
-    data = pd.DataFrame(
-        {
-            "diaObjectId": diaObjectId,
-            "cmidPointTai": cmidPointTai,
-            "cpsFlux": cpsFlux,
-            "cpsFluxErr": cpsFluxErr,
-            "cfilterName": cfilterName,
-            "ra": ra,
-            "decl": decl,
-            "hostgal_zphot": hostgal_zphot,
-            "hostgal_zphot_err": hostgal_zphot_err,
-            "hostgal_snsep": hostgal_snsep,
-        }
-    )
+    data = pd.DataFrame({
+        "diaObjectId": diaObjectId,
+        "cmidPointTai": cmidPointTai,
+        "cpsFlux": cpsFlux,
+        "cpsFluxErr": cpsFluxErr,
+        "cfilterName": cfilterName,
+        "ra": ra,
+        "decl": decl,
+        "hostgal_zphot": hostgal_zphot,
+        "hostgal_zphot_err": hostgal_zphot_err,
+        "hostgal_snsep": hostgal_snsep,
+    })
 
     proba = slsn_classifier(data, True)
     return pd.Series(proba)

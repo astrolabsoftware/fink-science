@@ -102,8 +102,7 @@ def get_last_alert(
 
 
 def return_last_alerts(*args) -> list:
-    """
-    see get_last_alert documentation
+    """See get_last_alert documentation
 
     Returns
     -------
@@ -246,11 +245,13 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
 
     epsilon_0 = np.finfo(float).eps
     if current_mag_sample[:, idx_valid_data].shape[1] != 0:
-        current_mag_sample[:, idx_valid_data] += np.abs(np.min(current_mag_sample[:, idx_valid_data]))
+        current_mag_sample[:, idx_valid_data] += np.abs(
+            np.min(current_mag_sample[:, idx_valid_data])
+        )
     current_mag_sample[:, idx_valid_data] = np.where(
         current_mag_sample[:, idx_valid_data] == 0,
         epsilon_0,
-        current_mag_sample[:, idx_valid_data]
+        current_mag_sample[:, idx_valid_data],
     )
 
     if last_mag_sample.shape[1] != 0:
@@ -284,25 +285,23 @@ def fast_transient_rate(df: pd.DataFrame, N: int, seed: int = None) -> pd.DataFr
     upper_rate[idx_last_upper] = np.percentile(sample_rate_upper, 95.0, axis=1)
 
     return pd.DataFrame(
-        np.array(
-            [
-                tmp_last[:, -1],
-                jdstarthist_dt,
-                res_rate,
-                res_sigmarate,
-                lower_rate,
-                upper_rate,
-                dt,
-                (~mask_finite_mag) & mask_finite_upper,
-            ]
-        ).T,
+        np.array([
+            tmp_last[:, -1],
+            jdstarthist_dt,
+            res_rate,
+            res_sigmarate,
+            lower_rate,
+            upper_rate,
+            dt,
+            (~mask_finite_mag) & mask_finite_upper,
+        ]).T,
         columns=list(rate_module_output_schema.keys()),
     )
 
 
-ft_schema = StructType(
-    [StructField(k, v, True) for k, v in rate_module_output_schema.items()]
-)
+ft_schema = StructType([
+    StructField(k, v, True) for k, v in rate_module_output_schema.items()
+])
 
 
 @pandas_udf(ft_schema)
@@ -354,31 +353,26 @@ def magnitude_rate(
     ------
     see fast_transient_rate documentation
 
-    Examples
-    --------
-
     """
-    pdf = pd.DataFrame(
-        {
-            "magpsf": magpsf,
-            "sigmapsf": sigmapsf,
-            "jd": jd,
-            "jdstarthist": jdstarthist,
-            "fid": fid,
-            "cmagpsf": cmagpsf,
-            "csigmapsf": csigmapsf,
-            "cdiffmaglim": cdiffmaglim,
-            "cjd": cjd,
-            "cfid": cfid,
-        }
-    )
+    pdf = pd.DataFrame({
+        "magpsf": magpsf,
+        "sigmapsf": sigmapsf,
+        "jd": jd,
+        "jdstarthist": jdstarthist,
+        "fid": fid,
+        "cmagpsf": cmagpsf,
+        "csigmapsf": csigmapsf,
+        "cdiffmaglim": cdiffmaglim,
+        "cjd": cjd,
+        "cfid": cfid,
+    })
 
-    return fast_transient_rate(pdf, N.values[0], seed.values[0])
+    return fast_transient_rate(pdf, N.to_numpy()[0], seed.to_numpy()[0])
 
 
 def fast_transient_module(spark_df, N, seed=None):
     """
-    wrapper function to easily call the fast transient module
+    Wrapper function to easily call the fast transient module
 
     Parameters
     ----------
@@ -446,7 +440,8 @@ def fast_transient_module(spark_df, N, seed=None):
     )
 
     return df_ft.select(
-        cols_before + [df_ft["ft_module"][k].alias(k) for k in rate_module_output_schema.keys()]
+        cols_before
+        + [df_ft["ft_module"][k].alias(k) for k in rate_module_output_schema.keys()]
     )
 
 
@@ -458,7 +453,9 @@ if __name__ == "__main__":
     ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    ztf_alert_with_i_band = (
+        "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
+    )
     globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite

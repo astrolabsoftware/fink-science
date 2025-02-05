@@ -26,8 +26,9 @@ from skimage.measure import label
 from skimage.measure import regionprops_table
 from skimage.segmentation import chan_vese
 
+
 def is_neg(img):
-    """ Test if an image contains negative values
+    """Test if an image contains negative values
 
     Parameters
     ----------
@@ -51,8 +52,9 @@ def is_neg(img):
     """
     return not np.all(np.greater_equal(img, 0))
 
+
 def peak_snr(img):
-    """ Estimate the noise level of an image
+    """Estimate the noise level of an image
 
     NB: The noise level threshold for the image classification is set to 3.5
 
@@ -77,8 +79,12 @@ def peak_snr(img):
     """
     return np.max(img) / np.mean(img)
 
+
 def img_labelisation(stamp, noise_threshold=3.5):
-    """ Perform image classification based on their visual content.
+    """Perform image classification based on their visual content.
+
+    Notes
+    -----
     Two final labels available for images which are not noisy and not corrupted.
     Star label means this image contains only ponctual objects.
     Extend label means this image contains at least one extend object.
@@ -123,8 +129,10 @@ def img_labelisation(stamp, noise_threshold=3.5):
     >>> img_labelisation(example_byte_array)
     'safe_clear_extend'
     """
-    with gzip.open(io.BytesIO(stamp), 'rb') as fits_file:
-        with fits.open(io.BytesIO(fits_file.read()), ignore_missing_simple=True) as hdul:
+    with gzip.open(io.BytesIO(stamp), "rb") as fits_file:
+        with fits.open(
+            io.BytesIO(fits_file.read()), ignore_missing_simple=True
+        ) as hdul:
             img = hdul[0].data[::-1]
 
             label_img = ""
@@ -159,13 +167,14 @@ def img_labelisation(stamp, noise_threshold=3.5):
                 labeled_img = label(thresh_img, connectivity=1).astype(np.byte)
 
                 # define the properties that we want to compute on the segmented part of the image
-                properties = ('label', 'perimeter')
-                region_props = regionprops_table(labeled_img, intensity_image=img, properties=properties)
+                properties = ("label", "perimeter")
+                region_props = regionprops_table(
+                    labeled_img, intensity_image=img, properties=properties
+                )
                 region_df = pd.DataFrame(region_props)
 
-                object_max_size = list(region_df['perimeter'])
+                object_max_size = list(region_df["perimeter"])
                 if len(object_max_size) > 0:
-
                     # get the object of maximal size in the segmented image
                     object_max_size = np.max(object_max_size)
 
@@ -179,28 +188,41 @@ def img_labelisation(stamp, noise_threshold=3.5):
                         # then a median filter is applied to reduce some noise
                         norm_img = median(norm_img)
                         # and finally the image contrast is enhanced by an histogram equalization method
-                        norm_img = equalize_adapthist(norm_img, clip_limit=0.01, nbins=512)
+                        norm_img = equalize_adapthist(
+                            norm_img, clip_limit=0.01, nbins=512
+                        )
 
                         # the enhanced image is then processed by the chan vese algorithm.
                         # the image is segmented between high intensity region and low intensity region.
                         # source: https://arxiv.org/abs/1107.2782
-                        cv = chan_vese(norm_img, mu=0, lambda1=1, lambda2=2, tol=1e-9, max_num_iter=600,
-                                       dt=100, init_level_set="checkerboard").astype(bool)
+                        cv = chan_vese(
+                            norm_img,
+                            mu=0,
+                            lambda1=1,
+                            lambda2=2,
+                            tol=1e-9,
+                            max_num_iter=600,
+                            dt=100,
+                            init_level_set="checkerboard",
+                        ).astype(bool)
 
                         # the segmented region is then labeled in order to compute some information
                         labeled_img_cv = label(cv, connectivity=1).astype(np.byte)
                         # the properties computed are the same as the first part but the area is added. It is just a properties
                         # that return the number of pixels of the region.
-                        properties = ('label', 'area', 'perimeter')
-                        region_props_cv = regionprops_table(labeled_img_cv, intensity_image=img, properties=properties)
+                        properties = ("label", "area", "perimeter")
+                        region_props_cv = regionprops_table(
+                            labeled_img_cv, intensity_image=img, properties=properties
+                        )
                         region_df_chan_vese = pd.DataFrame(region_props_cv)
                         # a small filter remove the regions with only one pixels. we assume that one pixel area are just noise.
-                        zero_filter = region_df_chan_vese[region_df_chan_vese['area'] != 1]
+                        zero_filter = region_df_chan_vese[
+                            region_df_chan_vese["area"] != 1
+                        ]
 
-                        object_size = list(zero_filter['perimeter'])
+                        object_size = list(zero_filter["perimeter"])
 
                         if len(object_size) > 0:
-
                             object_max_size = np.max(object_size)
 
                             # a new higher threshold is used because median filtering and histogram equalization tend to

@@ -33,11 +33,13 @@ from kndetect.features import extract_features_all_lightcurves, get_feature_name
 
 from fink_science.tester import spark_unit_tests
 
+
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
-def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_name=None) -> pd.Series:
-    """ Return the probability of an alert to be a Kilonova using a Random
-    Forest Classifier.
+def knscore(
+    jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_name=None
+) -> pd.Series:
+    """Return the probability of an alert to be a Kilonova using a Random Forest Classifier.
 
     You need to run the SIMBAD crossmatch before.
 
@@ -61,12 +63,12 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
         deault is "partial.pkl" (model trained for complete light curves)
 
     Returns
-    ----------
+    -------
     probabilities: 1D np.array of float
         Probability between 0 (non-KNe) and 1 (KNe).
 
     Examples
-    ----------
+    --------
     >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
@@ -133,7 +135,7 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
     # Flag empty alerts
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) > 1
 
-    mask *= (ndethist.astype(int) <= 20)
+    mask *= ndethist.astype(int) <= 20
 
     mask *= jd.apply(lambda x: float(x[-1])) - jdstarthist.astype(float) < 20
 
@@ -144,43 +146,41 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     # add an exploded column with SNID
-    df_tmp = pd.DataFrame.from_dict(
-        {
-            'jd': jd[mask],
-            'SNID': range(len(jd[mask]))
-        }
-    )
-    df_tmp = df_tmp.explode('jd')
+    df_tmp = pd.DataFrame.from_dict({"jd": jd[mask], "SNID": range(len(jd[mask]))})
+    df_tmp = df_tmp.explode("jd")
 
     # compute flux and flux error
-    data = [mag2fluxcal_snana(*args) for args in zip(
-        magpsf[mask].explode(),
-        sigmapsf[mask].explode())]
+    data = [
+        mag2fluxcal_snana(*args)
+        for args in zip(magpsf[mask].explode(), sigmapsf[mask].explode())
+    ]
     flux, error = np.transpose(data)
 
     # make a Pandas DataFrame with exploded series
     pdf = pd.DataFrame.from_dict({
-        'SNID': df_tmp['SNID'],
-        'MJD': df_tmp['jd'],
-        'FLUXCAL': flux,
-        'FLUXCALERR': error,
-        'FLT': fid[mask].explode().replace({1: 'g', 2: 'r'})
+        "SNID": df_tmp["SNID"],
+        "MJD": df_tmp["jd"],
+        "FLUXCAL": flux,
+        "FLUXCALERR": error,
+        "FLT": fid[mask].explode().replace({1: "g", 2: "r"}),
     })
 
     # Load pre-trained model
     if model_name is None:
         model = load_classifier("partial.pkl")
     else:
-        model = load_classifier(model_name.values[0])
+        model = load_classifier(model_name.to_numpy()[0])
 
     # Load pcs
     pcs = load_pcs()
 
     # define filters
-    filters = ['g', 'r']
+    filters = ["g", "r"]
 
     # extract features (all filters) for each SNID
-    features_df = extract_features_all_lightcurves(pdf, key="SNID", pcs=pcs, filters=filters)
+    features_df = extract_features_all_lightcurves(
+        pdf, key="SNID", pcs=pcs, filters=filters
+    )
 
     # make predictions
     # If coefficients in any band in zero, the event is predicted as non-KN by default
@@ -192,11 +192,11 @@ def knscore(jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_n
 
     return pd.Series(to_return)
 
+
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
-    """ Extract features used by the Kilonova classifier (using a Random
-    Forest Classifier).
+    """Extract features used by the Kilonova classifier (using a Random Forest Classifier).
 
     Parameters
     ----------
@@ -208,12 +208,12 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
         Magnitude from PSF-fit photometry, and 1-sigma error
 
     Returns
-    ----------
+    -------
     out: str
         comma separated features
 
     Examples
-    ----------
+    --------
     >>> from pyspark.sql.functions import split
     >>> from pyspark.sql.types import FloatType
     >>> from fink_utils.spark.utils import concat_col
@@ -253,48 +253,43 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
         return pd.Series(np.zeros(len(jd), dtype=float))
 
     # add an exploded column with SNID
-    df_tmp = pd.DataFrame.from_dict(
-        {
-            'jd': jd[mask],
-            'SNID': range(len(jd[mask]))
-        }
-    )
-    df_tmp = df_tmp.explode('jd')
+    df_tmp = pd.DataFrame.from_dict({"jd": jd[mask], "SNID": range(len(jd[mask]))})
+    df_tmp = df_tmp.explode("jd")
 
     # compute flux and flux error
-    data = [mag2fluxcal_snana(*args) for args in zip(
-        magpsf[mask].explode(),
-        sigmapsf[mask].explode())]
+    data = [
+        mag2fluxcal_snana(*args)
+        for args in zip(magpsf[mask].explode(), sigmapsf[mask].explode())
+    ]
     flux, error = np.transpose(data)
 
     # make a Pandas DataFrame with exploded series
     pdf = pd.DataFrame.from_dict({
-        'SNID': df_tmp['SNID'],
-        'MJD': df_tmp['jd'],
-        'FLUXCAL': flux,
-        'FLUXCALERR': error,
-        'FLT': fid[mask].explode().replace({1: 'g', 2: 'r'})
+        "SNID": df_tmp["SNID"],
+        "MJD": df_tmp["jd"],
+        "FLUXCAL": flux,
+        "FLUXCALERR": error,
+        "FLT": fid[mask].explode().replace({1: "g", 2: "r"}),
     })
 
     # Load pcs
     pcs = load_pcs()
 
     # define filters
-    filters = ['g', 'r']
+    filters = ["g", "r"]
 
     # extract features (all filters) for each SNID
-    features_df = extract_features_all_lightcurves(pdf, key="SNID", pcs=pcs, filters=filters)
+    features_df = extract_features_all_lightcurves(
+        pdf, key="SNID", pcs=pcs, filters=filters
+    )
     feature_col_names = get_feature_names()
 
     # return features for all events
-    to_return_features = np.zeros(
-        (len(jd), len(feature_col_names)),
-        dtype=float
-    )
-    to_return_features[mask] = features_df[feature_col_names].values
+    to_return_features = np.zeros((len(jd), len(feature_col_names)), dtype=float)
+    to_return_features[mask] = features_df[feature_col_names].to_numpy()
 
     concatenated_features = [
-        ','.join(np.array(i, dtype=str)) for i in to_return_features
+        ",".join(np.array(i, dtype=str)) for i in to_return_features
     ]
 
     return pd.Series(concatenated_features)
@@ -306,13 +301,15 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    model_name = 'partial.pkl'
+    model_name = "partial.pkl"
     globs["model_name"] = model_name
 
-    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    ztf_alert_with_i_band = (
+        "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
+    )
     globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite

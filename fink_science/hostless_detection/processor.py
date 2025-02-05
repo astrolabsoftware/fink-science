@@ -1,9 +1,18 @@
-"""
-    Implementation of the paper:
-    ELEPHANT: ExtragaLactic alErt Pipeline for Hostless AstroNomical
-    Transients
-    https://arxiv.org/abs/2404.18165
-"""
+# Copyright 2024 AstroLab Software
+# Author: R. Durgesh
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Implementation of the paper: ELEPHANT: ExtragaLactic alErt Pipeline for Hostless AstroNomical Transients https://arxiv.org/abs/2404.18165"""
 
 from line_profiler import profile
 import os
@@ -25,11 +34,18 @@ CONFIGS = load_json("{}/config.json".format(current_directory))
 @pandas_udf(ArrayType(FloatType()))
 @profile
 def run_potential_hostless(
-        magpsf: pd.Series, cutoutScience: pd.Series,
-        cutoutTemplate: pd.Series, snn_snia_vs_nonia: pd.Series,
-        snn_sn_vs_all: pd.Series, rf_snia_vs_nonia: pd.Series,
-        rf_kn_vs_nonkn: pd.Series, finkclass: pd.Series, tnsclass: pd.Series,
-        deltat: pd.Series, roid: pd.Series) -> pd.Series:
+    magpsf: pd.Series,
+    cutoutScience: pd.Series,
+    cutoutTemplate: pd.Series,
+    snn_snia_vs_nonia: pd.Series,
+    snn_sn_vs_all: pd.Series,
+    rf_snia_vs_nonia: pd.Series,
+    rf_kn_vs_nonkn: pd.Series,
+    finkclass: pd.Series,
+    tnsclass: pd.Series,
+    deltat: pd.Series,
+    roid: pd.Series,
+) -> pd.Series:
     """
     Runs potential hostless candidate detection using
 
@@ -65,7 +81,7 @@ def run_potential_hostless(
         Each row contains one label.
 
     Returns
-    ----------
+    -------
     pd.Series
         Score for being hostless (float)
 
@@ -76,7 +92,7 @@ def run_potential_hostless(
         https://arxiv.org/abs/2404.18165
 
     Examples
-    ----------
+    --------
     >>> from pyspark.sql.functions import lit
     >>> from fink_filters.classification import extract_fink_classification
 
@@ -116,8 +132,7 @@ def run_potential_hostless(
     hostless_science_class = HostLessExtragalactic(CONFIGS)
 
     # compute length of the ligtcurves
-    number_of_alerts = magpsf.apply(
-        lambda x: np.sum(np.array(x) == np.array(x)))
+    number_of_alerts = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x)))
 
     # Init values
     kstest_results = []
@@ -136,12 +151,20 @@ def run_potential_hostless(
         c6 = abs(deltat[index]) <= CONFIGS["cutout_timeframe"]
         c7 = magpsf[index][-1] <= CONFIGS["cutout_magnitude"]
         c8 = roid[index] != 3
-        if ((c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5) and c6 and c7 and c8):
+        if (
+            (c0[index] or c1[index] or c2[index] or c3[index] or c4 or c5)
+            and c6
+            and c7
+            and c8
+        ):
             if number_of_alerts[index] >= CONFIGS["minimum_number_of_alerts"]:
                 science_stamp = cutoutScience[index]
                 template_stamp = cutoutTemplate[index]
-                kstest_science, kstest_template = hostless_science_class.process_candidate_fink(
-                    science_stamp, template_stamp)
+                kstest_science, kstest_template = (
+                    hostless_science_class.process_candidate_fink(
+                        science_stamp, template_stamp
+                    )
+                )
                 kstest_results.append([kstest_science, kstest_template])
             else:
                 kstest_results.append([default_result, default_result])
@@ -153,6 +176,8 @@ def run_potential_hostless(
 if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
-    sample_file = './fink_science/data/alerts/hostless_detection/part-0-0-435829.parquet'
+    sample_file = (
+        "./fink_science/data/alerts/hostless_detection/part-0-0-435829.parquet"
+    )
     globs["sample_file"] = sample_file
     spark_unit_tests(globs)
