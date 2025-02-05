@@ -26,9 +26,9 @@ jobs:
         pip install ruff
     - name: utilities
       run: |
-        ruff check --preview --statitics fink_science/*.py
+        ruff check --preview --statistics fink_science/*.py
         ruff format --preview --check fink_science/*.py
     - name: Science modules
       run: |
-        ruff check --preview --statitics fink_science/*/*.py
+        ruff check --preview --statistics fink_science/*/*.py
         ruff format --preview --check fink_science/*/*.py
