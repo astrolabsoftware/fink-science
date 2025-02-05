@@ -30,10 +30,8 @@ RELEASE = 22
 @pandas_udf(MapType(StringType(), FloatType()))
 @profile
 def quiescent_state(
-        candid: pd.Series,
-        objectId: pd.Series,
-        cstd_flux: pd.Series,
-        cjd: pd.Series) -> pd.Series:
+    candid: pd.Series, objectId: pd.Series, cstd_flux: pd.Series, cjd: pd.Series
+) -> pd.Series:
     """Returns an array containing:
             The mean over threshold ratio of the last but one alert
             The mean over threshold ratio of the last alert
@@ -127,32 +125,28 @@ def quiescent_state(
     """
 
     path = os.path.dirname(os.path.abspath(__file__))
-    CTAO_PATH = os.path.join(path, 'data/catalogs')
-    CTAO_filename = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
+    CTAO_PATH = os.path.join(path, "data/catalogs")
+    CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(RELEASE)
     CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
 
-    pdf = pd.DataFrame(
-        {
-            "candid": candid,
-            "objectId": objectId,
-            "cstd_flux": cstd_flux,
-            "cjd": cjd
-        }
-    )
+    pdf = pd.DataFrame({
+        "candid": candid,
+        "objectId": objectId,
+        "cstd_flux": cstd_flux,
+        "cjd": cjd,
+    })
     out = []
     for candid_ in pdf["candid"]:
         tmp = pdf[pdf["candid"] == candid_]
         if len(tmp["cstd_flux"].to_numpy()[0]) == 0:
             out.append({k: -1 for k in BLAZAR_COLS})
             continue
-        sub = pd.DataFrame(
-            {
-                "candid": tmp["candid"].to_numpy()[0],
-                "objectId": tmp["objectId"].to_numpy()[0],
-                "cstd_flux": tmp["cstd_flux"].to_numpy()[0],
-                "cjd": tmp["cjd"].to_numpy()[0],
-            }
-        )
+        sub = pd.DataFrame({
+            "candid": tmp["candid"].to_numpy()[0],
+            "objectId": tmp["objectId"].to_numpy()[0],
+            "cstd_flux": tmp["cstd_flux"].to_numpy()[0],
+            "cjd": tmp["cjd"].to_numpy()[0],
+        })
         dic = {k: v for k, v in zip(BLAZAR_COLS, quiescent_state_(sub, CTAO_blazar))}
         out.append(dic)
 
@@ -163,8 +157,8 @@ if __name__ == "__main__":
     """Execute the test suite"""
 
     globs = globals()
-    path = os.path.join(os.path.dirname(__file__), 'data/alerts')
-    filename = 'CTAO_blazar_datatest_v20-12-24.parquet'
+    path = os.path.join(os.path.dirname(__file__), "data/alerts")
+    filename = "CTAO_blazar_datatest_v20-12-24.parquet"
     ztf_alert_sample = "file://{}/{}".format(path, filename)
     globs["ztf_alert_sample"] = ztf_alert_sample
 

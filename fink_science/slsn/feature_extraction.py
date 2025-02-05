@@ -115,30 +115,28 @@ def parametrise(transformed, metadata, target_col=""):
     warnings.filterwarnings("ignore", category=rainbow_warnings.ExperimentalWarning)
     rainbow_features = transformed.apply(apply_rainbow, axis=1)
 
-    for idx, name in enumerate(
-        [
-            "reference_time",
-            "rise_time",
-            "amplitude",
-            "Tmin",
-            "Tmax",
-            "t_color",
-            "fit_error",
-        ]
-    ):
+    for idx, name in enumerate([
+        "reference_time",
+        "rise_time",
+        "amplitude",
+        "Tmin",
+        "Tmax",
+        "t_color",
+        "fit_error",
+    ]):
         df_parameters[name] = [i[idx] for i in rainbow_features]
 
     for idx, band in enumerate(k.PASSBANDS):
         masks = transformed["cfilterName"].apply(lambda x: x == band)
 
-        single_band_flux = pd.Series(
-            [k[masks.iloc[idx2]] for idx2, k in enumerate(transformed["cpsFlux"])]
-        )
+        single_band_flux = pd.Series([
+            k[masks.iloc[idx2]] for idx2, k in enumerate(transformed["cpsFlux"])
+        ])
         std = single_band_flux.apply(base.compute_std)
 
-        single_band_snr = pd.Series(
-            [k[masks.iloc[idx2]] for idx2, k in enumerate(transformed["snr"])]
-        )
+        single_band_snr = pd.Series([
+            k[masks.iloc[idx2]] for idx2, k in enumerate(transformed["snr"])
+        ])
         mean_snr = single_band_snr.apply(base.compute_mean)
 
         df_parameters[f"std_{band}"] = list(std)
@@ -158,6 +156,7 @@ def parametrise(transformed, metadata, target_col=""):
         df_parameters[target_col] = targets
 
     return df_parameters
+
 
 @profile
 def apply_rainbow(pds):

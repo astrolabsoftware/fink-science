@@ -19,10 +19,11 @@ import numpy as np
 
 from LIA import extract_features
 
-LIA_FEATURE_NAMES = ['f{}_{}'.format(j, i) for i in ['g', 'r'] for j in range(47)]
+LIA_FEATURE_NAMES = ["f{}_{}".format(j, i) for i in ["g", "r"] for j in range(47)]
+
 
 def _extract(mag, magerr):
-    """ Extract features used by LIA classifier
+    """Extract features used by LIA classifier
 
     Parameters
     ----------
@@ -37,12 +38,13 @@ def _extract(mag, magerr):
         String containing all the features for one band
     """
     stat_array = extract_features.extract_all(mag, magerr, convert=True)
-    out = ','.join(np.array(stat_array, dtype=str))
+    out = ",".join(np.array(stat_array, dtype=str))
 
     return out
 
+
 def load_external_model(model_path):
-    """ Unpickle pre-loaded models from LIA.
+    """Unpickle pre-loaded models from LIA.
 
     Procedure to train the models can be found at:
     https://github.com/tblaineau/ZTF_mulens_simulator
@@ -56,6 +58,6 @@ def load_external_model(model_path):
     ----------
     rf, pca: RandomForestClassifiers
     """
-    rf = pickle.load(open(os.path.join(model_path, 'rf.sav'), 'rb'))
-    pca = pickle.load(open(os.path.join(model_path, 'pca.sav'), 'rb'))
+    rf = pickle.load(open(os.path.join(model_path, "rf.sav"), "rb"))
+    pca = pickle.load(open(os.path.join(model_path, "pca.sav"), "rb"))
     return rf, pca

@@ -35,18 +35,20 @@ from fink_science.t2.utilities import T2_COLS
 
 from fink_science.tester import spark_unit_tests
 
+
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def maxclass(dic):
-    """ Extract t-he class with max probability
-    """
+    """Extract t-he class with max probability"""
     max_class_series = dic.apply(lambda x: extract_maxclass(x))
     return max_class_series
 
 
 @pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
 @profile
-def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name=None) -> pd.Series:
-    """ Return vector of probabilities from T2
+def t2(
+    candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name=None
+) -> pd.Series:
+    """Return vector of probabilities from T2
 
     Parameters
     ----------
@@ -127,17 +129,16 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
     dates = jd.apply(lambda x: [x[0] - i for i in x])
 
     pdf = format_data_as_snana(
-        dates, magpsf, sigmapsf, fid, candid, mask,
-        filter_conversion_dic=ZTF_FILTER_MAP
+        dates, magpsf, sigmapsf, fid, candid, mask, filter_conversion_dic=ZTF_FILTER_MAP
     )
 
     pdf = pdf.rename(
         columns={
-            'SNID': 'object_id',
-            'MJD': 'mjd',
-            'FLUXCAL': 'flux',
-            'FLUXCALERR': 'flux_error',
-            'FLT': 'filter'
+            "SNID": "object_id",
+            "MJD": "mjd",
+            "FLUXCAL": "flux",
+            "FLUXCALERR": "flux_error",
+            "FLT": "filter",
         }
     )
 
@@ -153,12 +154,11 @@ def t2(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_na
 
     vals = []
     for candid_ in candid[mask].values:
-
         # one object at a time
-        sub = pdf[pdf['object_id'] == candid_]
+        sub = pdf[pdf["object_id"] == candid_]
 
         # Need all filters
-        if len(np.unique(sub['filter'])) != 2:
+        if len(np.unique(sub["filter"])) != 2:
             vals.append(default)
             continue
 
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite

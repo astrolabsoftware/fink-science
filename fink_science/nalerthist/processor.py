@@ -24,9 +24,10 @@ from fink_science import __file__
 
 from fink_science.tester import spark_unit_tests
 
+
 @pandas_udf(IntegerType(), PandasUDFType.SCALAR)
 def nalerthist(magpsf) -> pd.Series:
-    """ Compute the number of detections contained in the alert (current+history)
+    """Compute the number of detections contained in the alert (current+history)
     Upper limits are not counted.
 
     Parameters
@@ -69,7 +70,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
     # Run the test suite

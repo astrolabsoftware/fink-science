@@ -30,16 +30,18 @@ RELEASE = 22
 
 @pandas_udf(MapType(StringType(), ArrayType(DoubleType())))
 @profile
-def standardized_flux(candid: pd.Series,
-                      objectId: pd.Series,
-                      cdistnr: pd.Series,
-                      cmagpsf: pd.Series,
-                      csigmapsf: pd.Series,
-                      cmagnr: pd.Series,
-                      csigmagnr: pd.Series,
-                      cisdiffpos: pd.Series,
-                      cfid: pd.Series,
-                      cjd: pd.Series) -> pd.Series:
+def standardized_flux(
+    candid: pd.Series,
+    objectId: pd.Series,
+    cdistnr: pd.Series,
+    cmagpsf: pd.Series,
+    csigmapsf: pd.Series,
+    cmagnr: pd.Series,
+    csigmagnr: pd.Series,
+    cisdiffpos: pd.Series,
+    cfid: pd.Series,
+    cjd: pd.Series,
+) -> pd.Series:
     """Calls the standardized_flux_ function
        for the distributed Spark Pandas UDF environment
 
@@ -138,43 +140,39 @@ def standardized_flux(candid: pd.Series,
     """
 
     path = os.path.dirname(os.path.abspath(__file__))
-    CTAO_PATH = os.path.join(path, 'data/catalogs')
-    CTAO_filename = 'CTAO_blazars_ztf_dr{}.parquet'.format(RELEASE)
+    CTAO_PATH = os.path.join(path, "data/catalogs")
+    CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(RELEASE)
     CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
 
-    pdf = pd.DataFrame(
-        {
-            "candid": candid,
-            "objectId": objectId,
-            "cdistnr": cdistnr,
-            "cmagpsf": cmagpsf,
-            "csigmapsf": csigmapsf,
-            "cmagnr": cmagnr,
-            "csigmagnr": csigmagnr,
-            "cisdiffpos": cisdiffpos,
-            "cfid": cfid,
-            "cjd": cjd
-        }
-    )
+    pdf = pd.DataFrame({
+        "candid": candid,
+        "objectId": objectId,
+        "cdistnr": cdistnr,
+        "cmagpsf": cmagpsf,
+        "csigmapsf": csigmapsf,
+        "cmagnr": cmagnr,
+        "csigmagnr": csigmagnr,
+        "cisdiffpos": cisdiffpos,
+        "cfid": cfid,
+        "cjd": cjd,
+    })
     out = []
     for candid_ in pdf["candid"]:
         tmp = pdf[pdf["candid"] == candid_]
-        sub = pd.DataFrame(
-            {
-                "candid": tmp["candid"].to_numpy()[0],
-                "objectId": tmp["objectId"].to_numpy()[0],
-                "cdistnr": tmp["cdistnr"].to_numpy()[0],
-                "cmagpsf": tmp["cmagpsf"].to_numpy()[0],
-                "csigmapsf": tmp["csigmapsf"].to_numpy()[0],
-                "cmagnr": tmp["cmagnr"].to_numpy()[0],
-                "csigmagnr": tmp["csigmagnr"].to_numpy()[0],
-                "cisdiffpos": tmp["cisdiffpos"].to_numpy()[0],
-                "cfid": tmp["cfid"].to_numpy()[0],
-                "cjd": tmp["cjd"].to_numpy()[0],
-            }
-        )
+        sub = pd.DataFrame({
+            "candid": tmp["candid"].to_numpy()[0],
+            "objectId": tmp["objectId"].to_numpy()[0],
+            "cdistnr": tmp["cdistnr"].to_numpy()[0],
+            "cmagpsf": tmp["cmagpsf"].to_numpy()[0],
+            "csigmapsf": tmp["csigmapsf"].to_numpy()[0],
+            "cmagnr": tmp["cmagnr"].to_numpy()[0],
+            "csigmagnr": tmp["csigmagnr"].to_numpy()[0],
+            "cisdiffpos": tmp["cisdiffpos"].to_numpy()[0],
+            "cfid": tmp["cfid"].to_numpy()[0],
+            "cjd": tmp["cjd"].to_numpy()[0],
+        })
         std_flux = standardized_flux_(sub, CTAO_blazar)
-        out.append({'flux': std_flux[0], 'sigma': std_flux[1]})
+        out.append({"flux": std_flux[0], "sigma": std_flux[1]})
 
     return pd.Series(out)
 
@@ -183,8 +181,8 @@ if __name__ == "__main__":
     """Execute the test suite"""
 
     globs = globals()
-    path = os.path.join(os.path.dirname(__file__), 'data/alerts')
-    filename = 'CTAO_blazar_datatest_v20-12-24.parquet'
+    path = os.path.join(os.path.dirname(__file__), "data/alerts")
+    filename = "CTAO_blazar_datatest_v20-12-24.parquet"
     ztf_alert_sample = "file://{}/{}".format(path, filename)
     globs["ztf_alert_sample"] = ztf_alert_sample
 

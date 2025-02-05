@@ -30,15 +30,27 @@ from pyspark.sql.functions import pandas_udf
 logger = logging.getLogger(__name__)
 
 MODEL_COLUMNS = [
-    'amplitude', 'anderson_darling_normal', 'beyond_1_std', 'chi2', 'cusum',
-    'kurtosis', 'linear_fit_slope', 'linear_fit_slope_sigma',
-    'linear_trend_noise', 'linear_trend_sigma',
-    'magnitude_percentage_ratio_20_10', 'magnitude_percentage_ratio_40_5',
-    'maximum_slope', 'median', 'median_absolute_deviation',
-    'median_buffer_range_percentage_10', 'skew', 'stetson_K',
+    "amplitude",
+    "anderson_darling_normal",
+    "beyond_1_std",
+    "chi2",
+    "cusum",
+    "kurtosis",
+    "linear_fit_slope",
+    "linear_fit_slope_sigma",
+    "linear_trend_noise",
+    "linear_trend_sigma",
+    "magnitude_percentage_ratio_20_10",
+    "magnitude_percentage_ratio_40_5",
+    "maximum_slope",
+    "median",
+    "median_absolute_deviation",
+    "median_buffer_range_percentage_10",
+    "skew",
+    "stetson_K",
 ]
 
-ANOMALY_MODELS = ['_beta', '_anais', '_emille', '_julien', '_maria'] # noqa
+ANOMALY_MODELS = ["_beta", "_anais", "_emille", "_julien", "_maria"]  # noqa
 
 
 class TwoBandModel:
@@ -118,7 +130,9 @@ def anomaly_score(lc_features, model=None):
 
     def get_key(x, band):
         if (
-            len(x) != 2 or x is None or any(
+            len(x) != 2
+            or x is None
+            or any(
                 map(  # noqa: W503
                     lambda fs: (fs is None or len(fs) == 0), x.values()
                 )
@@ -133,8 +147,12 @@ def anomaly_score(lc_features, model=None):
     path = os.path.dirname(os.path.abspath(__file__))
     model_path = f"{path}/data/models/anomaly_detection"
 
-    r_means = pd.read_csv(f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True)
-    g_means = pd.read_csv(f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True)
+    r_means = pd.read_csv(
+        f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True
+    )
+    g_means = pd.read_csv(
+        f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True
+    )
     data_r = lc_features.apply(lambda x: get_key(x, 1))[MODEL_COLUMNS]
     data_g = lc_features.apply(lambda x: get_key(x, 2))[MODEL_COLUMNS]
 
@@ -144,7 +162,7 @@ def anomaly_score(lc_features, model=None):
     if model is not None:
         model = model.values[0]
     else:
-        model = ''
+        model = ""
 
     for col in data_r.columns[data_r.isna().any()]:
         data_r[col].fillna(r_means[col], inplace=True)
@@ -156,20 +174,26 @@ def anomaly_score(lc_features, model=None):
     r_model_path_AAD = f"{model_path}/forest_r_AAD{model}.onnx"
     if not (os.path.exists(r_model_path_AAD) and os.path.exists(g_model_path_AAD)):
         # unzip in a tmp place
-        tmp_path = '/tmp'
+        tmp_path = "/tmp"
         g_model_path_AAD = f"{tmp_path}/forest_g_AAD{model}.onnx"
         r_model_path_AAD = f"{tmp_path}/forest_r_AAD{model}.onnx"
         # check it does not exist to avoid concurrent write
         if not (os.path.exists(g_model_path_AAD) and os.path.exists(r_model_path_AAD)):
-            with zipfile.ZipFile(f"{model_path}/anomaly_detection_forest_AAD{model}.zip", 'r') as zip_ref:
+            with zipfile.ZipFile(
+                f"{model_path}/anomaly_detection_forest_AAD{model}.zip", "r"
+            ) as zip_ref:
                 zip_ref.extractall(tmp_path)
 
     forest_r_AAD = rt.InferenceSession(r_model_path_AAD)
     forest_g_AAD = rt.InferenceSession(g_model_path_AAD)
 
     # load the mean values used to replace Nan values from the features extraction
-    r_means = pd.read_csv(f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True)
-    g_means = pd.read_csv(f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True)
+    r_means = pd.read_csv(
+        f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True
+    )
+    g_means = pd.read_csv(
+        f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True
+    )
 
     model_AAD = TwoBandModel(forest_g_AAD, forest_r_AAD)
 
@@ -184,10 +208,12 @@ if __name__ == "__main__":
     globs = globals()
 
     path = os.path.dirname(os.path.abspath(__file__))
-    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    ztf_alert_with_i_band = (
+        "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
+    )
     globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite

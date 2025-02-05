@@ -36,16 +36,24 @@ from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 from fink_science.tester import spark_unit_tests
 
 RAINBOW_FEATURES_NAMES = [
-    "amplitude", "rise_time",
-    "Tmin", "delta_T", "k_sig",
-    "reduced_chi2", "lc_max"
+    "amplitude",
+    "rise_time",
+    "Tmin",
+    "delta_T",
+    "k_sig",
+    "reduced_chi2",
+    "lc_max",
 ]
 
 
 def apply_selection_cuts_ztf(
-        magpsf: pd.Series, ndethist: pd.Series, cdsxmatch: pd.Series,
-        minpoints: int = 4, maxndethist: int = 20) -> pd.Series:
-    """ Apply selection cuts to keep only alerts of interest
+    magpsf: pd.Series,
+    ndethist: pd.Series,
+    cdsxmatch: pd.Series,
+    minpoints: int = 4,
+    maxndethist: int = 20,
+) -> pd.Series:
+    """Apply selection cuts to keep only alerts of interest
     for early SN Ia analysis
 
     Parameters
@@ -70,7 +78,7 @@ def apply_selection_cuts_ztf(
     mask = magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) >= minpoints
 
     # only alerts with less or equal than 20 measurements
-    mask *= (ndethist.astype(int) <= maxndethist)
+    mask *= ndethist.astype(int) <= maxndethist
 
     # reject galactic objects
     list_of_sn_host = return_list_of_eg_host()
@@ -78,15 +86,22 @@ def apply_selection_cuts_ztf(
 
     return mask
 
+
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_sigmoid_full(
-        jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist,
-        min_rising_points=pd.Series([2]),
-        min_data_points=pd.Series([4]),
-        rising_criteria=pd.Series(['ewma']),
-        model=None) -> pd.Series:
-    """ Return the probability of an alert to be a SNe Ia using a Random
+    jd,
+    fid,
+    magpsf,
+    sigmapsf,
+    cdsxmatch,
+    ndethist,
+    min_rising_points=pd.Series([2]),
+    min_data_points=pd.Series([4]),
+    rising_criteria=pd.Series(["ewma"]),
+    model=None,
+) -> pd.Series:
+    """Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (sigmoid fit).
 
     You need to run the SIMBAD crossmatch before.
@@ -212,18 +227,18 @@ def rfscore_sigmoid_full(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/default-model_sigmoid.obj'
+        model = curdir + "/data/models/default-model_sigmoid.obj"
         clf = load_scikit_model(model)
 
     test_features = []
     flag = []
-    for id in np.unique(pdf['SNID']):
-        pdf_sub = pdf[pdf['SNID'] == id]
+    for id in np.unique(pdf["SNID"]):
+        pdf_sub = pdf[pdf["SNID"] == id]
         features = get_sigmoid_features_dev(
             pdf_sub,
             min_rising_points=min_rising_points.values[0],
             min_data_points=min_data_points.values[0],
-            rising_criteria=rising_criteria.values[0]
+            rising_criteria=rising_criteria.values[0],
         )
         if (features[0] == 0) or (features[6] == 0):
             flag.append(False)
@@ -246,14 +261,21 @@ def rfscore_sigmoid_full(
 
     return pd.Series(to_return)
 
+
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def extract_features_rf_snia(
-        jd, fid, magpsf, sigmapsf, cdsxmatch, ndethist,
-        min_rising_points=pd.Series([2]),
-        min_data_points=pd.Series([4]),
-        rising_criteria=pd.Series(['ewma'])) -> pd.Series:
-    """ Return the features used by the RF classifier.
+    jd,
+    fid,
+    magpsf,
+    sigmapsf,
+    cdsxmatch,
+    ndethist,
+    min_rising_points=pd.Series([2]),
+    min_data_points=pd.Series([4]),
+    rising_criteria=pd.Series(["ewma"]),
+) -> pd.Series:
+    """Return the features used by the RF classifier.
 
     There are 12 features. Order is:
     a_g,b_g,c_g,snratio_g,chisq_g,nrise_g,
@@ -323,13 +345,13 @@ def extract_features_rf_snia(
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     test_features = []
-    for id in np.unique(pdf['SNID']):
-        pdf_sub = pdf[pdf['SNID'] == id]
+    for id in np.unique(pdf["SNID"]):
+        pdf_sub = pdf[pdf["SNID"] == id]
         features = get_sigmoid_features_dev(
             pdf_sub,
             min_rising_points=min_rising_points.values[0],
             min_data_points=min_data_points.values[0],
-            rising_criteria=rising_criteria.values[0]
+            rising_criteria=rising_criteria.values[0],
         )
         test_features.append(features)
 
@@ -337,18 +359,30 @@ def extract_features_rf_snia(
     to_return_features[mask] = test_features
 
     concatenated_features = [
-        ','.join(np.array(i, dtype=str)) for i in to_return_features
+        ",".join(np.array(i, dtype=str)) for i in to_return_features
     ]
 
     return pd.Series(concatenated_features)
 
+
 def extract_features_rainbow(
-        midPointTai, filterName, cpsFlux, cpsFluxErr,
-        band_wave_aa={'u': 3671.0, 'g': 4827.0, 'r': 6223.0, 'i': 7546.0, 'z': 8691.0, 'Y': 9712.0},
-        with_baseline=False,
-        min_data_points=7,
-        low_bound=-10) -> pd.Series:
-    """ Return the features used by the RF classifier for one alert.
+    midPointTai,
+    filterName,
+    cpsFlux,
+    cpsFluxErr,
+    band_wave_aa={
+        "u": 3671.0,
+        "g": 4827.0,
+        "r": 6223.0,
+        "i": 7546.0,
+        "z": 8691.0,
+        "Y": 9712.0,
+    },
+    with_baseline=False,
+    min_data_points=7,
+    low_bound=-10,
+) -> pd.Series:
+    """Return the features used by the RF classifier for one alert.
 
     Features (incl. order) are given by `RAINBOW_FEATURES_NAMES`.
 
@@ -408,12 +442,15 @@ def extract_features_rainbow(
         return np.zeros(len(RAINBOW_FEATURES_NAMES), dtype=float)
 
     features = fit_rainbow(
-        midPointTai, filterName, cpsFlux, cpsFluxErr,
+        midPointTai,
+        filterName,
+        cpsFlux,
+        cpsFluxErr,
         band_wave_aa=band_wave_aa,
         with_baseline=with_baseline,
         min_data_points=min_data_points,
         list_filters=band_wave_aa.keys(),
-        low_bound=low_bound
+        low_bound=low_bound,
     )
 
     return features[1:]
@@ -422,17 +459,23 @@ def extract_features_rainbow(
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_rainbow_elasticc(
-        midPointTai, filterName, cpsFlux, cpsFluxErr,
-        snr,
-        hostgal_snsep,
-        hostgal_zphot,
-        maxduration=None,
-        model=None,
-        band_wave_aa=pd.Series([{'u': 3671.0, 'g': 4827.0, 'r': 6223.0, 'i': 7546.0, 'z': 8691.0, 'Y': 9712.0}]),
-        with_baseline=pd.Series([False]),
-        min_data_points=pd.Series([7]),
-        low_bound=pd.Series([-10])) -> pd.Series:
-    """ Return the probability of an alert to be a SNe Ia using a Random
+    midPointTai,
+    filterName,
+    cpsFlux,
+    cpsFluxErr,
+    snr,
+    hostgal_snsep,
+    hostgal_zphot,
+    maxduration=None,
+    model=None,
+    band_wave_aa=pd.Series([
+        {"u": 3671.0, "g": 4827.0, "r": 6223.0, "i": 7546.0, "z": 8691.0, "Y": 9712.0}
+    ]),
+    with_baseline=pd.Series([False]),
+    min_data_points=pd.Series([7]),
+    low_bound=pd.Series([-10]),
+) -> pd.Series:
+    """Return the probability of an alert to be a SNe Ia using a Random
     Forest Classifier (rainbow fit) on ELaSTICC alert data.
 
     Parameters
@@ -508,7 +551,7 @@ def rfscore_rainbow_elasticc(
 
     # Maximum days in the history
     if maxduration is not None:
-        mask = (dt <= maxduration.values[0])
+        mask = dt <= maxduration.values[0]
     else:
         mask = np.repeat(True, len(midPointTai))
 
@@ -520,8 +563,8 @@ def rfscore_rainbow_elasticc(
         clf = load_scikit_model(model.values[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/elasticc_rainbow_earlyIa_after_leak.pkl'
-        clf = pickle.load(open(model, 'rb'))
+        model = curdir + "/data/models/elasticc_rainbow_earlyIa_after_leak.pkl"
+        clf = pickle.load(open(model, "rb"))
 
     candid = pd.Series(range(len(midPointTai)))
     ids = candid[mask]
@@ -537,7 +580,7 @@ def rfscore_rainbow_elasticc(
             band_wave_aa=band_wave_aa.values[0],
             with_baseline=with_baseline.values[0],
             min_data_points=min_data_points.values[0],
-            low_bound=low_bound.values[0]
+            low_bound=low_bound.values[0],
         )
         if features[0] == 0.0:
             flag.append(False)
@@ -548,7 +591,7 @@ def rfscore_rainbow_elasticc(
             len(midPointTai.values[index]),
             snr.values[index],
             hostgal_snsep.values[index],
-            hostgal_zphot.values[index]
+            hostgal_zphot.values[index],
         ]
         test_features.append(np.array(meta_feats + list(features)))
 
@@ -574,19 +617,23 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    elasticc_alert_sample = 'file://{}/data/alerts/test_elasticc_earlysnia.parquet'.format(path)
+    elasticc_alert_sample = (
+        "file://{}/data/alerts/test_elasticc_earlysnia.parquet".format(path)
+    )
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
-    model_path_sigmoid = '{}/data/models/default-model_sigmoid.obj'.format(path)
+    model_path_sigmoid = "{}/data/models/default-model_sigmoid.obj".format(path)
     globs["model_path_sigmoid"] = model_path_sigmoid
 
-    model_path_al_loop = '{}/data/models/for_al_loop/model_20240821.pkl'.format(path)
+    model_path_al_loop = "{}/data/models/for_al_loop/model_20240821.pkl".format(path)
     globs["model_path_al_loop"] = model_path_al_loop
 
-    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    ztf_alert_with_i_band = (
+        "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
+    )
     globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite

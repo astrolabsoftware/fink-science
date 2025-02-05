@@ -32,11 +32,17 @@ from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from fink_science.tester import spark_unit_tests
 
+
 def apply_selection_cuts_ztf(
-        magpsf: pd.Series, cdsxmatch: pd.Series,
-        jd: pd.Series, jdstarthist: pd.Series, roid: pd.Series,
-        minpoints: int = 2, maxndethist: int = 90) -> pd.Series:
-    """ Apply selection cuts to keep only alerts of interest
+    magpsf: pd.Series,
+    cdsxmatch: pd.Series,
+    jd: pd.Series,
+    jdstarthist: pd.Series,
+    roid: pd.Series,
+    minpoints: int = 2,
+    maxndethist: int = 90,
+) -> pd.Series:
+    """Apply selection cuts to keep only alerts of interest
     for SNN analysis
 
     Parameters
@@ -75,10 +81,22 @@ def apply_selection_cuts_ztf(
 
     return mask
 
+
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
-def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, model_name, model_ext=None) -> pd.Series:
-    """ Compute probabilities of alerts to be SN Ia using SuperNNova
+def snn_ia(
+    candid,
+    jd,
+    fid,
+    magpsf,
+    sigmapsf,
+    roid,
+    cdsxmatch,
+    jdstarthist,
+    model_name,
+    model_ext=None,
+) -> pd.Series:
+    """Compute probabilities of alerts to be SN Ia using SuperNNova
 
     Parameters
     ----------
@@ -187,11 +205,13 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     else:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
+        model = curdir + "/data/models/snn_models/{}/model.pt".format(
+            model_name.values[0]
+        )
 
     # Compute predictions
     pdf = pdf.dropna()
-    ids, pred_probs = classify_lcs(pdf, model, 'cpu')
+    ids, pred_probs = classify_lcs(pdf, model, "cpu")
 
     # Reformat and re-index
     preds_df = reformat_to_df(pred_probs, ids=ids)
@@ -205,14 +225,25 @@ def snn_ia(candid, jd, fid, magpsf, sigmapsf, roid, cdsxmatch, jdstarthist, mode
     # return probabilities to be Ia
     return pd.Series(to_return)
 
+
 @pandas_udf(FloatType(), PandasUDFType.SCALAR)
 @profile
 def snn_ia_elasticc(
-        diaSourceId, midPointTai, filterName, psFlux, psFluxErr,
-        roid, cdsxmatch, jdstarthist,
-        mwebv, redshift, redshift_err,
-        model_name, model_ext=None) -> pd.Series:
-    """ Compute probabilities of alerts to be SN Ia using SuperNNova
+    diaSourceId,
+    midPointTai,
+    filterName,
+    psFlux,
+    psFluxErr,
+    roid,
+    cdsxmatch,
+    jdstarthist,
+    mwebv,
+    redshift,
+    redshift_err,
+    model_name,
+    model_ext=None,
+) -> pd.Series:
+    """Compute probabilities of alerts to be SN Ia using SuperNNova
 
     Single-class model (default stored at `data/models/snn_models/elasticc_ia`)
 
@@ -283,35 +314,37 @@ def snn_ia_elasticc(
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
     # Conversion to FLUXCAL
-    fac = 10**(-(31.4 - 27.5) / 2.5)
+    fac = 10 ** (-(31.4 - 27.5) / 2.5)
     psFlux = psFlux * fac
     psFluxErr = psFluxErr * fac
 
     diaSourceId = diaSourceId.apply(lambda x: str(x))
     pdf = format_data_as_snana(
-        midPointTai, psFlux, psFluxErr,
-        filterName, diaSourceId, mask,
-        transform_to_flux=False
+        midPointTai,
+        psFlux,
+        psFluxErr,
+        filterName,
+        diaSourceId,
+        mask,
+        transform_to_flux=False,
     )
 
     # Add extinction & redshift
-    pdf_tmp = pd.DataFrame.from_dict(
-        {
-            'jd': midPointTai[mask],
-            'MWEBV': mwebv[mask],
-            'HOSTGAL_SPECZ': redshift[mask],
-            'HOSTGAL_PHOTOZ': redshift[mask],
-            'HOSTGAL_SPECZ_ERR': redshift_err[mask],
-            'HOSTGAL_PHOTOZ_ERR': redshift_err[mask],
-        }
-    )
-    pdf_tmp = pdf_tmp.explode('jd')
+    pdf_tmp = pd.DataFrame.from_dict({
+        "jd": midPointTai[mask],
+        "MWEBV": mwebv[mask],
+        "HOSTGAL_SPECZ": redshift[mask],
+        "HOSTGAL_PHOTOZ": redshift[mask],
+        "HOSTGAL_SPECZ_ERR": redshift_err[mask],
+        "HOSTGAL_PHOTOZ_ERR": redshift_err[mask],
+    })
+    pdf_tmp = pdf_tmp.explode("jd")
 
-    pdf['MWEBV'] = pdf_tmp['MWEBV']
-    pdf['HOSTGAL_SPECZ'] = pdf_tmp['HOSTGAL_SPECZ']
-    pdf['HOSTGAL_SPECZ_ERR'] = pdf_tmp['HOSTGAL_SPECZ_ERR']
-    pdf['HOSTGAL_PHOTOZ'] = pdf_tmp['HOSTGAL_PHOTOZ']
-    pdf['HOSTGAL_PHOTOZ_ERR'] = pdf_tmp['HOSTGAL_PHOTOZ_ERR']
+    pdf["MWEBV"] = pdf_tmp["MWEBV"]
+    pdf["HOSTGAL_SPECZ"] = pdf_tmp["HOSTGAL_SPECZ"]
+    pdf["HOSTGAL_SPECZ_ERR"] = pdf_tmp["HOSTGAL_SPECZ_ERR"]
+    pdf["HOSTGAL_PHOTOZ"] = pdf_tmp["HOSTGAL_PHOTOZ"]
+    pdf["HOSTGAL_PHOTOZ_ERR"] = pdf_tmp["HOSTGAL_PHOTOZ_ERR"]
 
     if model_ext is not None:
         # take the first element of the Series
@@ -319,13 +352,15 @@ def snn_ia_elasticc(
     else:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
+        model = curdir + "/data/models/snn_models/{}/model.pt".format(
+            model_name.values[0]
+        )
 
     # Compute predictions
     if len(pdf) == 0:
         return pd.Series(np.zeros(len(midPointTai), dtype=float))
 
-    ids, pred_probs = classify_lcs(pdf, model, 'cpu')
+    ids, pred_probs = classify_lcs(pdf, model, "cpu")
 
     # Reformat and re-index
     preds_df = reformat_to_df(pred_probs, ids=ids)
@@ -339,21 +374,32 @@ def snn_ia_elasticc(
     # return probabilities to be Ia
     return pd.Series(to_return)
 
+
 def extract_max_prob(arr):
-    """ Extract main class and associated probability from a vector of probabilities
-    """
+    """Extract main class and associated probability from a vector of probabilities"""
     array = np.array(arr)
     index = np.argmax(array)
-    return {'class': index, 'prob': array[index]}
+    return {"class": index, "prob": array[index]}
+
 
 @pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 @profile
 def snn_broad_elasticc(
-        diaSourceId, midPointTai, filterName, psFlux, psFluxErr,
-        roid, cdsxmatch, jdstarthist,
-        mwebv, redshift, redshift_err,
-        model_name, model_ext=None) -> pd.Series:
-    """ Compute main class and associated probability for each alert
+    diaSourceId,
+    midPointTai,
+    filterName,
+    psFlux,
+    psFluxErr,
+    roid,
+    cdsxmatch,
+    jdstarthist,
+    mwebv,
+    redshift,
+    redshift_err,
+    model_name,
+    model_ext=None,
+) -> pd.Series:
+    """Compute main class and associated probability for each alert
 
     Multi-class model (default stored at `data/models/snn_models/elasticc_broad`)
 
@@ -427,35 +473,37 @@ def snn_broad_elasticc(
         return pd.Series([[0.0 for i in range(5)] for j in range(len(diaSourceId))])
 
     # Conversion to FLUXCAL
-    fac = 10**(-(31.4 - 27.5) / 2.5)
+    fac = 10 ** (-(31.4 - 27.5) / 2.5)
     psFlux = psFlux * fac
     psFluxErr = psFluxErr * fac
 
     diaSourceId = diaSourceId.apply(lambda x: str(x))
     pdf = format_data_as_snana(
-        midPointTai, psFlux, psFluxErr,
-        filterName, diaSourceId, mask,
-        transform_to_flux=False
+        midPointTai,
+        psFlux,
+        psFluxErr,
+        filterName,
+        diaSourceId,
+        mask,
+        transform_to_flux=False,
     )
 
     # Add extinction & redshift
-    pdf_tmp = pd.DataFrame.from_dict(
-        {
-            'jd': midPointTai[mask],
-            'MWEBV': mwebv[mask],
-            'HOSTGAL_SPECZ': redshift[mask],
-            'HOSTGAL_PHOTOZ': redshift[mask],
-            'HOSTGAL_SPECZ_ERR': redshift_err[mask],
-            'HOSTGAL_PHOTOZ_ERR': redshift_err[mask],
-        }
-    )
-    pdf_tmp = pdf_tmp.explode('jd')
+    pdf_tmp = pd.DataFrame.from_dict({
+        "jd": midPointTai[mask],
+        "MWEBV": mwebv[mask],
+        "HOSTGAL_SPECZ": redshift[mask],
+        "HOSTGAL_PHOTOZ": redshift[mask],
+        "HOSTGAL_SPECZ_ERR": redshift_err[mask],
+        "HOSTGAL_PHOTOZ_ERR": redshift_err[mask],
+    })
+    pdf_tmp = pdf_tmp.explode("jd")
 
-    pdf['MWEBV'] = pdf_tmp['MWEBV']
-    pdf['HOSTGAL_SPECZ'] = pdf_tmp['HOSTGAL_SPECZ']
-    pdf['HOSTGAL_SPECZ_ERR'] = pdf_tmp['HOSTGAL_SPECZ_ERR']
-    pdf['HOSTGAL_PHOTOZ'] = pdf_tmp['HOSTGAL_PHOTOZ']
-    pdf['HOSTGAL_PHOTOZ_ERR'] = pdf_tmp['HOSTGAL_PHOTOZ_ERR']
+    pdf["MWEBV"] = pdf_tmp["MWEBV"]
+    pdf["HOSTGAL_SPECZ"] = pdf_tmp["HOSTGAL_SPECZ"]
+    pdf["HOSTGAL_SPECZ_ERR"] = pdf_tmp["HOSTGAL_SPECZ_ERR"]
+    pdf["HOSTGAL_PHOTOZ"] = pdf_tmp["HOSTGAL_PHOTOZ"]
+    pdf["HOSTGAL_PHOTOZ_ERR"] = pdf_tmp["HOSTGAL_PHOTOZ_ERR"]
 
     if model_ext is not None:
         # take the first element of the Series
@@ -463,7 +511,9 @@ def snn_broad_elasticc(
     else:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + '/data/models/snn_models/{}/model.pt'.format(model_name.values[0])
+        model = curdir + "/data/models/snn_models/{}/model.pt".format(
+            model_name.values[0]
+        )
 
     # Compute predictions
     if len(pdf) == 0:
@@ -471,7 +521,7 @@ def snn_broad_elasticc(
         snn_max_prob = np.zeros(len(midPointTai), dtype=float)
         return pd.Series([[i, j] for i, j in zip(snn_class, snn_max_prob)])
 
-    ids, pred_probs = classify_lcs(pdf, model, 'cpu')
+    ids, pred_probs = classify_lcs(pdf, model, "cpu")
 
     # Reformat and re-index
     preds_df = reformat_to_df(pred_probs, ids=ids)
@@ -479,10 +529,10 @@ def snn_broad_elasticc(
 
     all_preds = preds_df.reindex([str(i) for i in diaSourceId[mask].values])
 
-    cols = ['prob_class{}'.format(i) for i in range(5)]
-    all_preds['all'] = all_preds[cols].values.tolist()
+    cols = ["prob_class{}".format(i) for i in range(5)]
+    all_preds["all"] = all_preds[cols].values.tolist()
 
-    return all_preds['all']
+    return all_preds["all"]
 
 
 if __name__ == "__main__":
@@ -491,19 +541,23 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = 'file://{}/data/alerts/datatest'.format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    elasticc_alert_sample = 'file://{}/data/alerts/elasticc_sample_seed0.parquet'.format(path)
+    elasticc_alert_sample = (
+        "file://{}/data/alerts/elasticc_sample_seed0.parquet".format(path)
+    )
     globs["elasticc_alert_sample"] = elasticc_alert_sample
 
-    model_path = '{}/data/models/snn_models/snn_sn_vs_all/model.pt'.format(path)
+    model_path = "{}/data/models/snn_models/snn_sn_vs_all/model.pt".format(path)
     globs["model_path"] = model_path
 
-    elasticc_model_path = '{}/data/models/snn_models/elasticc/model.pt'.format(path)
+    elasticc_model_path = "{}/data/models/snn_models/elasticc/model.pt".format(path)
     globs["elasticc_model_path"] = elasticc_model_path
 
-    ztf_alert_with_i_band = 'file://{}/data/alerts/20240606_iband_history.parquet'.format(path)
+    ztf_alert_with_i_band = (
+        "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
+    )
     globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite

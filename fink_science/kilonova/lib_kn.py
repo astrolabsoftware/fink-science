@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 def return_list_of_kn_host():
-    """ Return potential KN host names
+    """Return potential KN host names
 
     This includes:
     - List of object names in SIMBAD that would correspond to extra-galactic object
@@ -43,8 +44,12 @@ def return_list_of_kn_host():
         "PartofG",
     ]
 
-    keep_cds = \
-        ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail"] + \
-        list_simbad_galaxies
+    keep_cds = [
+        "Unknown",
+        "Candidate_SN*",
+        "SN",
+        "Transient",
+        "Fail",
+    ] + list_simbad_galaxies
 
     return keep_cds

@@ -3,9 +3,8 @@ import pandas as pd
 
 BLAZAR_COLS = ["m0", "m1", "m2"]
 
-def instantness_criterion(
-        pdf: pd.DataFrame,
-        CTAO_blazar: pd.DataFrame) -> np.float64:
+
+def instantness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.float64:
     """Returns the standardized flux of the last measurement
        over the precomputed threshold ratio
 
@@ -27,27 +26,24 @@ def instantness_criterion(
         over precomputed threshold
     """
 
-    name = pdf['objectId'].values[0]
+    name = pdf["objectId"].values[0]
 
     try:
         threshold = np.array(
-            CTAO_blazar.loc[
-                CTAO_blazar['ZTF Name'] == name,
-                'Final Threshold'
-            ].values[0]
+            CTAO_blazar.loc[CTAO_blazar["ZTF Name"] == name, "Final Threshold"].values[
+                0
+            ]
         )
     except IndexError:
         threshold = np.nan
 
     try:
-        return pdf['cstd_flux'].iloc[-1] / threshold
+        return pdf["cstd_flux"].iloc[-1] / threshold
     except KeyError:
         return np.nan
 
 
-def robustness_criterion(
-        pdf: pd.DataFrame,
-        CTAO_blazar: pd.DataFrame) -> np.float64:
+def robustness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.float64:
     """Returns the sliding mean over 30 days of the standardized flux
        over the precomputed threshold ratio
 
@@ -70,23 +66,22 @@ def robustness_criterion(
     """
 
     integration_period = 30
-    name = pdf['objectId'].values[0]
+    name = pdf["objectId"].values[0]
 
     try:
         threshold = np.array(
-            CTAO_blazar.loc[
-                CTAO_blazar['ZTF Name'] == name,
-                'Final Threshold'
-            ].values[0]
+            CTAO_blazar.loc[CTAO_blazar["ZTF Name"] == name, "Final Threshold"].values[
+                0
+            ]
         )
     except IndexError:
         threshold = np.nan
 
     try:
-        full_time = pdf['cjd']
+        full_time = pdf["cjd"]
         maskTime = full_time >= full_time.iloc[-1] - integration_period
-        time = pdf.loc[maskTime, 'cjd']
-        flux = pdf.loc[maskTime, 'cstd_flux']
+        time = pdf.loc[maskTime, "cjd"]
+        flux = pdf.loc[maskTime, "cstd_flux"]
     except KeyError:
         return np.nan
 
@@ -101,9 +96,7 @@ def robustness_criterion(
         return np.nan
 
 
-def quiescent_state_(
-        pdf: pd.DataFrame,
-        CTAO_blazar: pd.DataFrame) -> np.ndarray:
+def quiescent_state_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.ndarray:
     """Returns an array containing:
             The mean over threshold ratio of the last but one alert
             The mean over threshold ratio of the last alert
@@ -128,16 +121,14 @@ def quiescent_state_(
         Measurement over threshold of the last alert
     """
 
-    name = pdf['objectId'].values[0]
+    name = pdf["objectId"].values[0]
 
-    if not CTAO_blazar.loc[CTAO_blazar['ZTF Name'] == name].empty:
-        return np.array(
-            [
-                robustness_criterion(pdf[:-1], CTAO_blazar),
-                robustness_criterion(pdf, CTAO_blazar),
-                instantness_criterion(pdf, CTAO_blazar)
-            ]
-        )
+    if not CTAO_blazar.loc[CTAO_blazar["ZTF Name"] == name].empty:
+        return np.array([
+            robustness_criterion(pdf[:-1], CTAO_blazar),
+            robustness_criterion(pdf, CTAO_blazar),
+            instantness_criterion(pdf, CTAO_blazar),
+        ])
 
     else:
         return np.full(3, np.nan)
