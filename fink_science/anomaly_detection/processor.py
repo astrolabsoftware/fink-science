@@ -130,13 +130,13 @@ def anomaly_score(lc_features, model=None):
     121
     """
 
-    def get_key(x, band):
+    def get_key(x: dict, band: int):
         if (
             len(x) != 2
             or x is None
             or any(
                 map(  # noqa: W503, C417
-                    lambda fs: (fs is None or len(fs) == 0), x.to_numpy()()
+                    lambda fs: (fs is None or len(fs) == 0), x.values()
                 )
             )
         ):
