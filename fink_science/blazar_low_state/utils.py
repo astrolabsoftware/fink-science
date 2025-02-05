@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+BLAZAR_COLS = ["m0", "m1", "m2"]
 
 def instantness_criterion(
         pdf: pd.DataFrame,

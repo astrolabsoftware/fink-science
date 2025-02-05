@@ -17,8 +17,8 @@ from line_profiler import profile
 import pandas as pd
 
 from pyspark.sql.functions import pandas_udf
-from pyspark.sql.types import ArrayType, DoubleType
-from fink_science.blazar_low_state.utils import quiescent_state_
+from pyspark.sql.types import MapType, StringType, FloatType
+from fink_science.blazar_low_state.utils import quiescent_state_, BLAZAR_COLS
 
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
@@ -27,7 +27,7 @@ import os
 RELEASE = 22
 
 
-@pandas_udf(ArrayType(DoubleType()))
+@pandas_udf(MapType(StringType(), FloatType()))
 @profile
 def quiescent_state(
         candid: pd.Series,
@@ -121,10 +121,8 @@ def quiescent_state(
     >>> parDF = parDF.withColumn('blazar_stats', quiescent_state(*args))
 
     # Test
-    >>> stats = parDF.select('blazar_stats').toPandas()['blazar_stats']
-    >>> stats = np.array(stats.to_list())
-    >>> stats[pd.isnull(stats)] = np.nan
-    >>> (stats.sum(axis=-1) == -3).sum()
+    >>> pdf = parDF.select([F.col('blazar_stats').getItem('m0').alias("m0"), F.col('blazar_stats').getItem('m1').alias("m1"), F.col('blazar_stats').getItem('m2').alias("m2")]).toPandas()
+    >>> (pdf.sum(axis=1) == -3).sum()
     320
     """
 
@@ -145,7 +143,7 @@ def quiescent_state(
     for candid_ in pdf["candid"]:
         tmp = pdf[pdf["candid"] == candid_]
         if len(tmp["cstd_flux"].to_numpy()[0]) == 0:
-            out.append([-1., -1., -1.])
+            out.append({k: -1 for k in BLAZAR_COLS})
             continue
         sub = pd.DataFrame(
             {
@@ -155,7 +153,8 @@ def quiescent_state(
                 "cjd": tmp["cjd"].to_numpy()[0],
             }
         )
-        out.append(quiescent_state_(sub, CTAO_blazar))
+        dic = {k: v for k, v in zip(BLAZAR_COLS, quiescent_state_(sub, CTAO_blazar))}
+        out.append(dic)
 
     return pd.Series(out)
 
