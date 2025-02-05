@@ -32,10 +32,14 @@ RELEASE = 22
 def quiescent_state(
     candid: pd.Series, objectId: pd.Series, cstd_flux: pd.Series, cjd: pd.Series
 ) -> pd.Series:
-    """Returns an array containing:
-            The mean over threshold ratio of the last but one alert
-            The mean over threshold ratio of the last alert
-            The standardized flux over threshold ratio of the last alert
+    """Returns an array containing blazar features
+
+    Notes
+    -----
+    Features are:
+    m0: The mean over threshold ratio of the last but one alert
+    m1: The mean over threshold ratio of the last alert
+    m2: The standardized flux over threshold ratio of the last alert
 
     Parameters
     ----------
@@ -47,6 +51,7 @@ def quiescent_state(
         Pandas DataFrame of the monitored sources containing:
         3FGL Name, ZTF Name, Arrays of Medians, Computed Threshold,
         Observed Threshold, Redshift, Final Threshold
+
     Returns
     -------
     out: pd.Series of np.ndarray of np.float64
@@ -123,7 +128,6 @@ def quiescent_state(
     >>> (pdf.sum(axis=1) == -3).sum()
     320
     """
-
     path = os.path.dirname(os.path.abspath(__file__))
     CTAO_PATH = os.path.join(path, "data/catalogs")
     CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(RELEASE)
@@ -147,7 +151,7 @@ def quiescent_state(
             "cstd_flux": tmp["cstd_flux"].to_numpy()[0],
             "cjd": tmp["cjd"].to_numpy()[0],
         })
-        dic = {k: v for k, v in zip(BLAZAR_COLS, quiescent_state_(sub, CTAO_blazar))}
+        dic = {k: v for k, v in zip(BLAZAR_COLS, quiescent_state_(sub, CTAO_blazar))}  # noqa: C416
         out.append(dic)
 
     return pd.Series(out)

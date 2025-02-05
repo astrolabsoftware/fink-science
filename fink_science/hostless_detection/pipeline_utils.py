@@ -1,10 +1,18 @@
-"""
-Implementation of the paper:
-ELEPHANT: ExtragaLactic alErt Pipeline for Hostless AstroNomical
-Transients
-https://arxiv.org/abs/2404.18165
-pipeline utils functions
-"""
+# Copyright 2024 AstroLab Software
+# Author: R. Durgesh
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Implementation of the paper: ELEPHANT: ExtragaLactic alErt Pipeline for Hostless AstroNomical Transients https://arxiv.org/abs/2404.18165"""
 
 import gzip
 import io
@@ -67,7 +75,7 @@ def apply_sigma_clipping(
 
 def crop_center_patch(input_image: np.ndarray, patch_radius: int = 7) -> np.ndarray:
     """
-    crops rectangular patch around image center with a given patch scale
+    Crops rectangular patch around image center with a given patch scale
 
     Parameters
     ----------
@@ -89,9 +97,8 @@ def crop_center_patch(input_image: np.ndarray, patch_radius: int = 7) -> np.ndar
 def _check_hostless_conditions(
     science_clipped: np.ndarray, template_clipped: np.ndarray, detection_config: Dict
 ) -> bool:
-    """
-    Counts the number of masked sigma clipping pixels and checks if they
-    are within the range defined in the config
+    """Counts the number of masked sigma clipping pixels and checks if they are within the range defined in the config
+
     Parameters
     ----------
     science_clipped
@@ -121,8 +128,11 @@ def _check_hostless_conditions(
 def run_hostless_detection_with_clipped_data(
     science_stamp: np.ndarray, template_stamp: np.ndarray, configs: Dict
 ) -> bool:
-    """
-    Detects potential hostless candidates with sigma clipped stamp images by
+    """Detects potential hostless candidates
+
+    Notes
+    -----
+    We use sigma clipped stamp images by
      cropping an image patch from the center of the image.
     If pixels are rejected in scientific image but not in corresponding
      template image, such candidates are flagged as potential hostless
@@ -161,6 +171,7 @@ def create_noise_filled_mask(
 ) -> np.ndarray:
     """
     Creates input image data with noise filled mask
+
     Parameters
     ----------
     image_data
@@ -187,9 +198,11 @@ def run_powerspectrum_analysis(
     image_size: List,
     number_of_iterations: int = 200,
 ) -> Dict:
-    """
-    Runs powerspectrum analysis by transforming the stamps to
-    fourier space as described in the paper:
+    """Runs powerspectrum analysis
+
+    Notes
+    -----
+    transforming the stamps to fourier space as described in the paper:
     https://arxiv.org/abs/2404.18165
 
     Parameters

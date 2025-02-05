@@ -20,7 +20,10 @@ import numpy as np
 
 def unzip_cutout(stamp):
     """Extract an image from a gzip format file
-    Image is contains on a fits format file. Due to a significant number of corrupted images,
+
+    Notes
+    -----
+    Image is contained on a fits format file. Due to a significant number of corrupted images,
     a correction step is applied to remove nan values, negative values and corrected the wrong
     shapes of the images
 
@@ -47,10 +50,15 @@ def unzip_cutout(stamp):
 
 
 def sigmoid(img):
-    """Compute the sigmoid term of the normalization function, the alpha parameter is
-    the standard deviation of the image and the beta parameter is the mean of the image
+    """Compute the sigmoid term of the normalization function
 
-    Parameters:
+    Notes
+    -----
+    the alpha parameter is the standard deviation of the image and
+    the beta parameter is the mean of the image
+
+    Parameters
+    ----------
     img: 2D numpy array
         alert image after extraction from gzip format
 

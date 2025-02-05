@@ -42,8 +42,7 @@ def standardized_flux(
     cfid: pd.Series,
     cjd: pd.Series,
 ) -> pd.Series:
-    """Calls the standardized_flux_ function
-       for the distributed Spark Pandas UDF environment
+    """standardized_flux_ for Spark
 
     Parameters
     ----------
@@ -138,7 +137,6 @@ def standardized_flux(
     >>> parDF.filter(F.array_max(parDF['cstd_flux']) > 1).count()
     64
     """
-
     path = os.path.dirname(os.path.abspath(__file__))
     CTAO_PATH = os.path.join(path, "data/catalogs")
     CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(RELEASE)

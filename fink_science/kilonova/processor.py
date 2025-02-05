@@ -39,8 +39,7 @@ from fink_science.tester import spark_unit_tests
 def knscore(
     jd, fid, magpsf, sigmapsf, jdstarthist, cdsxmatch, ndethist, model_name=None
 ) -> pd.Series:
-    """Return the probability of an alert to be a Kilonova using a Random
-    Forest Classifier.
+    """Return the probability of an alert to be a Kilonova using a Random Forest Classifier.
 
     You need to run the SIMBAD crossmatch before.
 
@@ -64,12 +63,12 @@ def knscore(
         deault is "partial.pkl" (model trained for complete light curves)
 
     Returns
-    ----------
+    -------
     probabilities: 1D np.array of float
         Probability between 0 (non-KNe) and 1 (KNe).
 
     Examples
-    ----------
+    --------
     >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
@@ -170,7 +169,7 @@ def knscore(
     if model_name is None:
         model = load_classifier("partial.pkl")
     else:
-        model = load_classifier(model_name.values[0])
+        model = load_classifier(model_name.to_numpy()[0])
 
     # Load pcs
     pcs = load_pcs()
@@ -197,8 +196,7 @@ def knscore(
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
-    """Extract features used by the Kilonova classifier (using a Random
-    Forest Classifier).
+    """Extract features used by the Kilonova classifier (using a Random Forest Classifier).
 
     Parameters
     ----------
@@ -210,12 +208,12 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
         Magnitude from PSF-fit photometry, and 1-sigma error
 
     Returns
-    ----------
+    -------
     out: str
         comma separated features
 
     Examples
-    ----------
+    --------
     >>> from pyspark.sql.functions import split
     >>> from pyspark.sql.types import FloatType
     >>> from fink_utils.spark.utils import concat_col
@@ -288,7 +286,7 @@ def extract_features_knscore(jd, fid, magpsf, sigmapsf) -> pd.Series:
 
     # return features for all events
     to_return_features = np.zeros((len(jd), len(feature_col_names)), dtype=float)
-    to_return_features[mask] = features_df[feature_col_names].values
+    to_return_features[mask] = features_df[feature_col_names].to_numpy()
 
     concatenated_features = [
         ",".join(np.array(i, dtype=str)) for i in to_return_features

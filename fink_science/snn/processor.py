@@ -42,8 +42,7 @@ def apply_selection_cuts_ztf(
     minpoints: int = 2,
     maxndethist: int = 90,
 ) -> pd.Series:
-    """Apply selection cuts to keep only alerts of interest
-    for SNN analysis
+    """Apply selection cuts to keep only alerts of interest for SNN analysis
 
     Parameters
     ----------
@@ -64,7 +63,7 @@ def apply_selection_cuts_ztf(
         Each row contains one label.
 
     Returns
-    ---------
+    -------
     mask: pd.Series
         Series containing `True` if the alert is valid, `False` otherwise.
         Each row contains one boolean.
@@ -116,12 +115,12 @@ def snn_ia(
         Path to the trained model (overwrite `model`). Default is None
 
     Returns
-    ----------
+    -------
     probabilities: 1D np.array of float
         Probability between 0 (non-Ia) and 1 (Ia).
 
     Examples
-    ----------
+    --------
     >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_science.asteroids.processor import roid_catcher
     >>> from fink_utils.spark.utils import concat_col
@@ -201,12 +200,12 @@ def snn_ia(
 
     if model_ext is not None:
         # take the first element of the Series
-        model = model_ext.values[0]
+        model = model_ext.to_numpy()[0]
     else:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + "/data/models/snn_models/{}/model.pt".format(
-            model_name.values[0]
+            model_name.to_numpy()[0]
         )
 
     # Compute predictions
@@ -219,8 +218,8 @@ def snn_ia(
 
     # Take only probabilities to be Ia
     to_return = np.zeros(len(jd), dtype=float)
-    ia = preds_df.reindex([str(i) for i in candid[mask].values])
-    to_return[mask] = ia.prob_class0.values
+    ia = preds_df.reindex([str(i) for i in candid[mask].to_numpy()])
+    to_return[mask] = ia.prob_class0.to_numpy()
 
     # return probabilities to be Ia
     return pd.Series(to_return)
@@ -264,12 +263,12 @@ def snn_ia_elasticc(
         Path to the trained model (overwrite `model_name`). Default is None
 
     Returns
-    ----------
+    -------
     probabilities: 1D np.array of float
         Probability between 0 (non-Ia) and 1 (Ia).
 
     Examples
-    ----------
+    --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
@@ -348,12 +347,12 @@ def snn_ia_elasticc(
 
     if model_ext is not None:
         # take the first element of the Series
-        model = model_ext.values[0]
+        model = model_ext.to_numpy()[0]
     else:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + "/data/models/snn_models/{}/model.pt".format(
-            model_name.values[0]
+            model_name.to_numpy()[0]
         )
 
     # Compute predictions
@@ -368,8 +367,8 @@ def snn_ia_elasticc(
 
     # Take only probabilities to be Ia
     to_return = np.zeros(len(midPointTai), dtype=float)
-    ia = preds_df.reindex([str(i) for i in diaSourceId[mask].values])
-    to_return[mask] = ia.prob_class0.values
+    ia = preds_df.reindex([str(i) for i in diaSourceId[mask].to_numpy()])
+    to_return[mask] = ia.prob_class0.to_numpy()
 
     # return probabilities to be Ia
     return pd.Series(to_return)
@@ -420,12 +419,12 @@ def snn_broad_elasticc(
         Path to the trained model (overwrite `model_name`). Default is None
 
     Returns
-    ----------
+    -------
     probabilities: 1D np.array of float
         Probability between 0 (non-Ia) and 1 (Ia).
 
     Examples
-    ----------
+    --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
@@ -507,12 +506,12 @@ def snn_broad_elasticc(
 
     if model_ext is not None:
         # take the first element of the Series
-        model = model_ext.values[0]
+        model = model_ext.to_numpy()[0]
     else:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + "/data/models/snn_models/{}/model.pt".format(
-            model_name.values[0]
+            model_name.to_numpy()[0]
         )
 
     # Compute predictions
@@ -527,10 +526,10 @@ def snn_broad_elasticc(
     preds_df = reformat_to_df(pred_probs, ids=ids)
     preds_df.index = preds_df.SNID
 
-    all_preds = preds_df.reindex([str(i) for i in diaSourceId[mask].values])
+    all_preds = preds_df.reindex([str(i) for i in diaSourceId[mask].to_numpy()])
 
     cols = ["prob_class{}".format(i) for i in range(5)]
-    all_preds["all"] = all_preds[cols].values.tolist()
+    all_preds["all"] = all_preds[cols].to_numpy().tolist()
 
     return all_preds["all"]
 

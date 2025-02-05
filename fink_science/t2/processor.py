@@ -65,12 +65,12 @@ def t2(
             * tinho
 
     Returns
-    ----------
+    -------
     probabilities: dictionnary (class>str, prob>float)
         Probability between 0 (non-Ia) and 1 (Ia).
 
     Examples
-    ----------
+    --------
     >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_science.asteroids.processor import roid_catcher
     >>> from fink_utils.spark.utils import concat_col
@@ -147,13 +147,13 @@ def t2(
 
     if model_name is not None:
         # take the first element of the Series
-        model = get_lite_model(model_name=model_name.values[0])
+        model = get_lite_model(model_name=model_name.to_numpy()[0])
     else:
         # Load default pre-trained model
         model = get_lite_model()
 
     vals = []
-    for candid_ in candid[mask].values:
+    for candid_ in candid[mask].to_numpy():
         # one object at a time
         sub = pdf[pdf["object_id"] == candid_]
 
@@ -167,7 +167,7 @@ def t2(
             [candid_], sub, pb_wavelengths=ZTF_PB_WAVELENGTHS
         )
 
-        cols = set(list(ZTF_PB_WAVELENGTHS.keys())) & set(df_gp_mean.columns)
+        cols = set(ZTF_PB_WAVELENGTHS.keys()) & set(df_gp_mean.columns)
         robust_scale(df_gp_mean, cols)
         X = df_gp_mean[cols]
         X = np.asarray(X).astype("float32")

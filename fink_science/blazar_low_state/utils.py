@@ -1,3 +1,17 @@
+# Copyright 2025 AstroLab Software
+# Author: Julian Hamo
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import numpy as np
 import pandas as pd
 
@@ -5,8 +19,7 @@ BLAZAR_COLS = ["m0", "m1", "m2"]
 
 
 def instantness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.float64:
-    """Returns the standardized flux of the last measurement
-       over the precomputed threshold ratio
+    """Returns the standardized flux of the last measurement over the precomputed threshold ratio
 
     Parameters
     ----------
@@ -25,14 +38,13 @@ def instantness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.fl
         Ratio of the standardized flux coming from the last measurement alert
         over precomputed threshold
     """
-
-    name = pdf["objectId"].values[0]
+    name = pdf["objectId"].to_numpy()[0]
 
     try:
         threshold = np.array(
-            CTAO_blazar.loc[CTAO_blazar["ZTF Name"] == name, "Final Threshold"].values[
-                0
-            ]
+            CTAO_blazar.loc[
+                CTAO_blazar["ZTF Name"] == name, "Final Threshold"
+            ].to_numpy()[0]
         )
     except IndexError:
         threshold = np.nan
@@ -44,8 +56,7 @@ def instantness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.fl
 
 
 def robustness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.float64:
-    """Returns the sliding mean over 30 days of the standardized flux
-       over the precomputed threshold ratio
+    """Returns the sliding mean over 30 days of the standardized flux over the precomputed threshold ratio
 
     Parameters
     ----------
@@ -64,15 +75,14 @@ def robustness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.flo
         Ratio of the sliding mean over 30 days of the standardized flux over
         the precomputed threshold
     """
-
     integration_period = 30
-    name = pdf["objectId"].values[0]
+    name = pdf["objectId"].to_numpy()[0]
 
     try:
         threshold = np.array(
-            CTAO_blazar.loc[CTAO_blazar["ZTF Name"] == name, "Final Threshold"].values[
-                0
-            ]
+            CTAO_blazar.loc[
+                CTAO_blazar["ZTF Name"] == name, "Final Threshold"
+            ].to_numpy()[0]
         )
     except IndexError:
         threshold = np.nan
@@ -85,7 +95,7 @@ def robustness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.flo
     except KeyError:
         return np.nan
 
-    maskNan = ~pd.isnull(flux)
+    maskNan = ~pd.isna(flux)
     mtime = time[maskNan]
     if maskNan.sum() > 1:
         mtimestart = mtime.iloc[0]
@@ -97,10 +107,14 @@ def robustness_criterion(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.flo
 
 
 def quiescent_state_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.ndarray:
-    """Returns an array containing:
-            The mean over threshold ratio of the last but one alert
-            The mean over threshold ratio of the last alert
-            The standardized flux over threshold ratio of the last alert
+    """Returns an array containing blazar features
+
+    Notes
+    -----
+    Features are:
+    m0: The mean over threshold ratio of the last but one alert
+    m1: The mean over threshold ratio of the last alert
+    m2: The standardized flux over threshold ratio of the last alert
 
     Parameters
     ----------
@@ -112,6 +126,7 @@ def quiescent_state_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.ndarray
         Pandas DataFrame of the monitored sources containing:
         3FGL Name, ZTF Name, Arrays of Medians, Computed Threshold,
         Observed Threshold, Redshift, Final Threshold
+
     Returns
     -------
     out: np.ndarray of np.float64
@@ -120,8 +135,7 @@ def quiescent_state_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.ndarray
         Mean over threshold of the last alert
         Measurement over threshold of the last alert
     """
-
-    name = pdf["objectId"].values[0]
+    name = pdf["objectId"].to_numpy()[0]
 
     if not CTAO_blazar.loc[CTAO_blazar["ZTF Name"] == name].empty:
         return np.array([

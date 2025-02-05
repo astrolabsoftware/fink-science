@@ -25,18 +25,13 @@ import numpy as np  # noqa: F401
 
 
 def load_classifier(metadata):
-    """
-    load the random forest classifier trained to recognize the slsn
-    on binary cases : slsn vs non-slsn  (joblib format).
+    """Load the random forest classifier (joblib format).
 
     Returns
     -------
     RandomForestClassifier
 
-    Examples
-    --------
     """
-
     if metadata:
         clf = joblib.load(k.CLASSIFIER_ELASTICC_WITH_MD)
 
@@ -66,14 +61,13 @@ def get_probabilities(clf, features, valid):
         ordered probabilities of being a SLSN.
         Proba = 0 if the object is not valid.
     """
-
     final_proba = np.array([0.0] * len(valid)).astype(np.float64)
 
     if len(features) > 0:
         features = features.replace(np.inf, 0.0).replace(np.nan, 0.0)
         agn_or_not = clf.predict_proba(features.iloc[:, 1:])
         index_to_replace = features.iloc[:, 1:].index
-        final_proba[index_to_replace.values] = agn_or_not[:, 1]
+        final_proba[index_to_replace.to_numpy()] = agn_or_not[:, 1]
 
     return final_proba
 
@@ -94,10 +88,7 @@ def slsn_classifier(data, metadata):
         ordered probabilities of being an slsn
         Return 0 if the minimum number of point per passband is not respected
 
-    Examples
-    --------
     """
-
     transformed, valid = fe.transform_data(data)
 
     if not valid.any():

@@ -69,7 +69,7 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
         if exists within 30 arcsec [arcsec]
 
     Returns
-    ----------
+    -------
     out: integer
         3 if the alert has been flagged by ZTF as SSO
         2 if the alert has been flagged by Fink as SSO
@@ -77,7 +77,7 @@ def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
         0 if it is likely not a SSO
 
     Examples
-    ----------
+    --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 

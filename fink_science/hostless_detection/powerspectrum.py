@@ -1,9 +1,18 @@
-"""
-Implementation of the paper:
-ELEPHANT: ExtragaLactic alErt Pipeline for Hostless AstroNomical
-Transients
-https://arxiv.org/abs/2404.18165
-"""
+# Copyright 2024 AstroLab Software
+# Author: R. Durgesh
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Implementation of the paper: ELEPHANT: ExtragaLactic alErt Pipeline for Hostless AstroNomical Transients https://arxiv.org/abs/2404.18165"""
 
 from line_profiler import profile
 from typing import Dict, Tuple
@@ -15,9 +24,7 @@ np.random.seed(1337)
 
 
 def searchsorted_2d(a, v, side="right", sorter=None):
-    """
-    vectorized numpye searchsorted method
-    From here:https://stackoverflow.com/a/52825077
+    """Vectorized numpye searchsorted method from here:https://stackoverflow.com/a/52825077
 
     Parameters
     ----------
@@ -61,8 +68,10 @@ def searchsorted_2d(a, v, side="right", sorter=None):
 def pairwise_wasserstein_distance(
     u_values: np.ndarray, v_values: np.ndarray
 ) -> np.ndarray:
-    """
-    computes wasserstein distance pairwise.
+    """Computes wasserstein distance pairwise.
+
+    Notes
+    -----
     extended version of scipy.stats.wasserstein_distance
 
     Parameters
@@ -71,6 +80,7 @@ def pairwise_wasserstein_distance(
         first distribution
     v_values
         second distribution
+
     Returns
     -------
     results
@@ -87,8 +97,7 @@ def pairwise_wasserstein_distance(
 
 
 def get_powerspectrum(data: np.ndarray, size: int) -> np.ndarray:
-    """
-    Function to compute power spectrum.
+    """Function to compute power spectrum.
 
     Parameters
     ----------
@@ -123,8 +132,8 @@ def detect_host_with_powerspectrum(
     cutout_size: int = 15,
     metric: str = "kstest",
 ) -> Tuple[at.Table, Dict, Dict, Dict]:
-    """
-    Function to detect host with power spectrum analysis.
+    """Function to detect host with power spectrum analysis.
+
     Parameters
     ----------
     sci_image
@@ -137,7 +146,6 @@ def detect_host_with_powerspectrum(
         stamp cutout size for analysis
     metric
         metric for distribution comparison ('kstest')
-    Returns
 
     """
     output_table = at.Table(

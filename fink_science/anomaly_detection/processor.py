@@ -54,13 +54,15 @@ ANOMALY_MODELS = ["_beta", "_anais", "_emille", "_julien", "_maria"]  # noqa
 
 
 class TwoBandModel:
+    """Two band model for anomaly detection"""
+
     def __init__(self, forest_g, forest_r) -> None:
         self.forest_r = forest_r
         self.forest_g = forest_g
 
     def anomaly_score(self, data_r, data_g):
-        scores_g = self.forest_g.run(None, {"X": data_g.values.astype(np.float32)})
-        scores_r = self.forest_r.run(None, {"X": data_r.values.astype(np.float32)})
+        scores_g = self.forest_g.run(None, {"X": data_g.to_numpy().astype(np.float32)})
+        scores_r = self.forest_r.run(None, {"X": data_r.to_numpy().astype(np.float32)})
         return (scores_g[-1] + scores_r[-1]) / 2
 
 
@@ -78,12 +80,12 @@ def anomaly_score(lc_features, model=None):
         where user_name is the user name of the model at https://anomaly.fink-portal.org/.
 
     Returns
-    ----------
+    -------
     out: float
         Anomaly score
 
     Examples
-    ---------
+    --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
     >>> from fink_science.ad_features.processor import extract_features_ad
@@ -133,8 +135,8 @@ def anomaly_score(lc_features, model=None):
             len(x) != 2
             or x is None
             or any(
-                map(  # noqa: W503
-                    lambda fs: (fs is None or len(fs) == 0), x.values()
+                map(  # noqa: W503, C417
+                    lambda fs: (fs is None or len(fs) == 0), x.to_numpy()()
                 )
             )
         ):
@@ -156,19 +158,19 @@ def anomaly_score(lc_features, model=None):
     data_r = lc_features.apply(lambda x: get_key(x, 1))[MODEL_COLUMNS]
     data_g = lc_features.apply(lambda x: get_key(x, 2))[MODEL_COLUMNS]
 
-    mask_r = data_r.isnull().all(1)
-    mask_g = data_g.isnull().all(1)
-    mask = mask_r.values * mask_g.values
+    mask_r = data_r.isna().all(1)
+    mask_g = data_g.isna().all(1)
+    mask = mask_r.to_numpy() * mask_g.to_numpy()
     if model is not None:
-        model = model.values[0]
+        model = model.to_numpy()[0]
     else:
         model = ""
 
     for col in data_r.columns[data_r.isna().any()]:
-        data_r[col].fillna(r_means[col], inplace=True)
+        data_r[col].fillna(r_means[col], inplace=True)  # noqa: PD002
 
     for col in data_g.columns[data_g.isna().any()]:
-        data_g[col].fillna(g_means[col], inplace=True)
+        data_g[col].fillna(g_means[col], inplace=True)  # noqa: PD002
 
     g_model_path_AAD = f"{model_path}/forest_g_AAD{model}.onnx"
     r_model_path_AAD = f"{model_path}/forest_r_AAD{model}.onnx"

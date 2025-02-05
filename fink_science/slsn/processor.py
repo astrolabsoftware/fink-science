@@ -30,7 +30,6 @@ def slsn_elasticc_no_md(
 
     Parameters
     ----------
-
     diaObjectId: Spark DataFrame Column
         Identification numbers of the objects
     cmidPoinTai: Spark DataFrame Column
@@ -50,7 +49,6 @@ def slsn_elasticc_no_md(
         ordered probabilities of being a slsn
         Return 0 if the minimum points number is not respected.
     """
-
     data = pd.DataFrame({
         "diaObjectId": diaObjectId,
         "cmidPointTai": cmidPointTai,
@@ -83,7 +81,6 @@ def slsn_elasticc_with_md(
 
     Parameters
     ----------
-
     diaObjectId: Spark DataFrame Column
         Identification numbers of the objects
     cmidPoinTai: Spark DataFrame Column
@@ -109,7 +106,6 @@ def slsn_elasticc_with_md(
         ordered probabilities of being a slsn
         Return 0 if the minimum points number is not respected.
     """
-
     data = pd.DataFrame({
         "diaObjectId": diaObjectId,
         "cmidPointTai": cmidPointTai,

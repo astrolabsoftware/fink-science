@@ -38,9 +38,12 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos, ndethist):
-    """Returns the predicted class (among microlensing, variable star,
-    cataclysmic event, and constant event) & probability of an alert to be
-    a microlensing event in each band using a Random Forest Classifier.
+    """Returns the probability of an alert to be a microlensing event
+
+    Notes
+    -----
+    Classes are among:
+    microlensing, variable star, cataclysmic event, constant event
 
     Parameters
     ----------
@@ -56,13 +59,13 @@ def mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos, ndethist):
         f => candidate is from negative (ref minus sci) subtraction
 
     Returns
-    ----------
+    -------
     out: list
         Returns the mean of the probabilities (one probability per band) if the
         event was considered as microlensing in both bands, otherwise 0.0.
 
     Examples
-    ---------
+    --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
@@ -130,14 +133,16 @@ def mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos, ndethist):
 
     to_return = np.zeros(len(magpsf), dtype=float)
 
-    for index in valid_index[mask.values]:
+    for index in valid_index[mask.to_numpy()]:
         # Select only valid measurements (not upper limits)
-        maskNotNone = np.array(magpsf.values[index]) == np.array(magpsf.values[index])
+        maskNotNone = np.array(magpsf.to_numpy()[index]) == np.array(
+            magpsf.to_numpy()[index]
+        )
 
         classes = []
         probs = []
         for filt in [1, 2]:
-            maskFilter = np.array(fid.values[index]) == filt
+            maskFilter = np.array(fid.to_numpy()[index]) == filt
             m = maskNotNone * maskFilter
 
             # Reject if less than 10 measurements
@@ -149,11 +154,11 @@ def mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos, ndethist):
             mag, err = np.array([
                 dc_mag(i[0], i[1], i[2], i[3], i[4])
                 for i in zip(
-                    np.array(magpsf.values[index])[m],
-                    np.array(sigmapsf.values[index])[m],
-                    np.array(magnr.values[index])[m],
-                    np.array(sigmagnr.values[index])[m],
-                    np.array(isdiffpos.values[index])[m],
+                    np.array(magpsf.to_numpy()[index])[m],
+                    np.array(sigmapsf.to_numpy()[index])[m],
+                    np.array(magnr.to_numpy()[index])[m],
+                    np.array(sigmagnr.to_numpy()[index])[m],
+                    np.array(isdiffpos.to_numpy()[index])[m],
                 )
             ]).T
 
@@ -178,9 +183,7 @@ def mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos, ndethist):
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def extract_features_mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos):
-    """Returns the predicted class (among microlensing, variable star,
-    cataclysmic event, and constant event) & probability of an alert to be
-    a microlensing event in each band using a Random Forest Classifier.
+    """Extract mulens features
 
     Parameters
     ----------
@@ -196,12 +199,12 @@ def extract_features_mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos):
         f => candidate is from negative (ref minus sci) subtraction
 
     Returns
-    ----------
+    -------
     out: list of string
         Return the features (2 * 47)
 
     Examples
-    ----------
+    --------
     >>> from pyspark.sql.functions import split
     >>> from pyspark.sql.types import FloatType
     >>> from fink_utils.spark.utils import concat_col
@@ -238,12 +241,14 @@ def extract_features_mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos):
     outs = []
     for index in range(len(fid)):
         # Select only valid measurements (not upper limits)
-        maskNotNone = np.array(magpsf.values[index]) == np.array(magpsf.values[index])
+        maskNotNone = np.array(magpsf.to_numpy()[index]) == np.array(
+            magpsf.to_numpy()[index]
+        )
 
         # Loop over filters
         out = ""
         for filt in [1, 2]:
-            maskFilter = np.array(fid.values[index]) == filt
+            maskFilter = np.array(fid.to_numpy()[index]) == filt
             m = maskNotNone * maskFilter
 
             # Reject if less than 10 measurements
@@ -255,15 +260,15 @@ def extract_features_mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos):
             mag, err = np.array([
                 dc_mag(i[0], i[1], i[2], i[3], i[4])
                 for i in zip(
-                    np.array(magpsf.values[index])[m],
-                    np.array(sigmapsf.values[index])[m],
-                    np.array(magnr.values[index])[m],
-                    np.array(sigmagnr.values[index])[m],
-                    np.array(isdiffpos.values[index])[m],
+                    np.array(magpsf.to_numpy()[index])[m],
+                    np.array(sigmapsf.to_numpy()[index])[m],
+                    np.array(magnr.to_numpy()[index])[m],
+                    np.array(sigmagnr.to_numpy()[index])[m],
+                    np.array(isdiffpos.to_numpy()[index])[m],
                 )
             ]).T
 
-            # Run the classifier
+            # Extract features
             output = _extract(mag, err)
 
             # Update the results

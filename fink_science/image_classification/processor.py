@@ -56,7 +56,7 @@ def labels_assignation(stamps: bytes) -> pd.Series:
     >>> list(safe_clear_star['labels'] == 'safe_clear_extend')[0] == True
     True
     """
-    res = [img_labelisation(cutout) for cutout in stamps.values]
+    res = [img_labelisation(cutout) for cutout in stamps.to_numpy()]
 
     return pd.Series(res)
 

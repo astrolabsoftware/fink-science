@@ -102,8 +102,7 @@ def get_last_alert(
 
 
 def return_last_alerts(*args) -> list:
-    """
-    see get_last_alert documentation
+    """See get_last_alert documentation
 
     Returns
     -------
@@ -354,9 +353,6 @@ def magnitude_rate(
     ------
     see fast_transient_rate documentation
 
-    Examples
-    --------
-
     """
     pdf = pd.DataFrame({
         "magpsf": magpsf,
@@ -371,12 +367,12 @@ def magnitude_rate(
         "cfid": cfid,
     })
 
-    return fast_transient_rate(pdf, N.values[0], seed.values[0])
+    return fast_transient_rate(pdf, N.to_numpy()[0], seed.to_numpy()[0])
 
 
 def fast_transient_module(spark_df, N, seed=None):
     """
-    wrapper function to easily call the fast transient module
+    Wrapper function to easily call the fast transient module
 
     Parameters
     ----------

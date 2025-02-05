@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This file contains scripts and definition for the SSO Fink Table"""
+"""file contains scripts and definition for the SSO Fink Table"""
 
 import os
 import re
@@ -419,11 +419,11 @@ def remove_leading_zeros(val):
         A string
 
     Returns
-    ----------
+    -------
     The input string with leading zeros removed
 
     Examples
-    ----------
+    --------
     >>> string = '0abcd'
     >>> remove_leading_zeros(string)
     'abcd'
@@ -453,7 +453,7 @@ def process_regex(regex, data):
         Data entered by the user
 
     Returns
-    ----------
+    -------
     parameters: dict or None
         Parameters (key: value) extracted from the data
     """
@@ -540,7 +540,7 @@ def estimate_sso_params_spark(
         Unique ID used internally when writing files on disk by eproc.
 
     Returns
-    ----------
+    -------
     out: pd.Series
         Series with dictionaries. Keys are parameter names (H, G, etc.)
         depending on the model chosen.
@@ -566,18 +566,18 @@ def estimate_sso_params_spark(
 
     # loop over SSO
     out = []
-    for index, ssname in enumerate(ssnamenr.values):
+    for index, ssname in enumerate(ssnamenr.to_numpy()):
         uid_object = int(uid.to_numpy()[index] * 1e7)
 
         # First get ephemerides data
         pdf_sso = pd.DataFrame({
-            "i:ssnamenr": [ssname] * len(ra.values[index]),
-            "i:magpsf": magpsf.values[index].astype(float),
-            "i:sigmapsf": sigmapsf.values[index].astype(float),
-            "i:jd": jd.values[index].astype(float),
-            "i:fid": fid.values[index].astype(int),
-            "i:ra": ra.values[index].astype(float),
-            "i:dec": dec.values[index].astype(float),
+            "i:ssnamenr": [ssname] * len(ra.to_numpy()[index]),
+            "i:magpsf": magpsf.to_numpy()[index].astype(float),
+            "i:sigmapsf": sigmapsf.to_numpy()[index].astype(float),
+            "i:jd": jd.to_numpy()[index].astype(float),
+            "i:fid": fid.to_numpy()[index].astype(int),
+            "i:ra": ra.to_numpy()[index].astype(float),
+            "i:dec": dec.to_numpy()[index].astype(float),
         })
 
         pdf_sso = pdf_sso.sort_values("i:jd")
@@ -658,7 +658,7 @@ def estimate_sso_params_spark(
                 outdic["period_chi2red"] = np.nan
 
             # Full inversion using pre-computed SHG1G2 & period
-            if (model.values[0] == "SSHG1G2") and ~np.isnan(outdic["period"]):
+            if (model.to_numpy()[0] == "SSHG1G2") and ~np.isnan(outdic["period"]):
                 # Light travel correction
                 jd_lt = compute_light_travel_correction(pdf["i:jd"], pdf["Dobs"])
 
@@ -771,10 +771,10 @@ def estimate_sso_params_spark(
 
             # Add astrometry
             fink_coord = SkyCoord(
-                ra=pdf["i:ra"].values * u.deg, dec=pdf["i:dec"].values * u.deg
+                ra=pdf["i:ra"].to_numpy() * u.deg, dec=pdf["i:dec"].to_numpy() * u.deg
             )
             ephem_coord = SkyCoord(
-                ra=pdf["RA"].values * u.deg, dec=pdf["Dec"].values * u.deg
+                ra=pdf["RA"].to_numpy() * u.deg, dec=pdf["Dec"].to_numpy() * u.deg
             )
 
             separation = fink_coord.separation(ephem_coord).arcsecond
@@ -786,9 +786,9 @@ def estimate_sso_params_spark(
 
             # Time lapse
             outdic["n_days"] = pdf["i:jd"].max() - pdf["i:jd"].min()
-            ufilters = np.unique(pdf["i:fid"].values)
+            ufilters = np.unique(pdf["i:fid"].to_numpy())
             for filt in ufilters:
-                mask = pdf["i:fid"].values == filt
+                mask = pdf["i:fid"].to_numpy() == filt
                 outdic["n_days_{}".format(filt)] = (
                     pdf["i:jd"][mask].max() - pdf["i:jd"][mask].min()
                 )
@@ -810,12 +810,12 @@ def correct_ztf_mpc_names(ssnamenr):
         Array with SSO names from ZTF
 
     Returns
-    ----------
+    -------
     out: np.array
         Array with corrected names from ZTF
 
     Examples
-    ----------
+    --------
     >>> ssnamenr = np.array(['2010XY03', '2023AB0', '2023XY00', '345', '2023UY12'])
     >>> ssnamenr_alt = correct_ztf_mpc_names(ssnamenr)
 
@@ -846,7 +846,7 @@ def correct_ztf_mpc_names(ssnamenr):
             Corresponding ssnamenr
 
         Returns
-        ----------
+        -------
         out: str
             Name corrected for trailing 0 at the end (e.g. 2010XY03 should read 2010XY3)
         """
@@ -873,7 +873,7 @@ def rockify(ssnamenr: pd.Series):
         SSO names as given in ZTF alert packets
 
     Returns
-    -----------
+    -------
     sso_name: np.array of str
         SSO names according to quaero
     sso_number: np.array of int
@@ -882,7 +882,7 @@ def rockify(ssnamenr: pd.Series):
     import rocks
 
     # prune names
-    ssnamenr_alt = correct_ztf_mpc_names(ssnamenr.values)
+    ssnamenr_alt = correct_ztf_mpc_names(ssnamenr.to_numpy())
 
     # rockify
     names_numbers = rocks.identify(ssnamenr_alt)
@@ -894,8 +894,10 @@ def rockify(ssnamenr: pd.Series):
 
 
 def angular_separation(lon1, lat1, lon2, lat2):
-    """
-    Angular separation between two points on a sphere.
+    """Angular separation between two points on a sphere.
+
+    Notes
+    -----
     Stolen from astropy -- for version <5
 
     Parameters
@@ -946,7 +948,7 @@ def extract_obliquity(sso_name, alpha0, delta0):
         DEC of the pole [degree]
 
     Returns
-    ----------
+    -------
     obliquity: np.array of double
         Obliquity for each object [degree]
     """
@@ -966,12 +968,12 @@ def extract_obliquity(sso_name, alpha0, delta0):
     pdf = pdf.merge(sub[cols], left_on="sso_name", right_on="sso_name", how="left")
 
     # Orbit
-    lon_orbit = (pdf["orbital_elements.node_longitude.value"] - 90).values
-    lat_orbit = (90.0 - pdf["orbital_elements.inclination.value"]).values
+    lon_orbit = (pdf["orbital_elements.node_longitude.value"] - 90).to_numpy()
+    lat_orbit = (90.0 - pdf["orbital_elements.inclination.value"]).to_numpy()
 
     # Spin -- convert to EC
-    ra = np.nan_to_num(pdf.alpha0.values) * u.degree
-    dec = np.nan_to_num(pdf.delta0.values) * u.degree
+    ra = np.nan_to_num(pdf.alpha0.to_numpy()) * u.degree
+    dec = np.nan_to_num(pdf.delta0.to_numpy()) * u.degree
 
     # Trick to put the object "far enough"
     coords_spin = SkyCoord(ra=ra, dec=dec, distance=200 * u.parsec, frame="hcrs")
@@ -1003,7 +1005,7 @@ def aggregate_sso_data(output_filename=None):
         If given, save data on HDFS. Cannot overwrite. Default is None.
 
     Returns
-    ----------
+    -------
     df_grouped: Spark DataFrame
         Spark DataFrame with aggregated SSO data.
     """
@@ -1074,7 +1076,7 @@ def build_the_ssoft(
         Method to compute ephemerides: `ephemcc` (default), or `rest`.
 
     Returns
-    ----------
+    -------
     pdf: pd.DataFrame
         Pandas DataFrame with all the SSOFT data.
 

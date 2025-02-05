@@ -37,7 +37,7 @@ def regular_unit_tests(global_args: dict = None, verbose: bool = False):
         Default is False.
 
     Examples
-    ----------
+    --------
     Set "toto" to "myvalue", such that it can be used during tests:
     >>> globs = globals()
     >>> globs["toto"] = "myvalue"

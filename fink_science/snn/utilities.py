@@ -36,7 +36,7 @@ def reformat_to_df(pred_probs, ids=None):
         List of intial alert SNID
 
     Returns
-    ----------
+    -------
     preds_df: pd.DataFrame
         Pandas DataFrame, row={SNID  prob_class0  prob_class1  pred_class}
     """

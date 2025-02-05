@@ -25,7 +25,7 @@ for name in names:
         lines = features_file.readlines()[::2]
         features.append({
             split[0]: float(split[1][:-1])
-            for split in map(lambda ln: ln.split(": "), lines)
+            for split in map(lambda ln: ln.split(": "), lines)  # noqa: C417
         })
 
 result_features = []

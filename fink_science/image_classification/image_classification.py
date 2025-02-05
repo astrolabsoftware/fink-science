@@ -82,6 +82,9 @@ def peak_snr(img):
 
 def img_labelisation(stamp, noise_threshold=3.5):
     """Perform image classification based on their visual content.
+
+    Notes
+    -----
     Two final labels available for images which are not noisy and not corrupted.
     Star label means this image contains only ponctual objects.
     Extend label means this image contains at least one extend object.

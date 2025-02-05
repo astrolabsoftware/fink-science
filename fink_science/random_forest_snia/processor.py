@@ -53,8 +53,7 @@ def apply_selection_cuts_ztf(
     minpoints: int = 4,
     maxndethist: int = 20,
 ) -> pd.Series:
-    """Apply selection cuts to keep only alerts of interest
-    for early SN Ia analysis
+    """Apply selection cuts to keep only alerts of interest for early SN Ia analysis
 
     Parameters
     ----------
@@ -69,7 +68,7 @@ def apply_selection_cuts_ztf(
         Each row contains one label.
 
     Returns
-    ---------
+    -------
     mask: pd.Series
         Series containing `True` if the alert is valid, `False` otherwise.
         Each row contains one boolean.
@@ -96,13 +95,12 @@ def rfscore_sigmoid_full(
     sigmapsf,
     cdsxmatch,
     ndethist,
-    min_rising_points=pd.Series([2]),
-    min_data_points=pd.Series([4]),
-    rising_criteria=pd.Series(["ewma"]),
+    min_rising_points=None,
+    min_data_points=None,
+    rising_criteria=None,
     model=None,
 ) -> pd.Series:
-    """Return the probability of an alert to be a SNe Ia using a Random
-    Forest Classifier (sigmoid fit).
+    """Return the probability of an alert to be a SNe Ia using a Random Forest Classifier (sigmoid fit).
 
     You need to run the SIMBAD crossmatch before.
 
@@ -127,12 +125,12 @@ def rfscore_sigmoid_full(
         model `data/models/default-model.obj` is loaded.
 
     Returns
-    ----------
+    -------
     probabilities: 1D np.array of float
         Probability between 0 (non-Ia) and 1 (Ia).
 
     Examples
-    ----------
+    --------
     >>> from fink_science.xmatch.processor import xmatch_cds
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
@@ -214,6 +212,12 @@ def rfscore_sigmoid_full(
     >>> df.filter(df['pIa'] > 0.5).count()
     0
     """
+    if min_rising_points is None:
+        min_rising_points = pd.Series([2])
+    if min_data_points is None:
+        min_data_points = pd.Series([4])
+    if rising_criteria is None:
+        rising_criteria = pd.Series(["ewma"])
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
 
     if len(jd[mask]) == 0:
@@ -224,7 +228,7 @@ def rfscore_sigmoid_full(
 
     # Load pre-trained model `clf`
     if model is not None:
-        clf = load_scikit_model(model.values[0])
+        clf = load_scikit_model(model.to_numpy()[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + "/data/models/default-model_sigmoid.obj"
@@ -236,9 +240,9 @@ def rfscore_sigmoid_full(
         pdf_sub = pdf[pdf["SNID"] == id]
         features = get_sigmoid_features_dev(
             pdf_sub,
-            min_rising_points=min_rising_points.values[0],
-            min_data_points=min_data_points.values[0],
-            rising_criteria=rising_criteria.values[0],
+            min_rising_points=min_rising_points.to_numpy()[0],
+            min_data_points=min_data_points.to_numpy()[0],
+            rising_criteria=rising_criteria.to_numpy()[0],
         )
         if (features[0] == 0) or (features[6] == 0):
             flag.append(False)
@@ -271,9 +275,9 @@ def extract_features_rf_snia(
     sigmapsf,
     cdsxmatch,
     ndethist,
-    min_rising_points=pd.Series([2]),
-    min_data_points=pd.Series([4]),
-    rising_criteria=pd.Series(["ewma"]),
+    min_rising_points=None,
+    min_data_points=None,
+    rising_criteria=None,
 ) -> pd.Series:
     """Return the features used by the RF classifier.
 
@@ -299,12 +303,12 @@ def extract_features_rf_snia(
         How to compute derivatives: ewma (default), or diff.
 
     Returns
-    ----------
+    -------
     features: list of str
         List of string.
 
     Examples
-    ----------
+    --------
     >>> from pyspark.sql.functions import split
     >>> from pyspark.sql.types import FloatType
     >>> from fink_utils.spark.utils import concat_col
@@ -336,6 +340,13 @@ def extract_features_rf_snia(
     >>> df.agg({RF_FEATURE_NAMES[0]: "min"}).collect()[0][0]
     0.0
     """
+    if min_rising_points is None:
+        min_rising_points = pd.Series([2])
+    if min_data_points is None:
+        min_data_points = pd.Series([4])
+    if rising_criteria is None:
+        rising_criteria = pd.Series(["ewma"])
+
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
 
     if len(jd[mask]) == 0:
@@ -349,9 +360,9 @@ def extract_features_rf_snia(
         pdf_sub = pdf[pdf["SNID"] == id]
         features = get_sigmoid_features_dev(
             pdf_sub,
-            min_rising_points=min_rising_points.values[0],
-            min_data_points=min_data_points.values[0],
-            rising_criteria=rising_criteria.values[0],
+            min_rising_points=min_rising_points.to_numpy()[0],
+            min_data_points=min_data_points.to_numpy()[0],
+            rising_criteria=rising_criteria.to_numpy()[0],
         )
         test_features.append(features)
 
@@ -370,20 +381,15 @@ def extract_features_rainbow(
     filterName,
     cpsFlux,
     cpsFluxErr,
-    band_wave_aa={
-        "u": 3671.0,
-        "g": 4827.0,
-        "r": 6223.0,
-        "i": 7546.0,
-        "z": 8691.0,
-        "Y": 9712.0,
-    },
-    with_baseline=False,
-    min_data_points=7,
-    low_bound=-10,
+    band_wave_aa=None,
+    with_baseline=None,
+    min_data_points=None,
+    low_bound=None,
 ) -> pd.Series:
     """Return the features used by the RF classifier for one alert.
 
+    Notes
+    -----
     Features (incl. order) are given by `RAINBOW_FEATURES_NAMES`.
 
     Parameters
@@ -405,12 +411,12 @@ def extract_features_rainbow(
         Lower bound of FLUXCAL to consider. Default is -10.
 
     Returns
-    ----------
+    -------
     features: list of floats
         Rainbow best-fit parameter values.
 
     Examples
-    ----------
+    --------
     >>> from pyspark.sql.functions import split
     >>> from pyspark.sql.types import FloatType
     >>> from fink_utils.spark.utils import concat_col
@@ -435,9 +441,25 @@ def extract_features_rainbow(
 
     # Test no NaNs
     >>> for index, alert in pdf.iterrows():
-    ...     a_feature = extract_features_rainbow(*[np.array(x) for x in alert.values])
+    ...     a_feature = extract_features_rainbow(*[np.array(x) for x in alert.to_numpy()])
     ...     assert np.all(~np.isnan(a_feature))
     """
+    if band_wave_aa is None:
+        band_wave_aa = {
+            "u": 3671.0,
+            "g": 4827.0,
+            "r": 6223.0,
+            "i": 7546.0,
+            "z": 8691.0,
+            "Y": 9712.0,
+        }
+    if with_baseline is None:
+        with_baseline = False
+    if min_data_points is None:
+        min_data_points = 7
+    if low_bound is None:
+        low_bound = -10
+
     if len(midPointTai) < min_data_points:
         return np.zeros(len(RAINBOW_FEATURES_NAMES), dtype=float)
 
@@ -468,15 +490,12 @@ def rfscore_rainbow_elasticc(
     hostgal_zphot,
     maxduration=None,
     model=None,
-    band_wave_aa=pd.Series([
-        {"u": 3671.0, "g": 4827.0, "r": 6223.0, "i": 7546.0, "z": 8691.0, "Y": 9712.0}
-    ]),
-    with_baseline=pd.Series([False]),
-    min_data_points=pd.Series([7]),
-    low_bound=pd.Series([-10]),
+    band_wave_aa=None,
+    with_baseline=None,
+    min_data_points=None,
+    low_bound=None,
 ) -> pd.Series:
-    """Return the probability of an alert to be a SNe Ia using a Random
-    Forest Classifier (rainbow fit) on ELaSTICC alert data.
+    """Return the probability of an alert to be a SNe Ia using a Random Forest Classifier (rainbow fit) on ELaSTICC alert data.
 
     Parameters
     ----------
@@ -509,12 +528,12 @@ def rfscore_rainbow_elasticc(
         Lower bound of FLUXCAL to consider (float). Default is -10.
 
     Returns
-    ----------
+    -------
     probabilities: Spark DataFrame Column
         Probability between 0 (non-Ia) and 1 (Ia) for each alert.
 
     Examples
-    ----------
+    --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
@@ -546,12 +565,30 @@ def rfscore_rainbow_elasticc(
     >>> df.filter(df['pIa'] == -1.0).count()
     141
     """
+    if band_wave_aa is None:
+        band_wave_aa = pd.Series([
+            {
+                "u": 3671.0,
+                "g": 4827.0,
+                "r": 6223.0,
+                "i": 7546.0,
+                "z": 8691.0,
+                "Y": 9712.0,
+            }
+        ])
+    if with_baseline is None:
+        with_baseline = pd.Series([False])
+    if min_data_points is None:
+        min_data_points = pd.Series([7])
+    if low_bound is None:
+        low_bound = pd.Series([-10])
+
     # dt is a column of floats
     dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
 
     # Maximum days in the history
     if maxduration is not None:
-        mask = dt <= maxduration.values[0]
+        mask = dt <= maxduration.to_numpy()[0]
     else:
         mask = np.repeat(True, len(midPointTai))
 
@@ -560,7 +597,7 @@ def rfscore_rainbow_elasticc(
 
     # Load pre-trained model `clf`
     if model is not None:
-        clf = load_scikit_model(model.values[0])
+        clf = load_scikit_model(model.to_numpy()[0])
     else:
         curdir = os.path.dirname(os.path.abspath(__file__))
         model = curdir + "/data/models/elasticc_rainbow_earlyIa_after_leak.pkl"
@@ -573,14 +610,14 @@ def rfscore_rainbow_elasticc(
     flag = []
     for index in ids:
         features = extract_features_rainbow(
-            midPointTai.values[index],
-            filterName.values[index],
-            cpsFlux.values[index],
-            cpsFluxErr.values[index],
-            band_wave_aa=band_wave_aa.values[0],
-            with_baseline=with_baseline.values[0],
-            min_data_points=min_data_points.values[0],
-            low_bound=low_bound.values[0],
+            midPointTai.to_numpy()[index],
+            filterName.to_numpy()[index],
+            cpsFlux.to_numpy()[index],
+            cpsFluxErr.to_numpy()[index],
+            band_wave_aa=band_wave_aa.to_numpy()[0],
+            with_baseline=with_baseline.to_numpy()[0],
+            min_data_points=min_data_points.to_numpy()[0],
+            low_bound=low_bound.to_numpy()[0],
         )
         if features[0] == 0.0:
             flag.append(False)
@@ -588,10 +625,10 @@ def rfscore_rainbow_elasticc(
             flag.append(True)
 
         meta_feats = [
-            len(midPointTai.values[index]),
-            snr.values[index],
-            hostgal_snsep.values[index],
-            hostgal_zphot.values[index],
+            len(midPointTai.to_numpy()[index]),
+            snr.to_numpy()[index],
+            hostgal_snsep.to_numpy()[index],
+            hostgal_zphot.to_numpy()[index],
         ]
         test_features.append(np.array(meta_feats + list(features)))
 

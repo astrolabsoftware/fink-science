@@ -28,6 +28,9 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(IntegerType(), PandasUDFType.SCALAR)
 def nalerthist(magpsf) -> pd.Series:
     """Compute the number of detections contained in the alert (current+history)
+
+    Notes
+    -----
     Upper limits are not counted.
 
     Parameters
@@ -36,13 +39,13 @@ def nalerthist(magpsf) -> pd.Series:
         Magnitude from PSF-fit photometry
 
     Returns
-    ----------
+    -------
     probabilities: 1D np.array of int
         Number of detections contained in the alert (current+history)
         Upper limits are not counted.
 
     Examples
-    ----------
+    --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 

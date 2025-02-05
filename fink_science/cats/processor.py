@@ -35,10 +35,11 @@ def predict_nn(
     filterName: pd.Series,
     model=None,
 ) -> pd.Series:
-    """
-    Return broad predctions from a CBPF classifier model (cats general) using
-    Elasticc alert data. For the default model, one has the following mapping:
+    """Return broad predctions from a CBPF classifier model (cats general)
 
+    Notes
+    -----
+    For the default model, one has the following mapping:
     class_dict = {
         0: 'SN-like',
         1: 'Fast',
@@ -46,9 +47,10 @@ def predict_nn(
         3: 'Periodic',
         4: 'non-Periodic (AGN),
     }
+    This model runs on Elasticc/Rubin data
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     midpointTai: spark DataFrame Column
         SNID JD Time (float)
     psFlux: spark DataFrame Column
@@ -60,14 +62,14 @@ def predict_nn(
     model: spark DataFrame Column
         path to pre-trained Hierarchical Classifier model. (string)
 
-    Returns:
-    --------
+    Returns
+    -------
     preds: pd.Series
         preds is an pd.Series which contains a column
         with probabilities for broad classes shown in Elasticc data challenge.
 
     Examples
-    -----------
+    --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
     >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
@@ -96,7 +98,6 @@ def predict_nn(
     >>> df.filter(df['argmax'] == 0).count()
     49
     """
-
     import tensorflow as tf
     from tensorflow import keras
 
@@ -108,7 +109,7 @@ def predict_nn(
     for i, mjds in enumerate(midpointTai):
         if len(mjds) > 0:
             filters.append(
-                np.array([filter_dict[f] for f in filterName.values[i]]).astype(
+                np.array([filter_dict[f] for f in filterName.to_numpy()[i]]).astype(
                     np.int16
                 )
             )
@@ -143,13 +144,13 @@ def predict_nn(
         curdir = os.path.dirname(os.path.abspath(__file__))
         model_path = curdir + "/data/models/cats_models/cats_small_nometa_serial.keras"
     else:
-        model_path = model.values[0]
+        model_path = model.to_numpy()[0]
 
     NN = tf.keras.models.load_model(model_path)
 
     preds = NN.predict([lc])
 
-    return pd.Series([p for p in preds])
+    return pd.Series(list(preds))
 
 
 if __name__ == "__main__":

@@ -34,10 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_extractor():
-    """
-    Features definition - https://arxiv.org/pdf/2012.01419.pdf#section.A1
-    """
-
+    """Features definition - https://arxiv.org/pdf/2012.01419.pdf#section.A1"""
     return lc.Extractor(
         lc.Mean(),  # A1.0.2  Mean, A2.0.12  Mean
         lc.WeightedMean(),  # A1.0.3  Weighted Mean, A2.0.29  Weighted mean
@@ -82,7 +79,11 @@ columns_count = len(FEATURES_COLS)
 def extract_features_ad_raw(
     magpsf, jd, sigmapsf, cfid, oId, distnr, magnr=None, sigmagnr=None, isdiffpos=None
 ) -> pd.Series:
-    """Returns many features, extracted from measurments using light_curve package (https://github.com/light-curve/light-curve-python).
+    """Returns features extracted from measurments using light_curve package
+
+    Notes
+    -----
+    See https://github.com/light-curve/light-curve-python.
     Reference - https://arxiv.org/pdf/2012.01419.pdf#section.A1
 
     Parameters
@@ -105,12 +106,12 @@ def extract_features_ad_raw(
         f or 0 => candidate is from negative (ref minus sci) subtraction
 
     Returns
-    ----------
+    -------
     out: dict
         Returns dict of dict. Keys of first dict - filters (fid), keys of inner dicts - names of features.
 
     Examples
-    ---------
+    --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
@@ -147,7 +148,6 @@ def extract_features_ad_raw(
     ...    assert len(row['lc_features']) == len(np.unique(row['cfid'])) - 1
     ...    assert 3 not in row['lc_features'].keys()
     """
-
     cfid = np.asarray(cfid, "int32")
     magpsf = np.asarray(magpsf, "float64")
     jd = np.asarray(jd, "float64")
@@ -192,12 +192,12 @@ def extract_features_ad_raw(
 
     full_result = {}
     for passband_id in passbands:
-        passband = sub["cfid"].values == passband_id
+        passband = sub["cfid"].to_numpy() == passband_id
         try:
             result = extractor(
-                sub["jd"].values[passband],
-                sub["magpsf"].values[passband],
-                sub["sigmapsf"].values[passband],
+                sub["jd"].to_numpy()[passband],
+                sub["magpsf"].to_numpy()[passband],
+                sub["sigmapsf"].to_numpy()[passband],
                 fill_value=np.nan,
             )
         except ValueError as err:

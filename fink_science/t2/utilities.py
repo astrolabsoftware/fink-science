@@ -44,6 +44,8 @@ T2_COLS = [
 
 
 class LiteModel:
+    """Class for lite model"""
+
     @classmethod
     def from_file(cls, model_path):
         return LiteModel(tf.lite.Interpreter(model_path=model_path))
@@ -111,7 +113,7 @@ def get_model(
         Corresponding ID inside the foler (related to the version used to train)
 
     Returns
-    ----------
+    -------
     out: keras model
     """
     path = os.path.dirname(__file__)
@@ -135,8 +137,7 @@ def apply_selection_cuts_ztf(
     minpoints: int = 2,
     maxndethist: int = 90,
 ) -> pd.Series:
-    """Apply selection cuts to keep only alerts of interest
-    for T2 analysis
+    """Apply selection cuts to keep only alerts of interest for T2 analysis
 
     Parameters
     ----------
@@ -157,7 +158,7 @@ def apply_selection_cuts_ztf(
         Each row contains one label.
 
     Returns
-    ---------
+    -------
     mask: pd.Series
         Series containing `True` if the alert is valid, `False` otherwise.
         Each row contains one boolean.

@@ -26,12 +26,15 @@ from pandas.testing import assert_frame_equal  # noqa: F401
 @profile
 def transform_data(data):
     """Apply transformations for each filters on a flux dataset
-            - Shift cmidPointTai so that the max flux point is at 0
-            - Normalize by dividing flux and flux err by the
-            maximum flux of the k.NORMALIZING_BAND (kernel option)
-            - Add a column with maxflux before normalization
 
-    Split the results into multiple dataframes each containing only one passband.
+    Notes
+    -----
+    The procedure is:
+    - Shift cmidPointTai so that the max flux point is at 0
+    - Normalize by dividing flux and flux err by the
+      maximum flux of the k.NORMALIZING_BAND (kernel option)
+    - Add a column with maxflux before normalization
+    - Split the results into multiple dataframes each containing only one passband.
 
     Parameters
     ----------
@@ -47,10 +50,7 @@ def transform_data(data):
         Boolean array describing if each object is valid.
         Objects are valid if all required band have at least k.MINIMUM_POINTS observations.
 
-    Examples
-    --------
     """
-
     peak = data["cpsFlux"].apply(base.get_max)
     valid = np.array([True] * len(data))
     valid = valid & (data["cmidPointTai"].apply(lambda x: len(x) >= k.MINIMUM_POINTS))
@@ -70,22 +70,24 @@ def transform_data(data):
 
 @profile
 def parametrise(transformed, metadata, target_col=""):
-    """Extract parameters .
+    """Extract parameters.
 
+    Notes
+    -----
     Parameters are :
-            - "peak" : maximum flux before normalization for filter k.NORMALIZING_BAND
-            - "ra" : right ascension
-            - "decl" : declination
+    - "peak" : maximum flux before normalization for filter k.NORMALIZING_BAND
+    - "ra" : right ascension
+    - "decl" : declination
 
-            Optional metadata:
-                - "hostgal_snsep" : distance to host galaxy
-                - "hostgal_zphot" : redshift of the host galaxy
-                - "hostgal_zphot_err" : error on the redshift of the host galaxy
+    Optional metadata:
+    - "hostgal_snsep" : distance to host galaxy
+    - "hostgal_zphot" : redshift of the host galaxy
+    - "hostgal_zphot_err" : error on the redshift of the host galaxy
 
-            For each filter:
-                - 'std' : standard deviation of the flux for each filter
-                - 'mean_snr' : mean signal over noise ratio for each filter
-                - 'nb_points' : number of points for each filter
+    For each filter:
+    - 'std' : standard deviation of the flux for each filter
+    - 'mean_snr' : mean signal over noise ratio for each filter
+    - 'nb_points' : number of points for each filter
 
     Parameters
     ----------
@@ -103,10 +105,7 @@ def parametrise(transformed, metadata, target_col=""):
         Also adds columns of cmidPointTai, cpsFlux and cpsFluxErr that
         will be used to compute color later on.
 
-    Example
-    -------
     """
-
     ids = transformed["diaObjectId"]
 
     df_parameters = pd.DataFrame(data={"object_id": ids})
@@ -126,7 +125,7 @@ def parametrise(transformed, metadata, target_col=""):
     ]):
         df_parameters[name] = [i[idx] for i in rainbow_features]
 
-    for idx, band in enumerate(k.PASSBANDS):
+    for band in k.PASSBANDS:
         masks = transformed["cfilterName"].apply(lambda x: x == band)
 
         single_band_flux = pd.Series([
@@ -160,6 +159,18 @@ def parametrise(transformed, metadata, target_col=""):
 
 @profile
 def apply_rainbow(pds):
+    """Apply the rainbow feature extraction
+
+    Parameters
+    ----------
+    pds: pandas DataFrame
+
+    Returns
+    -------
+    result: list of float
+        Features extracted. If RuntimeError,
+        features are set to -9.0.
+    """
     band_wave_aa = {"u": 3751, "g": 4742, "r": 6173, "i": 7502, "z": 8679, "Y": 9711}
 
     fitter = RainbowFit.from_angstrom(
@@ -176,7 +187,7 @@ def apply_rainbow(pds):
         return result
 
     except RuntimeError:
-        return np.array([-9] * 7)
+        return np.array([-9.0] * 7)
 
 
 if __name__ == "__main__":

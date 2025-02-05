@@ -55,7 +55,7 @@ def load_external_model(model_path):
         Folder that contains the two models `rf.sav` and `pca.sav`.
 
     Returns
-    ----------
+    -------
     rf, pca: RandomForestClassifiers
     """
     rf = pickle.load(open(os.path.join(model_path, "rf.sav"), "rb"))
