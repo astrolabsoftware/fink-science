@@ -17,7 +17,7 @@ from line_profiler import profile
 import pandas as pd
 
 from pyspark.sql.functions import pandas_udf
-from pyspark.sql.types import MapType, StringType, DoubleType
+from pyspark.sql.types import MapType, StringType, FloatType
 from fink_science.blazar_low_state.utils import quiescent_state_, BLAZAR_COLS
 
 from fink_science.tester import spark_unit_tests
@@ -27,7 +27,7 @@ import os
 RELEASE = 22
 
 
-@pandas_udf(MapType(StringType(), DoubleType()))
+@pandas_udf(MapType(StringType(), FloatType()))
 @profile
 def quiescent_state(
         candid: pd.Series,
