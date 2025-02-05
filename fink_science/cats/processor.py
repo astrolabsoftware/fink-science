@@ -32,11 +32,6 @@ def predict_nn(
         psFlux: pd.Series,
         psFluxErr: pd.Series,
         filterName: pd.Series,
-        mwebv: pd.Series,
-        z_final: pd.Series,
-        z_final_err: pd.Series,
-        hostgal_zphot: pd.Series,
-        hostgal_zphot_err: pd.Series,
         model=None
 ) -> pd.Series:
     """
@@ -61,16 +56,6 @@ def predict_nn(
         flux error from LSST (float)
     filterName: spark DataFrame Column
         observed filter (string)
-    mwebv: spark DataFrame Column
-        milk way extinction (float)
-    z_final: spark DataFrame Column
-        redshift of a given event (float)
-    z_final_err: spark DataFrame Column
-        redshift error of a given event (float)
-    hostgal_zphot: spark DataFrame Column
-        photometric redshift of host galaxy (float)
-    hostgal_zphot_err: spark DataFrame Column
-        error in photometric redshift of host galaxy (float)
     model: spark DataFrame Column
         path to pre-trained Hierarchical Classifier model. (string)
 
@@ -105,12 +90,10 @@ def predict_nn(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('diaObject.mwebv'), F.col('diaObject.z_final'), F.col('diaObject.z_final_err')]
-    >>> args += [F.col('diaObject.hostgal_zphot'), F.col('diaObject.hostgal_zphot_err')]
     >>> df = df.withColumn('preds', predict_nn(*args))
     >>> df = df.withColumn('argmax', F.expr('array_position(preds, array_max(preds)) - 1'))
     >>> df.filter(df['argmax'] == 0).count()
-    65
+    49
     """
 
     import tensorflow as tf
@@ -120,7 +103,6 @@ def predict_nn(
 
     mjd = []
     filters = []
-    meta = []
 
     for i, mjds in enumerate(midpointTai):
 
@@ -130,14 +112,6 @@ def predict_nn(
             ).astype(np.int16))
 
             mjd.append(mjds - mjds[0])
-
-            if not np.isnan(mwebv.values[i]):
-
-                meta.append([mwebv.values[i],
-                             hostgal_zphot.values[i],
-                             hostgal_zphot_err.values[i],
-                             z_final.values[i],
-                             z_final_err.values[i]])
 
     flux = psFlux.apply(lambda x: norm_column(x))
     error = psFluxErr.apply(lambda x: norm_column(x))
@@ -172,19 +146,16 @@ def predict_nn(
                          band[..., None]],
                         axis=-1)
 
-    meta = np.array(meta)
-    meta[meta < 0] = -1
-
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + '/data/models/cats_models/best_model_1.keras'
+        model_path = curdir + '/data/models/cats_models/cats_small_nometa_serial.keras'
     else:
         model_path = model.values[0]
 
     NN = tf.keras.models.load_model(model_path)
 
-    preds = NN.predict([lc, meta])
+    preds = NN.predict([lc])
 
     return pd.Series([p for p in preds])
 
