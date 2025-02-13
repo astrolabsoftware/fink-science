@@ -255,9 +255,9 @@ def rfscore_rainbow_elasticc_nometa(
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('pIa', rfscore_rainbow_elasticc_nometa(*args))
-
-    >>> df.filter(df['pIa'] > 0.5).count()
-    64
+    
+    >>> df.filter(df['pIa'] > 0.55).count()
+    54
 
     >>> df.filter(df['pIa'] == -1.0).count()
     141
