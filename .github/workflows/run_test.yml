@@ -44,6 +44,5 @@ jobs:
     - name: Run test suites
       run: |
         rm -f /tmp/forest_*.onnx
-        pip install scikit-learn==1.5.2
         ./run_tests.sh --single_module fink_science/random_forest_snia/processor.py 
         curl -s https://codecov.io/bash | bash
