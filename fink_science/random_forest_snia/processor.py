@@ -85,7 +85,7 @@ def apply_selection_cuts_ztf(
 
     return mask
 
-
+"""
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_sigmoid_full(
@@ -99,7 +99,7 @@ def rfscore_sigmoid_full(
     min_data_points=None,
     rising_criteria=None,
     model=None,
-) -> pd.Series:
+) -> pd.Series:"""
     """Return the probability of an alert to be a SNe Ia using a Random Forest Classifier (sigmoid fit).
 
     You need to run the SIMBAD crossmatch before.
@@ -211,7 +211,7 @@ def rfscore_sigmoid_full(
 
     >>> df.filter(df['pIa'] > 0.5).count()
     0
-    """
+    """ """
     if min_rising_points is None:
         min_rising_points = pd.Series([2])
     if min_data_points is None:
@@ -278,7 +278,7 @@ def extract_features_rf_snia(
     min_rising_points=None,
     min_data_points=None,
     rising_criteria=None,
-) -> pd.Series:
+) -> pd.Series:"""
     """Return the features used by the RF classifier.
 
     There are 12 features. Order is:
@@ -339,7 +339,7 @@ def extract_features_rf_snia(
     # Trigger something
     >>> df.agg({RF_FEATURE_NAMES[0]: "min"}).collect()[0][0]
     0.0
-    """
+    """"""
     if min_rising_points is None:
         min_rising_points = pd.Series([2])
     if min_data_points is None:
@@ -374,7 +374,7 @@ def extract_features_rf_snia(
     ]
 
     return pd.Series(concatenated_features)
-
+"""
 
 def extract_features_rainbow(
     midPointTai,
@@ -477,7 +477,7 @@ def extract_features_rainbow(
 
     return features[1:]
 
-
+"""
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_rainbow_elasticc(
@@ -494,7 +494,7 @@ def rfscore_rainbow_elasticc(
     with_baseline=None,
     min_data_points=None,
     low_bound=None,
-) -> pd.Series:
+) -> pd.Series:"""
     """Return the probability of an alert to be a SNe Ia using a Random Forest Classifier (rainbow fit) on ELaSTICC alert data.
 
     Parameters
@@ -564,7 +564,7 @@ def rfscore_rainbow_elasticc(
 
     >>> df.filter(df['pIa'] == -1.0).count()
     141
-    """
+    """"""
     if band_wave_aa is None:
         band_wave_aa = pd.Series([
             {
@@ -645,7 +645,7 @@ def rfscore_rainbow_elasticc(
     to_return = np.zeros(len(midPointTai), dtype=float)
     to_return[mask] = probabilities.T[1]
 
-    return pd.Series(to_return)
+    return pd.Series(to_return)"""
 
 
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
@@ -816,13 +816,13 @@ if __name__ == "__main__":
         "file://{}/data/alerts/test_elasticc_earlysnia.parquet".format(path)
     )
     globs["elasticc_alert_sample"] = elasticc_alert_sample
-
+    """
     model_path_sigmoid = "{}/data/models/default-model_sigmoid.obj".format(path)
     globs["model_path_sigmoid"] = model_path_sigmoid
 
     model_path_al_loop = "{}/data/models/for_al_loop/model_20240821.pkl".format(path)
     globs["model_path_al_loop"] = model_path_al_loop
-
+    """
     ztf_alert_with_i_band = (
         "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
     )
