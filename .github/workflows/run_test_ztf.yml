@@ -43,6 +43,7 @@ jobs:
 
     - name: Run test suites for ZTF
       run: |
+        pip install onnxruntime==1.20.1
         rm -f /tmp/forest_*.onnx
         ./run_tests.sh -s ztf
         curl -s https://codecov.io/bash | bash
