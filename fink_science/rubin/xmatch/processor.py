@@ -47,7 +47,12 @@ _LOG = logging.getLogger(__name__)
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def cdsxmatch(
-    diaSourceId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog: str, cols: str
+    diaSourceId: Any,
+    ra: Any,
+    dec: Any,
+    distmaxarcsec: float,
+    extcatalog: str,
+    cols: str,
 ) -> pd.Series:
     """Query the CDSXmatch service to find identified objects in alerts.
 
@@ -226,7 +231,7 @@ def xmatch_cds(
 
     Examples
     --------
-    >>> df = spark.read.load(ztf_alert_sample)
+    >>> df = spark.read.load(elasticc_alert_sample)
 
     # Simbad
     >>> df_simbad = xmatch_cds(df)
@@ -323,7 +328,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
     Examples
     --------
-    >>> df = spark.read.load(ztf_alert_sample)
+    >>> df = spark.read.load(elasticc_alert_sample)
 
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
     >>> path = curdir + '/data/catalogs'
@@ -420,7 +425,9 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
     df = df.withColumn(
         "tns",
-        crossmatch_with_tns(df["diaSource.diaSourceId"], df["diaSource.ra"], df["diaSource.dec"]),
+        crossmatch_with_tns(
+            df["diaSource.diaSourceId"], df["diaSource.ra"], df["diaSource.dec"]
+        ),
     )
 
     return df
@@ -672,8 +679,10 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
-    globs["ztf_alert_sample"] = ztf_alert_sample
+    elasticc_alert_sample = (
+        "file://{}/data/alerts/elasticc_sample_seed0.parquet".format(path)
+    )
+    globs["elasticc_alert_sample"] = elasticc_alert_sample
 
     # Run the test suite
     spark_unit_tests(globs)
