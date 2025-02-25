@@ -1,4 +1,4 @@
-name: Sentinel
+name: Sentinel Rubin
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        container: ["julienpeloton/fink-ci:latest"]
+        container: ["julienpeloton/fink-ci-rubin:latest"]
 
     container:
       image: ${{ matrix.container }}
@@ -44,5 +44,5 @@ jobs:
     - name: Run test suites for ZTF
       run: |
         rm -f /tmp/forest_*.onnx
-        ./run_tests.sh -s ztf
+        ./run_tests.sh -s rubin
         curl -s https://codecov.io/bash | bash
