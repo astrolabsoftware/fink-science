@@ -42,6 +42,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     -s)
       SURVEY=$2
+      shift 2
       ;;
     --single_module)
       SINGLE_MODULE_PATH=$2
