@@ -1,4 +1,4 @@
-# Copyright 2019-2024 AstroLab Software
+# Copyright 2019-2025 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,11 +29,11 @@ import requests
 import pandas as pd
 import numpy as np
 
-from fink_science.xmatch.utils import cross_match_astropy
-from fink_science.xmatch.utils import generate_csv
-from fink_science.xmatch.utils import extract_vsx, extract_gcvs
-from fink_science.xmatch.utils import extract_3hsp, extract_4lac
-from fink_science.xmatch.utils import extract_mangrove, MANGROVE_COLS
+from fink_science.ztf.xmatch.utils import cross_match_astropy
+from fink_science.ztf.xmatch.utils import generate_csv
+from fink_science.ztf.xmatch.utils import extract_vsx, extract_gcvs
+from fink_science.ztf.xmatch.utils import extract_3hsp, extract_4lac
+from fink_science.ztf.xmatch.utils import extract_mangrove, MANGROVE_COLS
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 

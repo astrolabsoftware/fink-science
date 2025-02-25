@@ -18,7 +18,7 @@ import pandas as pd
 
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import MapType, StringType, FloatType
-from fink_science.blazar_low_state.utils import quiescent_state_, BLAZAR_COLS
+from fink_science.ztf.blazar_low_state.utils import quiescent_state_, BLAZAR_COLS
 
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
@@ -68,7 +68,7 @@ def quiescent_state(
     >>> import pandas as pd
     >>> from fink_utils.spark.utils import concat_col
     >>> import pyspark.sql.functions as F
-    >>> from fink_science.standardized_flux.processor import standardized_flux
+    >>> from fink_science.ztf.standardized_flux.processor import standardized_flux
 
     >>> parDF = spark.read.parquet(ztf_alert_sample)
 

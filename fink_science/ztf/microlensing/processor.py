@@ -1,4 +1,4 @@
-# Copyright 2020-2024 AstroLab Software
+# Copyright 2020-2025 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +24,9 @@ import os
 import warnings
 
 from fink_science import __file__
-from fink_science.microlensing.classifier import _extract
-from fink_science.microlensing.classifier import LIA_FEATURE_NAMES
-from fink_science.microlensing.classifier import load_external_model
+from fink_science.ztf.microlensing.classifier import _extract
+from fink_science.ztf.microlensing.classifier import LIA_FEATURE_NAMES
+from fink_science.ztf.microlensing.classifier import load_external_model
 
 from fink_utils.photometry.conversion import dc_mag
 

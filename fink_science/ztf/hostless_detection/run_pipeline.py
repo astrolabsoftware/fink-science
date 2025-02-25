@@ -1,4 +1,4 @@
-# Copyright 2024 AstroLab Software
+# Copyright 2024-2025 AstroLab Software
 # Author: R. Durgesh
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,7 @@ from line_profiler import profile
 from typing import Dict, Tuple
 
 import numpy as np
-from fink_science.hostless_detection.pipeline_utils import (
+from fink_science.ztf.hostless_detection.pipeline_utils import (
     apply_sigma_clipping,
     run_hostless_detection_with_clipped_data,
     read_bytes_image,

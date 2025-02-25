@@ -1,4 +1,4 @@
-# Copyright 2024 AstroLab Software
+# Copyright 2024-2025 AstroLab Software
 # Author: R. Durgesh
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,7 @@ from astropy.io import fits
 from astropy.stats import sigma_clip
 import numpy as np
 
-import fink_science.hostless_detection.powerspectrum as ps
+import fink_science.ztf.hostless_detection.powerspectrum as ps
 
 np.random.seed(1337)
 warnings.filterwarnings("ignore")

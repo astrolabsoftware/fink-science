@@ -1,4 +1,4 @@
-# Copyright 2020-2024 AstroLab Software
+# Copyright 2020-2025 AstroLab Software
 # Author: Roman Le Montagner
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,8 @@ from pyspark.sql.types import StructType, StructField
 from pyspark.sql.functions import pandas_udf
 import pyspark.sql.functions as F
 
-import fink_science.fast_transient_rate.utils as u
-from fink_science.fast_transient_rate import rate_module_output_schema
+import fink_science.ztf.fast_transient_rate.utils as u
+from fink_science.ztf.fast_transient_rate import rate_module_output_schema
 from fink_utils.spark.utils import concat_col
 
 from fink_science.tester import spark_unit_tests

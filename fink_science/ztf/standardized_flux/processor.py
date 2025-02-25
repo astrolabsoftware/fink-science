@@ -19,7 +19,7 @@ import pandas as pd
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import ArrayType, DoubleType, StringType, MapType
 
-from fink_science.standardized_flux.utils import standardized_flux_
+from fink_science.ztf.standardized_flux.utils import standardized_flux_
 
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__

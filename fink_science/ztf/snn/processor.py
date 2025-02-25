@@ -25,7 +25,7 @@ import numpy as np
 import os
 
 from fink_science import __file__
-from fink_science.snn.utilities import reformat_to_df
+from fink_science.ztf.snn.utilities import reformat_to_df
 
 from fink_utils.data.utils import format_data_as_snana
 from fink_utils.xmatch.simbad import return_list_of_eg_host
@@ -121,8 +121,8 @@ def snn_ia(
 
     Examples
     --------
-    >>> from fink_science.xmatch.processor import xmatch_cds
-    >>> from fink_science.asteroids.processor import roid_catcher
+    >>> from fink_science.ztf.xmatch.processor import xmatch_cds
+    >>> from fink_science.ztf.asteroids.processor import roid_catcher
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 

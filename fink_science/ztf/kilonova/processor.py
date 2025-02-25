@@ -69,7 +69,7 @@ def knscore(
 
     Examples
     --------
-    >>> from fink_science.xmatch.processor import xmatch_cds
+    >>> from fink_science.ztf.xmatch.processor import xmatch_cds
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 

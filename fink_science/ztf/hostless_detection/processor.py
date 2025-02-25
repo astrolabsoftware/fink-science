@@ -1,4 +1,4 @@
-# Copyright 2024 AstroLab Software
+# Copyright 2024-2025 AstroLab Software
 # Author: R. Durgesh
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,8 @@ from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import ArrayType, FloatType
 import pandas as pd
 
-from fink_science.hostless_detection.run_pipeline import HostLessExtragalactic
-from fink_science.hostless_detection.pipeline_utils import load_json
+from fink_science.ztf.hostless_detection.run_pipeline import HostLessExtragalactic
+from fink_science.ztf.hostless_detection.pipeline_utils import load_json
 from fink_science.tester import spark_unit_tests
 
 
