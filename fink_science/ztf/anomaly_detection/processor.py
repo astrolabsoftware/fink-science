@@ -88,7 +88,7 @@ def anomaly_score(lc_features, model=None):
     --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
-    >>> from fink_science.ad_features.processor import extract_features_ad
+    >>> from fink_science.ztf.ad_features.processor import extract_features_ad
 
     >>> df = spark.read.load(ztf_alert_sample)
 
