@@ -15,7 +15,7 @@
 from line_profiler import profile
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import DoubleType, FloatType, ArrayType
+from pyspark.sql.types import DoubleType
 
 from supernnova.validation.validate_onthefly import classify_lcs
 
@@ -238,6 +238,9 @@ if __name__ == "__main__":
         "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
     )
     globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
+
+    model_path = "{}/data/models/snn_models/snn_sn_vs_all/model.pt".format(path)
+    globs["model_path"] = model_path
 
     # Run the test suite
     spark_unit_tests(globs)
