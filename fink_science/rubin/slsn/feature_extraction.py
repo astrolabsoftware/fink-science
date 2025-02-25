@@ -16,8 +16,8 @@ from line_profiler import profile
 import warnings
 import pandas as pd
 import numpy as np
-import fink_science.slsn.kernel as k
-import fink_science.slsn.basic_functions as base
+import fink_science.rubin.slsn.kernel as k
+import fink_science.rubin.slsn.basic_functions as base
 from light_curve.light_curve_py import RainbowFit
 from light_curve.light_curve_py import warnings as rainbow_warnings
 from pandas.testing import assert_frame_equal  # noqa: F401
