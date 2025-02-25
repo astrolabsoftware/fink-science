@@ -647,6 +647,7 @@ def rfscore_rainbow_elasticc(
 
     return pd.Series(to_return)
 
+
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_rainbow_elasticc_nometa(
@@ -715,7 +716,7 @@ def rfscore_rainbow_elasticc_nometa(
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('pIa', rfscore_rainbow_elasticc_nometa(*args))
-    
+
     >>> df.filter(df['pIa'] > 0.6).count()
     36
 
@@ -781,9 +782,7 @@ def rfscore_rainbow_elasticc_nometa(
         else:
             flag.append(True)
 
-        meta_feats = [
-            len(midPointTai.to_numpy()[index])
-        ]
+        meta_feats = [len(midPointTai.to_numpy()[index])]
         test_features.append(np.array(meta_feats + list(features)))
 
     flag = np.array(flag, dtype=bool)
@@ -821,7 +820,7 @@ if __name__ == "__main__":
 
     model_path_al_loop = "{}/data/models/for_al_loop/model_20240821.pkl".format(path)
     globs["model_path_al_loop"] = model_path_al_loop
-    
+
     ztf_alert_with_i_band = (
         "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
     )
