@@ -1,4 +1,4 @@
-# Copyright 2022-2024 Fink Software
+# Copyright 2022-2025 Fink Software
 # Author: Etienne Russeil
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +14,7 @@
 # limitations under the License.
 from line_profiler import profile
 
-from fink_science.slsn.classifier import slsn_classifier
+from fink_science.rubin.slsn.classifier import slsn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 import pandas as pd

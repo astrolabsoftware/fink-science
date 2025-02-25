@@ -1,4 +1,4 @@
-# Copyright 2022-2024 Fink Software
+# Copyright 2022-2025 Fink Software
 # Author: Etienne Russeil
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
