@@ -1,4 +1,4 @@
-# Copyright 2020-2024 AstroLab Software
+# Copyright 2020-2025 AstroLab Software
 # Author: Igor Beschastnov, Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
