@@ -41,8 +41,8 @@ jobs:
         echo "JAVA_HOME: $JAVA_HOME"
         echo `python -V`
 
-    - name: Run test suites
+    - name: Run test suites for ZTF
       run: |
         rm -f /tmp/forest_*.onnx
-        ./run_tests.sh
+        ./run_tests.sh -s ztf
         curl -s https://codecov.io/bash | bash
