@@ -24,7 +24,7 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(DoubleType())
 @profile
 def slsn_elasticc_no_md(
-    diaObjectId, cmidPointTai, cpsFlux, cpsFluxErr, cfilterName, ra, decl
+    diaObjectId, cmidPointTai, cpsFlux, cpsFluxErr, cfilterName, ra, dec
 ):
     """High level spark wrapper for the slsn classifier on ELASTiCC data
 
@@ -40,7 +40,7 @@ def slsn_elasticc_no_md(
         Filter IDs (vectors of ints)
     ra: Spark DataFrame Column
         Right ascension of the objects
-    decl: Spark DataFrame Column
+    dec: Spark DataFrame Column
         Declination of the objects
 
     Returns
@@ -56,7 +56,7 @@ def slsn_elasticc_no_md(
         "cpsFluxErr": cpsFluxErr,
         "cfilterName": cfilterName,
         "ra": ra,
-        "decl": decl,
+        "dec": dec,
     })
 
     proba = slsn_classifier(data, False)
@@ -72,7 +72,7 @@ def slsn_elasticc_with_md(
     cpsFluxErr,
     cfilterName,
     ra,
-    decl,
+    dec,
     hostgal_zphot,
     hostgal_zphot_err,
     hostgal_snsep,
@@ -91,7 +91,7 @@ def slsn_elasticc_with_md(
         Filter IDs (vectors of ints)
     ra: Spark DataFrame Column
         Right ascension of the objects
-    decl: Spark DataFrame Column
+    dec: Spark DataFrame Column
         Declination of the objects
     hostgal_zphot, hostgal_zphot_err: Spark DataFrame Column
         Redshift and redshift error of the host galaxy
@@ -113,7 +113,7 @@ def slsn_elasticc_with_md(
         "cpsFluxErr": cpsFluxErr,
         "cfilterName": cfilterName,
         "ra": ra,
-        "decl": decl,
+        "dec": dec,
         "hostgal_zphot": hostgal_zphot,
         "hostgal_zphot_err": hostgal_zphot_err,
         "hostgal_snsep": hostgal_snsep,

@@ -29,13 +29,13 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 @profile
 def predict_nn(
-    midpointTai: pd.Series,
+    midpointMjdTai: pd.Series,
     psFlux: pd.Series,
     psFluxErr: pd.Series,
-    filterName: pd.Series,
+    band: pd.Series,
     model=None,
 ) -> pd.Series:
-    """Return broad predctions from a CBPF classifier model (cats general)
+    """Return broad predictions from a CBPF classifier model (cats general)
 
     Notes
     -----
@@ -51,13 +51,13 @@ def predict_nn(
 
     Parameters
     ----------
-    midpointTai: spark DataFrame Column
+    midpointMjdTai: spark DataFrame Column
         SNID JD Time (float)
     psFlux: spark DataFrame Column
         flux from LSST (float)
     psFluxErr: spark DataFrame Column
         flux error from LSST (float)
-    filterName: spark DataFrame Column
+    band: spark DataFrame Column
         observed filter (string)
     model: spark DataFrame Column
         path to pre-trained Hierarchical Classifier model. (string)
@@ -79,7 +79,7 @@ def predict_nn(
     >>> df = df.withColumn('roid', F.lit(0))
 
     # Required alert columns
-    >>> what = ['midPointTai', 'psFlux', 'psFluxErr', 'filterName']
+    >>> what = ['midpointMjdTai', 'psFlux', 'psFluxErr', 'band']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -106,12 +106,10 @@ def predict_nn(
     mjd = []
     filters = []
 
-    for i, mjds in enumerate(midpointTai):
+    for i, mjds in enumerate(midpointMjdTai):
         if len(mjds) > 0:
             filters.append(
-                np.array([filter_dict[f] for f in filterName.to_numpy()[i]]).astype(
-                    np.int16
-                )
+                np.array([filter_dict[f] for f in band.to_numpy()[i]]).astype(np.int16)
             )
 
             mjd.append(mjds - mjds[0])
@@ -159,9 +157,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = (
-        "file://{}/data/alerts/or4_lsst7.1".format(path)
-    )
+    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite

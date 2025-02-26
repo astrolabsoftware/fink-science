@@ -78,7 +78,7 @@ def parametrise(transformed, metadata, target_col=""):
     Parameters are :
     - "peak" : maximum flux before normalization for filter k.NORMALIZING_BAND
     - "ra" : right ascension
-    - "decl" : declination
+    - "dec" : declination
 
     Optional metadata:
     - "hostgal_snsep" : distance to host galaxy
@@ -143,7 +143,7 @@ def parametrise(transformed, metadata, target_col=""):
         df_parameters[f"mean_snr_{band}"] = list(mean_snr)
 
     df_parameters["ra"] = transformed["ra"]
-    df_parameters["decl"] = transformed["decl"]
+    df_parameters["dec"] = transformed["dec"]
     df_parameters["nb_points"] = transformed["cpsFlux"].apply(lambda x: len(x))
 
     if metadata:

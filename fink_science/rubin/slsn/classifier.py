@@ -17,8 +17,6 @@ from line_profiler import profile
 import joblib
 import fink_science.rubin.slsn.kernel as k
 import fink_science.rubin.slsn.feature_extraction as fe
-import os
-from fink_science import __file__
 from fink_science.tester import regular_unit_tests
 import pandas as pd  # noqa: F401
 import numpy as np  # noqa: F401

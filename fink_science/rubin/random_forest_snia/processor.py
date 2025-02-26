@@ -43,8 +43,8 @@ RAINBOW_FEATURES_NAMES = [
 
 
 def extract_features_rainbow(
-    midPointTai,
-    filterName,
+    midpointMjdTai,
+    band,
     cpsFlux,
     cpsFluxErr,
     band_wave_aa=None,
@@ -60,9 +60,9 @@ def extract_features_rainbow(
 
     Parameters
     ----------
-    midPointTai: np.array of floats
+    midpointMjdTai: np.array of floats
         MJD vector for one object
-    filterName: np.array of str
+    band: np.array of str
         Filter name vector for one object
     cpsFlux, cpsFluxErr: np.array of float
         Flux from PSF-fit photometry, and 1-sigma error
@@ -91,7 +91,7 @@ def extract_features_rainbow(
     >>> df = spark.read.load(rubin_alert_sample)
 
     # Required alert columns
-    >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
+    >>> what = ['midpointMjdTai', 'band', 'psFlux', 'psFluxErr']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -126,12 +126,12 @@ def extract_features_rainbow(
     if low_bound is None:
         low_bound = -10
 
-    if len(midPointTai) < min_data_points:
+    if len(midpointMjdTai) < min_data_points:
         return np.zeros(len(RAINBOW_FEATURES_NAMES), dtype=float)
 
     features = fit_rainbow(
-        midPointTai,
-        filterName,
+        midpointMjdTai,
+        band,
         cpsFlux,
         cpsFluxErr,
         band_wave_aa=band_wave_aa,
@@ -147,8 +147,8 @@ def extract_features_rainbow(
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_rainbow_elasticc_nometa(
-    midPointTai,
-    filterName,
+    midpointMjdTai,
+    band,
     cpsFlux,
     cpsFluxErr,
     maxduration=None,
@@ -162,9 +162,9 @@ def rfscore_rainbow_elasticc_nometa(
 
     Parameters
     ----------
-    midPointTai: Spark DataFrame Column
+    midpointMjdTai: Spark DataFrame Column
         JD times (vectors of floats)
-    filterName: Spark DataFrame Column
+    band: Spark DataFrame Column
         Filter IDs (vectors of str)
     cpsFlux, cpsFluxErr: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
@@ -197,7 +197,7 @@ def rfscore_rainbow_elasticc_nometa(
     >>> df = spark.read.format('parquet').load(rubin_alert_sample)
 
     # Required alert columns
-    >>> what = ['midPointTai', 'filterName', 'psFlux', 'psFluxErr']
+    >>> what = ['midpointMjdTai', 'band', 'psFlux', 'psFluxErr']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -238,16 +238,16 @@ def rfscore_rainbow_elasticc_nometa(
         low_bound = pd.Series([-10])
 
     # dt is a column of floats
-    dt = midPointTai.apply(lambda x: np.max(x) - np.min(x))
+    dt = midpointMjdTai.apply(lambda x: np.max(x) - np.min(x))
 
     # Maximum days in the history
     if maxduration is not None:
         mask = dt <= maxduration.to_numpy()[0]
     else:
-        mask = np.repeat(True, len(midPointTai))
+        mask = np.repeat(True, len(midpointMjdTai))
 
-    if len(midPointTai[mask]) == 0:
-        return pd.Series(np.zeros(len(midPointTai), dtype=float))
+    if len(midpointMjdTai[mask]) == 0:
+        return pd.Series(np.zeros(len(midpointMjdTai), dtype=float))
 
     # Load pre-trained model `clf`
     if model is not None:
@@ -257,15 +257,15 @@ def rfscore_rainbow_elasticc_nometa(
         model = curdir + "/data/models/elasticc_rainbow_earlyIa_nometa.pkl"
         clf = pickle.load(open(model, "rb"))
 
-    candid = pd.Series(range(len(midPointTai)))
+    candid = pd.Series(range(len(midpointMjdTai)))
     ids = candid[mask]
 
     test_features = []
     flag = []
     for index in ids:
         features = extract_features_rainbow(
-            midPointTai.to_numpy()[index],
-            filterName.to_numpy()[index],
+            midpointMjdTai.to_numpy()[index],
+            band.to_numpy()[index],
             cpsFlux.to_numpy()[index],
             cpsFluxErr.to_numpy()[index],
             band_wave_aa=band_wave_aa.to_numpy()[0],
@@ -278,7 +278,7 @@ def rfscore_rainbow_elasticc_nometa(
         else:
             flag.append(True)
 
-        meta_feats = [len(midPointTai.to_numpy()[index])]
+        meta_feats = [len(midpointMjdTai.to_numpy()[index])]
         test_features.append(np.array(meta_feats + list(features)))
 
     flag = np.array(flag, dtype=bool)
@@ -291,7 +291,7 @@ def rfscore_rainbow_elasticc_nometa(
     probabilities[~flag] = [1.0, -1.0]
 
     # Take only probabilities to be Ia
-    to_return = np.zeros(len(midPointTai), dtype=float)
+    to_return = np.zeros(len(midpointMjdTai), dtype=float)
     to_return[mask] = probabilities.T[1]
 
     return pd.Series(to_return)
@@ -303,9 +303,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = (
-        "file://{}/data/alerts/or4_lsst7.1".format(path)
-    )
+    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite

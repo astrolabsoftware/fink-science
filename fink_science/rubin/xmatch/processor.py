@@ -679,9 +679,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = (
-        "file://{}/data/alerts/or4_lsst7.1".format(path)
-    )
+    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite
