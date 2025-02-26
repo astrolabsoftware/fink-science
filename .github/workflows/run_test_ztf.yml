@@ -1,0 +1,49 @@
+name: Sentinel ZTF
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test-suite:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        container: ["julienpeloton/fink-ci-ztf:latest"]
+
+    container:
+      image: ${{ matrix.container }}
+
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up env [1/2]
+      run: |
+        echo "FINK_SCIENCE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+        echo "ROCKS_CACHE_DIR=no-cache" >> $GITHUB_ENV
+        echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
+        echo "${BINPATH}" >> $GITHUB_PATH
+
+    - name: Set up env [2/2]
+      run: |
+        echo "PYTHONPATH="${PYTHONPATH}:${SPARKLIB}:${FINK_SCIENCE}"" >> $GITHUB_ENV
+
+    - name: Check env
+      run: |
+        echo "FINK_SCIENCE: $FINK_SCIENCE"
+        echo "SPARK_HOME: $SPARK_HOME"
+        echo "SPARKLIB: $SPARKLIB"
+        echo "PYTHONPATH: $PYTHONPATH"
+        echo "JAVA_HOME: $JAVA_HOME"
+        echo `python -V`
+
+    - name: Run test suites for ZTF
+      run: |
+        pip install onnxruntime==1.16.3
+        rm -f /tmp/forest_*.onnx
+        ./run_tests.sh -s ztf
+        curl -s https://codecov.io/bash | bash

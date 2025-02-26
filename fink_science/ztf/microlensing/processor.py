@@ -1,0 +1,298 @@
+# Copyright 2020-2025 AstroLab Software
+# Author: Julien Peloton
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+from line_profiler import profile
+
+from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.types import StringType, DoubleType
+
+import numpy as np
+import pandas as pd
+
+import os
+import warnings
+
+from fink_science import __file__
+from fink_science.ztf.microlensing.classifier import _extract
+from fink_science.ztf.microlensing.classifier import LIA_FEATURE_NAMES
+from fink_science.ztf.microlensing.classifier import load_external_model
+
+from fink_utils.photometry.conversion import dc_mag
+
+from LIA import microlensing_classifier
+
+from fink_science.tester import spark_unit_tests
+
+
+@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+@profile
+def mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos, ndethist):
+    """Returns the probability of an alert to be a microlensing event
+
+    Notes
+    -----
+    Classes are among:
+    microlensing, variable star, cataclysmic event, constant event
+
+    Parameters
+    ----------
+    fid: Spark DataFrame Column
+        Filter IDs (int)
+    magpsf, sigmapsf: Spark DataFrame Columns
+        Magnitude from PSF-fit photometry, and 1-sigma error
+    magnr, sigmagnr: Spark DataFrame Columns
+        Magnitude of nearest source in reference image PSF-catalog
+        within 30 arcsec and 1-sigma error
+    isdiffpos: Spark DataFrame Column
+        t => candidate is from positive (sci minus ref) subtraction
+        f => candidate is from negative (ref minus sci) subtraction
+
+    Returns
+    -------
+    out: list
+        Returns the mean of the probabilities (one probability per band) if the
+        event was considered as microlensing in both bands, otherwise 0.0.
+
+    Examples
+    --------
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns
+    >>> what = [
+    ...    'fid', 'magpsf', 'sigmapsf',
+    ...    'magnr', 'sigmagnr', 'isdiffpos']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += ['candidate.ndethist']
+    >>> df = df.withColumn('new_mulens', mulens(*args))
+
+    # Drop temp columns
+    >>> df = df.drop(*what_prefix)
+
+    >>> df.filter(df['new_mulens'] > 0.0).count()
+    0
+
+    # check robustness wrt i-band
+    >>> df = spark.read.load(ztf_alert_with_i_band)
+
+    # Required alert columns
+    >>> what = [
+    ...    'fid', 'magpsf', 'sigmapsf',
+    ...    'magnr', 'sigmagnr', 'isdiffpos']
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += ['candidate.ndethist']
+    >>> df = df.withColumn('new_mulens', mulens(*args))
+
+    # Drop temp columns
+    >>> df = df.drop(*what_prefix)
+
+    >>> df.filter(df['new_mulens'] > 0.0).count()
+    0
+    """
+    warnings.filterwarnings("ignore")
+
+    # broadcast models
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    model_path = curdir + "/data/models/"
+    rf, pca = load_external_model(model_path)
+
+    valid_index = np.arange(len(magpsf), dtype=int)
+
+    # At most 100 measurements in each band
+    mask = ndethist.astype(int) < 100
+
+    # At least 10 measurements in each band
+    mask *= magpsf.apply(lambda x: np.sum(np.array(x) == np.array(x))) >= 20
+
+    to_return = np.zeros(len(magpsf), dtype=float)
+
+    for index in valid_index[mask.to_numpy()]:
+        # Select only valid measurements (not upper limits)
+        maskNotNone = np.array(magpsf.to_numpy()[index]) == np.array(
+            magpsf.to_numpy()[index]
+        )
+
+        classes = []
+        probs = []
+        for filt in [1, 2]:
+            maskFilter = np.array(fid.to_numpy()[index]) == filt
+            m = maskNotNone * maskFilter
+
+            # Reject if less than 10 measurements
+            if np.sum(m) < 10:
+                classes.append("")
+                continue
+
+            # Compute DC mag
+            mag, err = np.array([
+                dc_mag(i[0], i[1], i[2], i[3], i[4])
+                for i in zip(
+                    np.array(magpsf.to_numpy()[index])[m],
+                    np.array(sigmapsf.to_numpy()[index])[m],
+                    np.array(magnr.to_numpy()[index])[m],
+                    np.array(sigmagnr.to_numpy()[index])[m],
+                    np.array(isdiffpos.to_numpy()[index])[m],
+                )
+            ]).T
+
+            # Run the classifier
+            output = microlensing_classifier.predict(mag, err, rf, pca)
+
+            # Update the results
+            # Beware, in the branch FINK the order has changed
+            # classification,p_cons,p_CV,p_ML,p_var = microlensing_classifier.predict()
+            classes.append(str(output[0]))
+            probs.append(float(output[3][0]))
+
+        # Append mean of classification if ML favoured, otherwise 0
+        if np.all(np.array(classes) == "ML"):
+            to_return[index] = np.mean(probs)
+        else:
+            to_return[index] = 0.0
+
+    return pd.Series(to_return)
+
+
+@pandas_udf(StringType(), PandasUDFType.SCALAR)
+@profile
+def extract_features_mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos):
+    """Extract mulens features
+
+    Parameters
+    ----------
+    fid: Spark DataFrame Column
+        Filter IDs (int)
+    magpsf, sigmapsf: Spark DataFrame Columns
+        Magnitude from PSF-fit photometry, and 1-sigma error
+    magnr, sigmagnr: Spark DataFrame Columns
+        Magnitude of nearest source in reference image PSF-catalog
+        within 30 arcsec and 1-sigma error
+    isdiffpos: Spark DataFrame Column
+        t => candidate is from positive (sci minus ref) subtraction
+        f => candidate is from negative (ref minus sci) subtraction
+
+    Returns
+    -------
+    out: list of string
+        Return the features (2 * 47)
+
+    Examples
+    --------
+    >>> from pyspark.sql.functions import split
+    >>> from pyspark.sql.types import FloatType
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns
+    >>> what = ['fid', 'magpsf', 'sigmapsf', 'magnr', 'sigmagnr', 'isdiffpos']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> df = df.withColumn('features', extract_features_mulens(*args))
+
+    >>> for name in LIA_FEATURE_NAMES:
+    ...   index = LIA_FEATURE_NAMES.index(name)
+    ...   df = df.withColumn(name, split(df['features'], ',')[index].astype(FloatType()))
+
+    # Trigger something
+    >>> df.agg({LIA_FEATURE_NAMES[0]: "min"}).collect()[0][0]
+    0.0
+    """
+    warnings.filterwarnings("ignore")
+
+    # Loop over alerts
+    outs = []
+    for index in range(len(fid)):
+        # Select only valid measurements (not upper limits)
+        maskNotNone = np.array(magpsf.to_numpy()[index]) == np.array(
+            magpsf.to_numpy()[index]
+        )
+
+        # Loop over filters
+        out = ""
+        for filt in [1, 2]:
+            maskFilter = np.array(fid.to_numpy()[index]) == filt
+            m = maskNotNone * maskFilter
+
+            # Reject if less than 10 measurements
+            if np.sum(m) < 10:
+                out += ",".join(["0"] * len(LIA_FEATURE_NAMES))
+                continue
+
+            # Compute DC mag
+            mag, err = np.array([
+                dc_mag(i[0], i[1], i[2], i[3], i[4])
+                for i in zip(
+                    np.array(magpsf.to_numpy()[index])[m],
+                    np.array(sigmapsf.to_numpy()[index])[m],
+                    np.array(magnr.to_numpy()[index])[m],
+                    np.array(sigmagnr.to_numpy()[index])[m],
+                    np.array(isdiffpos.to_numpy()[index])[m],
+                )
+            ]).T
+
+            # Extract features
+            output = _extract(mag, err)
+
+            # Update the results
+            out += output
+        outs.append(out)
+
+    return pd.Series(outs)
+
+
+if __name__ == "__main__":
+    """ Execute the test suite """
+
+    globs = globals()
+    path = os.path.dirname(__file__)
+    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
+    globs["ztf_alert_sample"] = ztf_alert_sample
+
+    model_path = "{}/data/models".format(path)
+    globs["model_path"] = model_path
+
+    ztf_alert_with_i_band = (
+        "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
+    )
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
+
+    # Run the test suite
+    spark_unit_tests(globs)
