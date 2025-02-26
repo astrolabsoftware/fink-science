@@ -26,7 +26,7 @@ from fink_science import __file__
 
 @pandas_udf(DoubleType())
 @profile
-def slsn_rubin(diaObjectId, cmidPointTai, cpsfFlux, cpsfFluxErr, cband, ra, dec):
+def slsn_rubin(diaObjectId, cmidpointMjdTai, cpsfFlux, cpsfFluxErr, cband, ra, dec):
     """High level spark wrapper for the slsn classifier on Rubin data
 
     Parameters
@@ -79,7 +79,7 @@ def slsn_rubin(diaObjectId, cmidPointTai, cpsfFlux, cpsfFluxErr, cband, ra, dec)
     """
     data = pd.DataFrame({
         "diaObjectId": diaObjectId,
-        "cmidPointTai": cmidPointTai,
+        "cmidpointMjdTai": cmidpointMjdTai,
         "cpsfFlux": cpsfFlux,
         "cpsfFluxErr": cpsfFluxErr,
         "cband": cband,

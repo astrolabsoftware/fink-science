@@ -31,7 +31,7 @@ def transform_data(data):
     Notes
     -----
     The procedure is:
-    - Shift cmidPointTai so that the max flux point is at 0
+    - Shift cmidpointMjdTai so that the max flux point is at 0
     - Normalize by dividing flux and flux err by the
       maximum flux of the k.NORMALIZING_BAND (kernel option)
     - Add a column with maxflux before normalization
@@ -52,18 +52,18 @@ def transform_data(data):
         Objects are valid if all required band have at least k.MINIMUM_POINTS observations.
 
     """
-    peak = data["cpsFlux"].apply(base.get_max)
+    peak = data["cpsfFlux"].apply(base.get_max)
     valid = np.array([True] * len(data))
-    valid = valid & (data["cmidPointTai"].apply(lambda x: len(x) >= k.MINIMUM_POINTS))
+    valid = valid & (data["cmidpointMjdTai"].apply(lambda x: len(x) >= k.MINIMUM_POINTS))
 
     if not valid.any():
         return data, valid
 
     data["peak"] = peak
-    data["cmidPointTai"] = data.apply(base.translate, axis=1)
-    data[["cpsFlux", "cpsFluxErr"]] = data.apply(base.normalize, axis=1)
-    data["snr"] = data[["cpsFlux", "cpsFluxErr"]].apply(
-        lambda pdf: pdf["cpsFlux"] / pdf["cpsFluxErr"], axis=1
+    data["cmidpointMjdTai"] = data.apply(base.translate, axis=1)
+    data[["cpsfFlux", "cpsfFluxErr"]] = data.apply(base.normalize, axis=1)
+    data["snr"] = data[["cpsfFlux", "cpsfFluxErr"]].apply(
+        lambda pdf: pdf["cpsfFlux"] / pdf["cpsfFluxErr"], axis=1
     )
 
     return data, valid
@@ -103,7 +103,7 @@ def parametrise(transformed, metadata, target_col=""):
     -------
     df_parameters : pd.DataFrame
         DataFrame of parameters.
-        Also adds columns of cmidPointTai, cpsFlux and cpsFluxErr that
+        Also adds columns of cmidpointMjdTai, cpsfFlux and cpsfFluxErr that
         will be used to compute color later on.
 
     """
@@ -127,10 +127,10 @@ def parametrise(transformed, metadata, target_col=""):
         df_parameters[name] = [i[idx] for i in rainbow_features]
 
     for band in k.PASSBANDS:
-        masks = transformed["cfilterName"].apply(lambda x: x == band)
+        masks = transformed["cband"].apply(lambda x: x == band)
 
         single_band_flux = pd.Series([
-            k[masks.iloc[idx2]] for idx2, k in enumerate(transformed["cpsFlux"])
+            k[masks.iloc[idx2]] for idx2, k in enumerate(transformed["cpsfFlux"])
         ])
         std = single_band_flux.apply(base.compute_std)
 
@@ -144,7 +144,7 @@ def parametrise(transformed, metadata, target_col=""):
 
     df_parameters["ra"] = transformed["ra"]
     df_parameters["dec"] = transformed["dec"]
-    df_parameters["nb_points"] = transformed["cpsFlux"].apply(lambda x: len(x))
+    df_parameters["nb_points"] = transformed["cpsfFlux"].apply(lambda x: len(x))
 
     if metadata:
         df_parameters["hostgal_snsep"] = transformed["hostgal_snsep"]
@@ -180,10 +180,10 @@ def apply_rainbow(pds):
 
     try:
         result = fitter._eval(
-            t=pds["cmidPointTai"],
-            m=pds["cpsFlux"],
-            sigma=pds["cpsFluxErr"],
-            band=pds["cfilterName"],
+            t=pds["cmidpointMjdTai"],
+            m=pds["cpsfFlux"],
+            sigma=pds["cpsfFluxErr"],
+            band=pds["cband"],
         )
         return result
 

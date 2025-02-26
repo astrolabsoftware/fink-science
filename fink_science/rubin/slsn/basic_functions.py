@@ -95,17 +95,17 @@ def keep_filter(ps, band):
 
     Example
     -------
-    >>> example = pd.Series(data = {'cfilterName':np.array([1, 1, 2, 1, 2]), 'anything':np.array([-2, 86.9, 58.1, 24, 42])})
+    >>> example = pd.Series(data = {'cband':np.array([1, 1, 2, 1, 2]), 'anything':np.array([-2, 86.9, 58.1, 24, 42])})
     >>> filtered = keep_filter(example, 2)
     >>> (np.array_equal(filtered[0], np.array([2, 2]))) & (np.array_equal(filtered[1], np.array([58.1, 42])))
     True
-    >>> example2 = pd.Series(data = {'cfilterName':np.array([2, 2]), 'anything':np.array([24, 42])})
+    >>> example2 = pd.Series(data = {'cband':np.array([2, 2]), 'anything':np.array([24, 42])})
     >>> filtered2 = keep_filter(example2, 1)
     >>> (np.array_equal(filtered2[0], np.array([]))) & (np.array_equal(filtered2[1], np.array([])))
     True
 
     """
-    mask = ps["cfilterName"] == band
+    mask = ps["cband"] == band
 
     return [np.array(_col)[mask].astype(type(_col[0])) for _col in ps]
 
@@ -136,12 +136,12 @@ def get_max(x):
 
 
 def translate(ps):
-    """Translate a cmidPointTai list by substracting maxflux point
+    """Translate a cmidpointMjdTai list by substracting maxflux point
 
     Parameters
     ----------
     ps: pd.Series
-        Must contain ['cmidPointTai', 'cpsFlux']
+        Must contain ['cmidpointMjdTai', 'cpsfFlux']
 
     Returns
     -------
@@ -150,20 +150,20 @@ def translate(ps):
 
     Example
     -------
-    >>> example = pd.Series(data = {'cmidPointTai':np.array([1,2,3]), 'cpsFlux':np.array([-2, 42, 23]), 'anything':np.array(['toto', 82, -8])})
+    >>> example = pd.Series(data = {'cmidpointMjdTai':np.array([1,2,3]), 'cpsfFlux':np.array([-2, 42, 23]), 'anything':np.array(['toto', 82, -8])})
     >>> np.array_equal(translate(example), np.array([-1,  0,  1]))
     True
-    >>> example2 = pd.Series(data = {'cmidPointTai':np.array([]), 'cpsFlux':np.array([]), 'anything':np.array(['toto', 82, -8])})
+    >>> example2 = pd.Series(data = {'cmidpointMjdTai':np.array([]), 'cpsfFlux':np.array([]), 'anything':np.array(['toto', 82, -8])})
     >>> np.array_equal(translate(example2), np.array([]))
     True
 
     """
-    if len(ps["cmidPointTai"]) == 0:
+    if len(ps["cmidpointMjdTai"]) == 0:
         return []
 
     else:
         return (
-            np.array(ps["cmidPointTai"]) - ps["cmidPointTai"][np.argmax(ps["cpsFlux"])]
+            np.array(ps["cmidpointMjdTai"]) - ps["cmidpointMjdTai"][np.argmax(ps["cpsfFlux"])]
         )
 
 
@@ -173,33 +173,33 @@ def normalize(ps):
     Parameters
     ----------
     ps: pd.Series
-        Must contain 'cpsFlux', 'cpsFluxErr' and 'peak'
+        Must contain 'cpsfFlux', 'cpsfFluxErr' and 'peak'
 
     Returns
     -------
     pd.Series
-        Dataframe with columns 'cpsFlux' and 'cpsFluxErr' normalized
+        Dataframe with columns 'cpsfFlux' and 'cpsfFluxErr' normalized
 
     Example
     -------
-    >>> example = pd.Series(data = {'cpsFlux':np.array([17, 35.7, -3]), 'cpsFluxErr':np.array([0.7, 1, 0]), 'peak':35.7})
+    >>> example = pd.Series(data = {'cpsfFlux':np.array([17, 35.7, -3]), 'cpsfFluxErr':np.array([0.7, 1, 0]), 'peak':35.7})
     >>> out = normalize(example)
     >>> np.array_equal(np.round(out[0], 3), np.array([ 0.476,  1.   , -0.084]))
     True
     >>> np.array_equal(np.round(out[1], 3), np.array([0.02 , 0.028, 0.   ]))
     True
-    >>> example2 = pd.Series(data = {'cpsFlux':np.array([]), 'cpsFluxErr':np.array([]), 'peak':-1})
+    >>> example2 = pd.Series(data = {'cpsfFlux':np.array([]), 'cpsfFluxErr':np.array([]), 'peak':-1})
     >>> out2 = normalize(example2)
     >>> (np.array_equal(out2[0], np.array([]))) & (np.array_equal(out2[1], np.array([])))
     True
     """
-    if len(ps["cpsFlux"]) == 0:
-        return ps[["cpsFlux", "cpsFluxErr"]]
+    if len(ps["cpsfFlux"]) == 0:
+        return ps[["cpsfFlux", "cpsfFluxErr"]]
 
     else:
-        ps["cpsFlux"] = np.array(ps["cpsFlux"]) / np.array(ps["peak"])
-        ps["cpsFluxErr"] = np.array(ps["cpsFluxErr"]) / np.array(ps["peak"])
-        return ps[["cpsFlux", "cpsFluxErr"]]
+        ps["cpsfFlux"] = np.array(ps["cpsfFlux"]) / np.array(ps["peak"])
+        ps["cpsfFluxErr"] = np.array(ps["cpsfFluxErr"]) / np.array(ps["peak"])
+        return ps[["cpsfFlux", "cpsfFluxErr"]]
 
 
 if __name__ == "__main__":
