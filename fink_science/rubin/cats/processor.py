@@ -30,8 +30,8 @@ from fink_science.tester import spark_unit_tests
 @profile
 def predict_nn(
     midpointMjdTai: pd.Series,
-    psFlux: pd.Series,
-    psFluxErr: pd.Series,
+    psfFlux: pd.Series,
+    psfFluxErr: pd.Series,
     band: pd.Series,
     model=None,
 ) -> pd.Series:
@@ -53,9 +53,9 @@ def predict_nn(
     ----------
     midpointMjdTai: spark DataFrame Column
         SNID JD Time (float)
-    psFlux: spark DataFrame Column
+    psfFlux: spark DataFrame Column
         flux from LSST (float)
-    psFluxErr: spark DataFrame Column
+    psfFluxErr: spark DataFrame Column
         flux error from LSST (float)
     band: spark DataFrame Column
         observed filter (string)
@@ -75,7 +75,7 @@ def predict_nn(
     >>> df = spark.read.format('parquet').load(rubin_alert_sample)
 
     # Required alert columns
-    >>> what = ['midpointMjdTai', 'psFlux', 'psFluxErr', 'band']
+    >>> what = ['midpointMjdTai', 'psfFlux', 'psfFluxErr', 'band']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -110,8 +110,8 @@ def predict_nn(
 
             mjd.append(mjds - mjds[0])
 
-    flux = psFlux.apply(lambda x: norm_column(x))
-    error = psFluxErr.apply(lambda x: norm_column(x))
+    flux = psfFlux.apply(lambda x: norm_column(x))
+    error = psfFluxErr.apply(lambda x: norm_column(x))
 
     flux = keras.utils.pad_sequences(
         flux, maxlen=395, value=-999.0, padding="post", dtype=np.float32

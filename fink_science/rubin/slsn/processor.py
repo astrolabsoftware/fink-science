@@ -24,7 +24,7 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(DoubleType())
 @profile
 def slsn_rubin(
-    diaObjectId, cmidPointTai, cpsFlux, cpsFluxErr, cband, ra, dec
+    diaObjectId, cmidPointTai, cpsfFlux, cpsfFluxErr, cband, ra, dec
 ):
     """High level spark wrapper for the slsn classifier on Rubin data
 
@@ -34,7 +34,7 @@ def slsn_rubin(
         Identification numbers of the objects
     cmidPoinTai: Spark DataFrame Column
         JD times (vectors of floats)
-    cpsFlux, cpsFluxErr: Spark DataFrame Columns
+    cpsfFlux, cpsfFluxErr: Spark DataFrame Columns
         Flux and flux error from photometry (vectors of floats)
     cband: Spark DataFrame Column
         Filter IDs (vectors of str)
@@ -56,7 +56,7 @@ def slsn_rubin(
     >>> df = spark.read.format('parquet').load(rubin_alert_sample)
 
     # Required alert columns
-    >>> what = ['midpointMjdTai', 'psFlux', 'psFluxErr', 'band']
+    >>> what = ['midpointMjdTai', 'psfFlux', 'psfFluxErr', 'band']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -79,8 +79,8 @@ def slsn_rubin(
     data = pd.DataFrame({
         "diaObjectId": diaObjectId,
         "cmidPointTai": cmidPointTai,
-        "cpsFlux": cpsFlux,
-        "cpsFluxErr": cpsFluxErr,
+        "cpsfFlux": cpsfFlux,
+        "cpsfFluxErr": cpsfFluxErr,
         "cband": cband,
         "ra": ra,
         "dec": dec,

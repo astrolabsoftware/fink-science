@@ -45,8 +45,8 @@ RAINBOW_FEATURES_NAMES = [
 def extract_features_rainbow(
     midpointMjdTai,
     band,
-    cpsFlux,
-    cpsFluxErr,
+    cpsfFlux,
+    cpsfFluxErr,
     band_wave_aa=None,
     with_baseline=None,
     min_data_points=None,
@@ -64,7 +64,7 @@ def extract_features_rainbow(
         MJD vector for one object
     band: np.array of str
         Filter name vector for one object
-    cpsFlux, cpsFluxErr: np.array of float
+    cpsfFlux, cpsfFluxErr: np.array of float
         Flux from PSF-fit photometry, and 1-sigma error
     band_wave_aa: dict (optional)
         Dictionary with effective wavelength for each filter.
@@ -91,7 +91,7 @@ def extract_features_rainbow(
     >>> df = spark.read.load(rubin_alert_sample)
 
     # Required alert columns
-    >>> what = ['midpointMjdTai', 'band', 'psFlux', 'psFluxErr']
+    >>> what = ['midpointMjdTai', 'band', 'psfFlux', 'psfFluxErr']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -132,8 +132,8 @@ def extract_features_rainbow(
     features = fit_rainbow(
         midpointMjdTai,
         band,
-        cpsFlux,
-        cpsFluxErr,
+        cpsfFlux,
+        cpsfFluxErr,
         band_wave_aa=band_wave_aa,
         with_baseline=with_baseline,
         min_data_points=min_data_points,
@@ -149,8 +149,8 @@ def extract_features_rainbow(
 def rfscore_rainbow_elasticc_nometa(
     midpointMjdTai,
     band,
-    cpsFlux,
-    cpsFluxErr,
+    cpsfFlux,
+    cpsfFluxErr,
     maxduration=None,
     model=None,
     band_wave_aa=None,
@@ -166,7 +166,7 @@ def rfscore_rainbow_elasticc_nometa(
         JD times (vectors of floats)
     band: Spark DataFrame Column
         Filter IDs (vectors of str)
-    cpsFlux, cpsFluxErr: Spark DataFrame Columns
+    cpsfFlux, cpsfFluxErr: Spark DataFrame Columns
         Magnitude from PSF-fit photometry, and 1-sigma error
     maxduration: Spark DataFrame Column
         Maximum duration in days to consider the object for classification (int).
@@ -197,7 +197,7 @@ def rfscore_rainbow_elasticc_nometa(
     >>> df = spark.read.format('parquet').load(rubin_alert_sample)
 
     # Required alert columns
-    >>> what = ['midpointMjdTai', 'band', 'psFlux', 'psFluxErr']
+    >>> what = ['midpointMjdTai', 'band', 'psfFlux', 'psfFluxErr']
 
     # Use for creating temp name
     >>> prefix = 'c'
@@ -266,8 +266,8 @@ def rfscore_rainbow_elasticc_nometa(
         features = extract_features_rainbow(
             midpointMjdTai.to_numpy()[index],
             band.to_numpy()[index],
-            cpsFlux.to_numpy()[index],
-            cpsFluxErr.to_numpy()[index],
+            cpsfFlux.to_numpy()[index],
+            cpsfFluxErr.to_numpy()[index],
             band_wave_aa=band_wave_aa.to_numpy()[0],
             with_baseline=with_baseline.to_numpy()[0],
             min_data_points=min_data_points.to_numpy()[0],
