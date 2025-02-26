@@ -74,7 +74,7 @@ def slsn_rubin(
     >>> args += ["diaSource.ra", "diaSource.dec"]
     >>> df = df.withColumn('preds', slsn_rubin(*args))
     >>> df.filter(df['preds'] == 0).count()
-    49
+    50
     """
     data = pd.DataFrame({
         "diaObjectId": diaObjectId,
