@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 from line_profiler import profile
 
 from fink_science.rubin.slsn.classifier import slsn_classifier
@@ -20,12 +21,12 @@ from pyspark.sql.types import DoubleType
 import pandas as pd
 from fink_science.tester import spark_unit_tests
 
+from fink_science import __file__
+
 
 @pandas_udf(DoubleType())
 @profile
-def slsn_rubin(
-    diaObjectId, cmidPointTai, cpsfFlux, cpsfFluxErr, cband, ra, dec
-):
+def slsn_rubin(diaObjectId, cmidPointTai, cpsfFlux, cpsfFluxErr, cband, ra, dec):
     """High level spark wrapper for the slsn classifier on Rubin data
 
     Parameters
@@ -92,6 +93,7 @@ def slsn_rubin(
 
 if __name__ == "__main__":
     globs = globals()
+    path = os.path.dirname(__file__)
 
     rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample

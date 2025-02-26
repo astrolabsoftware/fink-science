@@ -200,8 +200,6 @@ def snn_broad_elasticc(
     probabilities: 1D np.array of float
         Probability between 0 (non-Ia) and 1 (Ia).
 
-    Examples
-    --------
     """
     # No a priori cuts
     mask = np.ones(len(diaSourceId), dtype=bool)
