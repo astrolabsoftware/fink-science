@@ -121,15 +121,14 @@ def snn_ia(
 
     Examples
     --------
-    >>> from fink_science.ztf.xmatch.processor import xmatch_cds
     >>> from fink_science.ztf.asteroids.processor import roid_catcher
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
 
-    # Add SIMBAD field
-    >>> df = xmatch_cds(df)
+    # Add fake SIMBAD field
+    >>> df = df.withColumn("cdsxmatch", F.lit("Unknown"))
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
@@ -169,7 +168,10 @@ def snn_ia(
 
     # Check robustness wrt i-band
     >>> df = spark.read.load(ztf_alert_with_i_band)
-    >>> df = xmatch_cds(df)
+
+    # Add fake SIMBAD field
+    >>> df = df.withColumn("cdsxmatch", F.lit("Unknown"))
+
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
     >>> prefix = 'c'
     >>> what_prefix = [prefix + i for i in what]

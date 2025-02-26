@@ -76,7 +76,7 @@ def anomaly_score(lc_features, model=None):
         Dict of dicts of floats. Keys of first dict - filters (fid), keys of inner dicts - names of features.
     model: str
         Name of the model used.
-        Name must start with a ‘_’ and be ‘_{user_name}’,
+        Name must start with a `_` and be `_{user_name}`,
         where user_name is the user name of the model at https://anomaly.fink-portal.org/.
 
     Returns

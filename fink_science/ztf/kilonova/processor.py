@@ -69,13 +69,13 @@ def knscore(
 
     Examples
     --------
-    >>> from fink_science.ztf.xmatch.processor import xmatch_cds
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
     >>> df = spark.read.load(ztf_alert_sample)
 
-    >>> df = xmatch_cds(df)
+    # Add fake SIMBAD field
+    >>> df = df.withColumn("cdsxmatch", F.lit("Unknown"))
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
@@ -115,7 +115,9 @@ def knscore(
 
     # check robustness wrt i-band
     >>> df = spark.read.load(ztf_alert_with_i_band)
-    >>> df = xmatch_cds(df)
+
+    # Add fake SIMBAD field
+    >>> df = df.withColumn("cdsxmatch", F.lit("Unknown"))
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
