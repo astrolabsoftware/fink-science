@@ -54,7 +54,9 @@ def transform_data(data):
     """
     peak = data["cpsfFlux"].apply(base.get_max)
     valid = np.array([True] * len(data))
-    valid = valid & (data["cmidpointMjdTai"].apply(lambda x: len(x) >= k.MINIMUM_POINTS))
+    valid = valid & (
+        data["cmidpointMjdTai"].apply(lambda x: len(x) >= k.MINIMUM_POINTS)
+    )
 
     if not valid.any():
         return data, valid

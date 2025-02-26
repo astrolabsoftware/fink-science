@@ -163,7 +163,8 @@ def translate(ps):
 
     else:
         return (
-            np.array(ps["cmidpointMjdTai"]) - ps["cmidpointMjdTai"][np.argmax(ps["cpsfFlux"])]
+            np.array(ps["cmidpointMjdTai"])
+            - ps["cmidpointMjdTai"][np.argmax(ps["cpsfFlux"])]
         )
 
 

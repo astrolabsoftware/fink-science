@@ -83,8 +83,6 @@ def extract_features_rainbow(
 
     Examples
     --------
-    >>> from pyspark.sql.functions import split
-    >>> from pyspark.sql.types import FloatType
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
 
