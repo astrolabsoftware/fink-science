@@ -74,10 +74,6 @@ def predict_nn(
     >>> from pyspark.sql import functions as F
     >>> df = spark.read.format('parquet').load(rubin_alert_sample)
 
-    # Assuming random positions
-    >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
-    >>> df = df.withColumn('roid', F.lit(0))
-
     # Required alert columns
     >>> what = ['midpointMjdTai', 'psFlux', 'psFluxErr', 'band']
 

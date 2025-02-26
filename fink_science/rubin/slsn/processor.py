@@ -23,10 +23,10 @@ from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType())
 @profile
-def slsn_elasticc_no_md(
-    diaObjectId, cmidPointTai, cpsFlux, cpsFluxErr, cfilterName, ra, dec
+def slsn_rubin(
+    diaObjectId, cmidPointTai, cpsFlux, cpsFluxErr, cband, ra, dec
 ):
-    """High level spark wrapper for the slsn classifier on ELASTiCC data
+    """High level spark wrapper for the slsn classifier on Rubin data
 
     Parameters
     ----------
@@ -36,8 +36,8 @@ def slsn_elasticc_no_md(
         JD times (vectors of floats)
     cpsFlux, cpsFluxErr: Spark DataFrame Columns
         Flux and flux error from photometry (vectors of floats)
-    cfilterName: Spark DataFrame Column
-        Filter IDs (vectors of ints)
+    cband: Spark DataFrame Column
+        Filter IDs (vectors of str)
     ra: Spark DataFrame Column
         Right ascension of the objects
     dec: Spark DataFrame Column
@@ -48,78 +48,45 @@ def slsn_elasticc_no_md(
     np.array
         ordered probabilities of being a slsn
         Return 0 if the minimum points number is not respected.
+
+    Examples
+    --------
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+    >>> df = spark.read.format('parquet').load(rubin_alert_sample)
+
+    # Required alert columns
+    >>> what = ['midpointMjdTai', 'psFlux', 'psFluxErr', 'band']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...     df = concat_col(
+    ...         df, colname, prefix=prefix,
+    ...         current='diaSource', history='prvDiaForcedSources')
+
+    # Perform the fit + classification (default model)
+    >>> args = ["diaObject.diaObjectId"]
+    >>> args += [F.col(i) for i in what_prefix]
+    >>> args += ["diaSource.ra", "diaSource.dec"]
+    >>> df = df.withColumn('preds', slsn_rubin(*args))
+    >>> df.filter(df['preds'] == 0).count()
+    49
     """
     data = pd.DataFrame({
         "diaObjectId": diaObjectId,
         "cmidPointTai": cmidPointTai,
         "cpsFlux": cpsFlux,
         "cpsFluxErr": cpsFluxErr,
-        "cfilterName": cfilterName,
+        "cband": cband,
         "ra": ra,
         "dec": dec,
     })
 
     proba = slsn_classifier(data, False)
-    return pd.Series(proba)
-
-
-@pandas_udf(DoubleType())
-@profile
-def slsn_elasticc_with_md(
-    diaObjectId,
-    cmidPointTai,
-    cpsFlux,
-    cpsFluxErr,
-    cfilterName,
-    ra,
-    dec,
-    hostgal_zphot,
-    hostgal_zphot_err,
-    hostgal_snsep,
-):
-    """High level spark wrapper for the slsn classifier on ELASTiCC data
-
-    Parameters
-    ----------
-    diaObjectId: Spark DataFrame Column
-        Identification numbers of the objects
-    cmidPoinTai: Spark DataFrame Column
-        JD times (vectors of floats)
-    cpsFlux, cpsFluxErr: Spark DataFrame Columns
-        Flux and flux error from photometry (vectors of floats)
-    cfilterName: Spark DataFrame Column
-        Filter IDs (vectors of ints)
-    ra: Spark DataFrame Column
-        Right ascension of the objects
-    dec: Spark DataFrame Column
-        Declination of the objects
-    hostgal_zphot, hostgal_zphot_err: Spark DataFrame Column
-        Redshift and redshift error of the host galaxy
-        -9 if object is in the milky way
-    hostgal_snsep: Spark DataFrame Column
-        Distance from the host galaxy
-
-
-    Returns
-    -------
-    np.array
-        ordered probabilities of being a slsn
-        Return 0 if the minimum points number is not respected.
-    """
-    data = pd.DataFrame({
-        "diaObjectId": diaObjectId,
-        "cmidPointTai": cmidPointTai,
-        "cpsFlux": cpsFlux,
-        "cpsFluxErr": cpsFluxErr,
-        "cfilterName": cfilterName,
-        "ra": ra,
-        "dec": dec,
-        "hostgal_zphot": hostgal_zphot,
-        "hostgal_zphot_err": hostgal_zphot_err,
-        "hostgal_snsep": hostgal_snsep,
-    })
-
-    proba = slsn_classifier(data, True)
     return pd.Series(proba)
 
 
