@@ -72,7 +72,7 @@ def predict_nn(
     --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
-    >>> df = spark.read.format('parquet').load(elasticc_alert_sample)
+    >>> df = spark.read.format('parquet').load(rubin_alert_sample)
 
     # Assuming random positions
     >>> df = df.withColumn('cdsxmatch', F.lit('Unknown'))
@@ -159,10 +159,10 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    elasticc_alert_sample = (
-        "file://{}/data/alerts/elasticc_sample_seed0.parquet".format(path)
+    rubin_alert_sample = (
+        "file://{}/data/alerts/or4_lsst7.1".format(path)
     )
-    globs["elasticc_alert_sample"] = elasticc_alert_sample
+    globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite
     spark_unit_tests(globs)

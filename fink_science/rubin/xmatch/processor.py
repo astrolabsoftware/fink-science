@@ -231,7 +231,7 @@ def xmatch_cds(
 
     Examples
     --------
-    >>> df = spark.read.load(elasticc_alert_sample)
+    >>> df = spark.read.load(rubin_alert_sample)
 
     # Simbad
     >>> df_simbad = xmatch_cds(df)
@@ -328,7 +328,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
     Examples
     --------
-    >>> df = spark.read.load(elasticc_alert_sample)
+    >>> df = spark.read.load(rubin_alert_sample)
 
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
     >>> path = curdir + '/data/catalogs'
@@ -679,10 +679,10 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    elasticc_alert_sample = (
-        "file://{}/data/alerts/elasticc_sample_seed0.parquet".format(path)
+    rubin_alert_sample = (
+        "file://{}/data/alerts/or4_lsst7.1".format(path)
     )
-    globs["elasticc_alert_sample"] = elasticc_alert_sample
+    globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite
     spark_unit_tests(globs)

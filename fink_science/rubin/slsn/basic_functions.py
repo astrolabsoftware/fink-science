@@ -15,6 +15,8 @@
 import numpy as np
 import pandas as pd  # noqa: F401
 
+from fink_science.tester import regular_unit_tests
+
 
 def compute_mean(x):
     """Compute mean of an array.
@@ -198,3 +200,10 @@ def normalize(ps):
         ps["cpsFlux"] = np.array(ps["cpsFlux"]) / np.array(ps["peak"])
         ps["cpsFluxErr"] = np.array(ps["cpsFluxErr"]) / np.array(ps["peak"])
         return ps[["cpsFlux", "cpsFluxErr"]]
+
+
+if __name__ == "__main__":
+    globs = globals()
+
+    # Run the test suite
+    regular_unit_tests(globs)

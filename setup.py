@@ -30,7 +30,6 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     package_data={
         'fink_science': [
-            'data/alerts/*.parquet',
             'data/models/*.obj',
             'data/models/*.sav',
             'data/models/*.npy',
@@ -57,8 +56,9 @@ setuptools.setup(
     },
 
     classifiers=[
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: Unix",
         "Development Status :: 4 - Beta",

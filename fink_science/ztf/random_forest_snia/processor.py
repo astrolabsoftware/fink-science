@@ -20,7 +20,6 @@ import numpy as np
 from line_profiler import profile
 
 import os
-import pickle
 
 from fink_science import __file__
 

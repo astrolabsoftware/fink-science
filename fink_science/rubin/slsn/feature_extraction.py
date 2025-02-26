@@ -20,7 +20,8 @@ import fink_science.rubin.slsn.kernel as k
 import fink_science.rubin.slsn.basic_functions as base
 from light_curve.light_curve_py import RainbowFit
 from light_curve.light_curve_py import warnings as rainbow_warnings
-from pandas.testing import assert_frame_equal  # noqa: F401
+
+from fink_science.tester import regular_unit_tests
 
 
 @profile
@@ -191,7 +192,7 @@ def apply_rainbow(pds):
 
 
 if __name__ == "__main__":
-    import sys
-    import doctest
+    globs = globals()
 
-    sys.exit(doctest.testmod()[0])
+    # Run the test suite
+    regular_unit_tests(globs)
