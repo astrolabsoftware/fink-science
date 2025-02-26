@@ -93,5 +93,8 @@ def slsn_rubin(
 if __name__ == "__main__":
     globs = globals()
 
+    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
+    globs["rubin_alert_sample"] = rubin_alert_sample
+
     # Run the test suite
     spark_unit_tests(globs)
