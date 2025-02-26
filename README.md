@@ -1,4 +1,5 @@
-[![Sentinel](https://github.com/astrolabsoftware/fink-science/workflows/Sentinel/badge.svg)](https://github.com/astrolabsoftware/fink-science/actions?query=workflow%3ASentinel)
+[![Rubin](https://github.com/astrolabsoftware/fink-science/actions/workflows/run_test_rubin.yml/badge.svg)](https://github.com/astrolabsoftware/fink-science/actions/workflows/run_test_rubin.yml)
+[![ZTF](https://github.com/astrolabsoftware/fink-science/actions/workflows/run_test_ztf.yml/badge.svg)](https://github.com/astrolabsoftware/fink-science/actions/workflows/run_test_ztf.yml)
 [![PEP8](https://github.com/astrolabsoftware/fink-science/workflows/PEP8/badge.svg)](https://github.com/astrolabsoftware/fink-science/actions?query=workflow%3APEP8)
 [![codecov](https://codecov.io/gh/astrolabsoftware/fink-science/branch/master/graph/badge.svg)](https://codecov.io/gh/astrolabsoftware/fink-science)
 
