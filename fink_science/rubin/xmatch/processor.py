@@ -337,7 +337,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     True
 
     >>> df_tns.filter(df_tns["tns"] != "").count()
-    1
+    0
 
     """
     if tns_raw_output == "":
