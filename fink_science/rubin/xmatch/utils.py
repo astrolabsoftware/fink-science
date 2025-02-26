@@ -94,7 +94,7 @@ def extract_mangrove(filename):
     --------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> filename = curdir + '/../data/catalogs/mangrove_filtered.parquet'
+    >>> filename = curdir + '/../../data/catalogs/mangrove_filtered.parquet'
     >>> ra, dec, payload = extract_mangrove(filename)
     """
     pdf = pd.read_parquet(filename)
@@ -127,8 +127,8 @@ def extract_4lac(filename_h, filename_l):
     --------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> catalog_h = curdir + '/../data/catalogs/table-4LAC-DR3-h.fits'
-    >>> catalog_l = curdir + '/../data/catalogs/table-4LAC-DR3-l.fits'
+    >>> catalog_h = curdir + '/../../data/catalogs/table-4LAC-DR3-h.fits'
+    >>> catalog_l = curdir + '/../../data/catalogs/table-4LAC-DR3-l.fits'
     >>> ra, dec, sourcename = extract_4lac(catalog_h, catalog_l)
     """
     dat = Table.read(filename_h, format="fits")
@@ -162,7 +162,7 @@ def extract_3hsp(filename):
     --------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> catalog = curdir + '/../data/catalogs/3hsp.csv'
+    >>> catalog = curdir + '/../../data/catalogs/3hsp.csv'
     >>> ra, dec, sourcename = extract_3hsp(catalog)
     """
     pdf_3hsp = pd.read_csv(filename, header=0)
@@ -209,7 +209,7 @@ def extract_gcvs(filename):
     --------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> catalog = curdir + '/../data/catalogs/gcvs.parquet'
+    >>> catalog = curdir + '/../../data/catalogs/gcvs.parquet'
     >>> ra, dec, vartype = extract_gcvs(catalog)
     """
     pdf = pd.read_parquet(filename)
@@ -233,7 +233,7 @@ def extract_vsx(filename):
     --------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> catalog = curdir + '/../data/catalogs/vsx.parquet'
+    >>> catalog = curdir + '/../../data/catalogs/vsx.parquet'
     >>> ra, dec, vtype = extract_vsx(catalog)
     """
     pdf_vsx = pd.read_parquet(filename)
