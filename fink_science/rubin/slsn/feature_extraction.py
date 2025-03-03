@@ -174,7 +174,7 @@ def apply_rainbow(pds):
         Features extracted. If RuntimeError,
         features are set to -9.0.
     """
-    band_wave_aa = {"u": 3751, "g": 4742, "r": 6173, "i": 7502, "z": 8679, "Y": 9711}
+    band_wave_aa = {"u": 3751, "g": 4742, "r": 6173, "i": 7502, "z": 8679, "y": 9711}
 
     fitter = RainbowFit.from_angstrom(
         band_wave_aa, with_baseline=False, temperature="sigmoid", bolometric="linexp"

@@ -97,7 +97,7 @@ def predict_nn(
     import tensorflow as tf
     from tensorflow import keras
 
-    filter_dict = {"u": 1, "g": 2, "r": 3, "i": 4, "z": 5, "Y": 6}
+    filter_dict = {"u": 1, "g": 2, "r": 3, "i": 4, "z": 5, "y": 6}
 
     mjd = []
     filters = []

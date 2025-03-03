@@ -225,7 +225,7 @@ def rfscore_rainbow_elasticc_nometa(
                 "r": 6223.0,
                 "i": 7546.0,
                 "z": 8691.0,
-                "Y": 9712.0,
+                "y": 9712.0,
             }
         ])
     if with_baseline is None:
