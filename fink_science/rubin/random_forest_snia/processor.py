@@ -261,11 +261,15 @@ def rfscore_rainbow_elasticc_nometa(
     test_features = []
     flag = []
     for index in ids:
+        # sort by MJD
+        mjds = midpointMjdTai.to_numpy()[index]
+        mjds_inds = mjds.argsort()
+
         features = extract_features_rainbow(
-            midpointMjdTai.to_numpy()[index],
-            band.to_numpy()[index],
-            cpsfFlux.to_numpy()[index],
-            cpsfFluxErr.to_numpy()[index],
+            mjds[mjds_inds],
+            band.to_numpy()[index][mjds_inds],
+            cpsfFlux.to_numpy()[index][mjds_inds],
+            cpsfFluxErr.to_numpy()[index][mjds_inds],
             band_wave_aa=band_wave_aa.to_numpy()[0],
             with_baseline=with_baseline.to_numpy()[0],
             min_data_points=min_data_points.to_numpy()[0],
@@ -276,7 +280,7 @@ def rfscore_rainbow_elasticc_nometa(
         else:
             flag.append(True)
 
-        meta_feats = [len(midpointMjdTai.to_numpy()[index])]
+        meta_feats = [len(mjds)]
         test_features.append(np.array(meta_feats + list(features)))
 
     flag = np.array(flag, dtype=bool)
