@@ -7,27 +7,30 @@ This module adds new column **lc_features** with different features, calculated 
 Current list of features:
 
 ```txt
-A1.0.2  Mean, A2.0.12  Mean
-A1.0.3  Weighted Mean, A2.0.29  Weighted mean
-A1.0.4  Standard Deviation, A2.0.27  Standard Deviation
-A1.0.7  Median
-
-A2.0.1  Amplitude
-A2.0.2  Beyond𝑛Std
-A2.0.3  Cusum
-A2.0.6  Inter-percentile range
-A2.0.7  Kurtosis
-A2.0.8  Linear Trend
-A2.0.9  Linear Fit
-A2.0.10  Magnitude Percentage Ratio for (0.4, 0.05) and (0.2, 0.1) - 'default' values
-
-A2.0.11  Maximum Slope
-A2.0.13  Median Absolute Deviation
-A2.0.14  Median Buffer Range Percentage
-A2.0.15  Percent Amplitude
-Mean Variance
-Anderson Darling Normal
-A2.0.25  Reduced 𝜒2
-A2.0.26  Skew
-A2.0.28  Stetson𝐾
+ 1 - mean  
+ 2 - weighted_mean  
+ 3 - standard_deviation  
+ 4 - median  
+ 5 - amplitude  
+ 6 - beyond_1_std  
+ 7 - cusum  
+ 8 - inter_percentile_range_10  
+ 9 - kurtosis  
+ 10 - linear_trend  
+ 11 - linear_trend_sigma  
+ 12 - linear_trend_noise  
+ 13 - linear_fit_slope  
+ 14 - linear_fit_slope_sigma  
+ 15 - linear_fit_reduced_chi2  
+ 16 - magnitude_percentage_ratio_40_5  
+ 17 - magnitude_percentage_ratio_20_10  
+ 18 - maximum_slope  
+ 19 - median_absolute_deviation  
+ 20 - median_buffer_range_percentage_10  
+ 21 - percent_amplitude  
+ 22 - mean_variance  
+ 23 - anderson_darling_normal  
+ 24 - chi2  
+ 25 - skew  
+ 26 - stetson_K
 ```
