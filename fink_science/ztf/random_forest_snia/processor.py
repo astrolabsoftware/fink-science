@@ -378,7 +378,7 @@ if __name__ == "__main__":
     model_path_sigmoid = "{}/data/models/default-model_sigmoid.obj".format(path)
     globs["model_path_sigmoid"] = model_path_sigmoid
 
-    model_path_al_loop = "{}/data/models/for_al_loop/model_20240821.pkl".format(path)
+    model_path_al_loop = "{}/data/models/for_al_loop/model_20241122_wlimits.pkl".format(path)
     globs["model_path_al_loop"] = model_path_al_loop
 
     ztf_alert_with_i_band = (
