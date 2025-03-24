@@ -52,7 +52,7 @@ setuptools.setup(
             'data/catalogs/*.parquet',
             'data/catalogs/*.fits',
             'data/catalogs/*.csv',
-            'hostless_detection/config.json'],
+            'ztf/hostless_detection/config.json'],
     },
 
     classifiers=[
