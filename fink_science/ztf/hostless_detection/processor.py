@@ -77,7 +77,7 @@ def run_base_potential_hostless(
     ...     run_base_potential_hostless(
     ...         df["cmagpsf"],
     ...         df["cutoutScience.stampData"],
-    ...         df["cutoutTemplate.stampData"])
+    ...         df["cutoutTemplate.stampData"]))
     >>> df.filter(df.kstest_static[0] >= 0).count()
     0
     """
