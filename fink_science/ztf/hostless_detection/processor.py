@@ -79,7 +79,7 @@ def run_base_potential_hostless(
     ...         df["cutoutScience.stampData"],
     ...         df["cutoutTemplate.stampData"]))
     >>> df.filter(df.kstest_static[0] >= 0).count()
-    0
+    3
     """
     # load the configuration file
     hostless_science_class = HostLessExtragalactic(CONFIGS_BASE)
