@@ -1,5 +1,5 @@
 # Copyright 2024-2025 AstroLab Software
-# Author: R. Durgesh
+# Author: R. Durgesh, J. Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,74 @@ from fink_science.tester import spark_unit_tests
 
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
+CONFIGS_BASE = load_json("{}/config_base.json".format(current_directory))
 CONFIGS = load_json("{}/config.json".format(current_directory))
+CONFIGS.update(CONFIGS_BASE)
+
+@pandas_udf(ArrayType(FloatType()))
+@profile
+def run_base_potential_hostless(
+    magpsf: pd.Series,
+    cutoutScience: pd.Series,
+    cutoutTemplate: pd.Series,
+) -> pd.Series:
+    """Runs potential hostless candidate detection without pre-filtering
+
+    Notes
+    -----
+    It is expected to filter alerts on the Spark
+    DataFrame before for better performances
+
+    Parameters
+    ----------
+    magpsf: pd.Series
+        Magnitude from PSF-fit photometry [mag]
+    cutoutScience: pd.Series
+        science stamp images
+    cutoutTemplate: pd.Series
+        template stamp images
+
+    Returns
+    -------
+    pd.Series
+        Scores (array of 2 floats) for being hostless
+
+    References
+    ----------
+    1. ELEPHANT: ExtragaLactic alErt Pipeline for Hostless AstroNomical
+     Transients
+        https://arxiv.org/abs/2404.18165
+
+    Examples
+    --------
+    >>> df = spark.read.load(sample_file)
+    >>> df.count()
+    72
+
+    # Add a new column
+    >>> df = df.withColumn('kstest_static',
+    ...     run_base_potential_hostless(
+    ...         df["cmagpsf"],
+    ...         df["cutoutScience.stampData"],
+    ...         df["cutoutTemplate.stampData"]))
+    >>> df.filter(df.kstest_static[0] >= 0).count()
+    3
+    """
+    # load the configuration file
+    hostless_science_class = HostLessExtragalactic(CONFIGS_BASE)
+
+    # Init values
+    kstest_results = []
+    for index in range(cutoutScience.shape[0]):
+        science_stamp = cutoutScience[index]
+        template_stamp = cutoutTemplate[index]
+        kstest_science, kstest_template = (
+            hostless_science_class.process_candidate_fink(
+                science_stamp, template_stamp
+            )
+        )
+        kstest_results.append([kstest_science, kstest_template])
+    return pd.Series(kstest_results)
 
 
 @pandas_udf(ArrayType(FloatType()))
@@ -46,8 +113,7 @@ def run_potential_hostless(
     deltat: pd.Series,
     roid: pd.Series,
 ) -> pd.Series:
-    """
-    Runs potential hostless candidate detection using
+    """Same as `run_base_potential_hostless`, but with built-in filtering
 
     Parameters
     ----------
@@ -83,7 +149,7 @@ def run_potential_hostless(
     Returns
     -------
     pd.Series
-        Score for being hostless (float)
+        Scores (array of 2 floats) for being hostless
 
     References
     ----------
