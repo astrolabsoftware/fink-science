@@ -22,7 +22,10 @@ from fink_science.orphans.classifier import orphan_classifier
 
 from fink_filters.tester import spark_unit_tests
 
+from pyspark.sql.functions import pandas_udf
+from pyspark.sql.types import FloatType
 
+@pandas_udf(FloatType())
 def orphan_grb(ctimemjd, cabmags, cabmagserr, cfilts):
     """ Filter to extract orphan GRB candidates
 
