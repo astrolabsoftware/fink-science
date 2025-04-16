@@ -1,4 +1,4 @@
-# Copyright 2019-2022 AstroLab Software
+# Copyright 2019-2025 AstroLab Software
 # Authors: Marina Masson
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import pandas as pd
 import numpy as np
-import joblib
 
 from fink_science.orphans.classifier import orphan_classifier
 
@@ -25,9 +23,10 @@ from fink_filters.tester import spark_unit_tests
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import FloatType
 
+
 @pandas_udf(FloatType())
 def orphan_grb(ctimemjd, cabmags, cabmagserr, cfilts):
-    """ Filter to extract orphan GRB candidates
+    """Filter to extract orphan GRB candidates
 
     The filter is based on different features calculated from the light curve:
     - Duration between the first detection and the peak
@@ -49,11 +48,10 @@ def orphan_grb(ctimemjd, cabmags, cabmagserr, cfilts):
         Concatenated filters for the object
 
     Returns
-    ----------
+    -------
     out: pandas.Series of bool
         Return a Pandas DataFrame with the proba of an event to be an orphan
     """
-
     valid = cabmags.apply(lambda x: True if len(~np.isnan(x)) >= 5 else False)
     proba_orphan = orphan_classifier(ctimemjd, cabmags, cabmagserr, cfilts, valid)
 

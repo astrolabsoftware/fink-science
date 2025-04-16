@@ -35,7 +35,6 @@ def flux_to_mag(flux):
     mag: float
         Corresponding AB Magnitude
     """
-
     mag = -2.5 * np.log10(flux * 1.0e-26) - 48.6
     return mag
 
@@ -58,7 +57,6 @@ def mag_to_flux(mag):
     flux: float
         Corresponding flux in milliJansky
     """
-
     flux = pow(10, (26 - (mag + 48.6) / 2.5))
     return flux
 
@@ -89,7 +87,6 @@ def clean_and_sort_light_curve(times, mags, mags_err, filts):
     cleaned_filts: pandas.Series of list of float
         Concatenated filters for the object, sorted and without NaN points
     """
-
     cleaned_times = []
     cleaned_magnitudes = []
     cleaned_errors = []
@@ -111,7 +108,7 @@ def clean_and_sort_light_curve(times, mags, mags_err, filts):
         valid_errs = e[mask]
         valid_filts = f[mask]
 
-        #if len(valid_mags) > 4:
+        # if len(valid_mags) > 4:
         # Sort the cleaned data by time
         sorted_indices = np.argsort(valid_times)
         sorted_times = valid_times[sorted_indices]
@@ -124,5 +121,9 @@ def clean_and_sort_light_curve(times, mags, mags_err, filts):
         cleaned_errors.append(sorted_errors)
         cleaned_filters.append(sorted_filters)
 
-    return pd.Series(cleaned_times), pd.Series(cleaned_magnitudes), pd.Series(cleaned_errors), pd.Series(
-        cleaned_filters)
+    return (
+        pd.Series(cleaned_times),
+        pd.Series(cleaned_magnitudes),
+        pd.Series(cleaned_errors),
+        pd.Series(cleaned_filters),
+    )

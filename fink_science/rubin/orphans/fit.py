@@ -45,22 +45,26 @@ def rescale_filters(times, mags, mags_err, filts):
     err: array
         Array containing the errors associated to the points
     """
-
     # colors and mean frequency of the band u, g, r, i, z, y
-    filters = ['u', 'g', 'r', 'i', 'z', 'Y']
-    all_mean_nu = [840336134453781.4, 629326620516047.8, 482703137570394.2, 397614314115308.1, 344530577088716.56,
-                   298760145396604.1]
+    filters = ["u", "g", "r", "i", "z", "Y"]
+    all_mean_nu = [
+        840336134453781.4,
+        629326620516047.8,
+        482703137570394.2,
+        397614314115308.1,
+        344530577088716.56,
+        298760145396604.1,
+    ]
 
-    filt_obs = filts[filts != 'r']
+    filt_obs = filts[filts != "r"]
 
     if len(filt_obs) != 0:
-
         unique, counts = np.unique(filt_obs, return_counts=True)
         filt_max = unique[np.argmax(counts)]
         nu_filtmax = all_mean_nu[filters.index(filt_max)]
 
-        mag_r = mags[filts != 'r']
-        time_r = times[filts != 'r']
+        mag_r = mags[filts != "r"]
+        time_r = times[filts != "r"]
 
         mag_filtmax = mags[filts == filt_max]
         time_filtmax = times[filts == filt_max]
@@ -69,8 +73,8 @@ def rescale_filters(times, mags, mags_err, filts):
         flux_filtmax = mag_to_flux(mag_filtmax)
 
         # choose values of -beta between -(p-1)/2 and -p/2, p being the electron energy population index
-        p = 2.2 # p is between 2. and 2.5, we choose a standard value here
-        beta = np.linspace(-(p-1)/2, -p/2, 10)
+        p = 2.2  # p is between 2. and 2.5, we choose a standard value here
+        beta = np.linspace(-(p - 1) / 2, -p / 2, 10)
 
         d = []
 
@@ -79,8 +83,14 @@ def rescale_filters(times, mags, mags_err, filts):
             flux_rescaled = flux_filtmax * (all_mean_nu[2] / nu_filtmax) ** (b)
 
             # compute the euclidean distance between the rescaled flux and the true r-band flux
-            d.append(np.sum(np.sqrt((time_filtmax[:, np.newaxis] - time_r[np.newaxis, :]) ** 2 +
-                                    (flux_rescaled[:, np.newaxis] - flux_r[np.newaxis, :]) ** 2)))
+            d.append(
+                np.sum(
+                    np.sqrt(
+                        (time_filtmax[:, np.newaxis] - time_r[np.newaxis, :]) ** 2
+                        + (flux_rescaled[:, np.newaxis] - flux_r[np.newaxis, :]) ** 2
+                    )
+                )
+            )
 
         beta_min = beta[np.where(d == min(d))]
 
@@ -90,7 +100,6 @@ def rescale_filters(times, mags, mags_err, filts):
 
         # sort the magnitudes, flux, times and errors based on their filter
         for f, nu in zip(filters, all_mean_nu):
-
             mag_f = mags[filts == f]
             err_f = mags_err[filts == f]
             time_f = times[filts == f]
@@ -98,8 +107,10 @@ def rescale_filters(times, mags, mags_err, filts):
             flux_f = mag_to_flux(mag_f)
 
             # for the beta that minimize the distance, rescale the flux for all the bands
-            if f != 'r':
-                all_mag_r.append(flux_to_mag(flux_f * (all_mean_nu[2] / nu) ** min(beta_min)))
+            if f != "r":
+                all_mag_r.append(
+                    flux_to_mag(flux_f * (all_mean_nu[2] / nu) ** min(beta_min))
+                )
             else:
                 all_mag_r.append(flux_to_mag(flux_f))
 
@@ -114,7 +125,6 @@ def rescale_filters(times, mags, mags_err, filts):
         return time - min(time), mag_r, err
 
     else:
-
         return times - min(times), mags, mags_err
 
 
@@ -128,7 +138,6 @@ def model(t, params):
     params: tuple of float
         Parameters of the function, to estimate
     """
-
     A, B, C, D = params
     return A * t + B + C * np.exp(-D * t)
 
@@ -155,30 +164,29 @@ def fit_light_curve(times, mags, mags_err, filts):
     chi2: float
         Chi square calculated as chi2 = sum(((y - y_fit) / y_err)²)
     """
-
     t, y, yerr = rescale_filters(times, mags, mags_err, filts)
 
     least_squares = LeastSquares(t, y, yerr, model)
 
-    initial = np.array([0.02, 20., 0., 1.5])
-    m = Minuit(least_squares, initial, name=('A', 'B', 'C', 'D'))
+    initial = np.array([0.02, 20.0, 0.0, 1.5])
+    m = Minuit(least_squares, initial, name=("A", "B", "C", "D"))
 
-    m.limits = [(-1e4, 1e4), (-1e6, 1e6), (-1e7, 1e7), (-0.03, 10.)]
+    m.limits = [(-1e4, 1e4), (-1e6, 1e6), (-1e7, 1e7), (-0.03, 10.0)]
 
     m.migrad()  # finds minimum of least_squares function
     m.hesse()  # accurately computes uncertainties
 
     n_try = 0
-    while (m.fmin.reduced_chi2 > 3.):
-        if (n_try < 10):
+    while m.fmin.reduced_chi2 > 3.0:
+        if n_try < 10:
             n_try += 1
             initial += 0.5
-            m = Minuit(least_squares, initial, name=('A', 'B', 'C', 'D'))
+            m = Minuit(least_squares, initial, name=("A", "B", "C", "D"))
 
-            m.limits = [(-1e4, 1e4), (-1e6, 1e6), (-1e7, 1e7), (-0.03, 10.)]
+            m.limits = [(-1e4, 1e4), (-1e6, 1e6), (-1e7, 1e7), (-0.03, 10.0)]
 
-            m.migrad();  # finds minimum of least_squares function
-            m.hesse();  # accurately computes uncertainties
+            m.migrad()  # finds minimum of least_squares function
+            m.hesse()  # accurately computes uncertainties
         else:
             break
 
