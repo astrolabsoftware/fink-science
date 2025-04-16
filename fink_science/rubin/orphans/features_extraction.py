@@ -17,8 +17,7 @@ import numpy as np
 
 
 def compute_duration_between_first_and_peak(times, mags):
-    """
-    Save the number of days between the first detection and the minimal detected magnitude
+    """Compute the number of days between the first detection and the minimal detected magnitude
 
     Parameters
     ----------
@@ -32,21 +31,25 @@ def compute_duration_between_first_and_peak(times, mags):
     Dt: list
         List containing the number of days between the first detection and the peak of each configuration in each filter
     """
-
     # calculate the duration between the first detection and the peak
     if (len(mags) != 0) and (np.min(mags) != mags[0]):
         Dt = (times[np.where(mags == np.min(mags))] - min(times))[0]
 
     else:
-        Dt = 0.
+        Dt = 0.0
 
     return Dt
 
 
 def compute_rates(times, mags, filts):
-    """
-    Save the increase rate (in mag/day) + the decrease rates (in mag/day) in the first third and the last third of
-    the decreasing part of the light curve
+    """Compute rates
+
+    Notes
+    -----
+    Two rates are computed:
+    1. The increase rate (in mag/day)
+    2. The decrease rates (in mag/day) in the first third and
+       the last third of the decreasing part of the light curve
 
     Parameters
     ----------
@@ -68,8 +71,7 @@ def compute_rates(times, mags, filts):
     rate[3]: float
         Decrease rate in the 3/3 of the decreasing part of the light curve
     """
-
-    filters = ['u', 'g', 'r', 'i', 'z', 'Y']
+    filters = ["u", "g", "r", "i", "z", "Y"]
 
     increase_rate = np.array([])
     first_third_decrease_rate = np.array([])
@@ -77,7 +79,6 @@ def compute_rates(times, mags, filts):
 
     # calculate rates for each filter
     for f in filters:
-
         time_f = times[np.where(filts == f)[0]]
         mag_f = mags[np.where(filts == f)[0]]
 
@@ -90,7 +91,7 @@ def compute_rates(times, mags, filts):
         if rate_of_change[rate_of_change < 0].size != 0:
             increase_rate = np.append(increase_rate, rate_of_change[rate_of_change < 0])
         else:
-            increase_rate = np.append(increase_rate, 0.)
+            increase_rate = np.append(increase_rate, 0.0)
 
         # indices where the rate is decreasing
         decreasing_indices = np.where(rate_of_change > 0)[0]
@@ -98,25 +99,29 @@ def compute_rates(times, mags, filts):
         # split the decreasing part into thirds
         n_decreasing = decreasing_indices.size
         if n_decreasing >= 3:
-            first_third_indices = decreasing_indices[:n_decreasing // 3]
-            last_third_indices = decreasing_indices[-(n_decreasing // 3):]
+            first_third_indices = decreasing_indices[: n_decreasing // 3]
+            last_third_indices = decreasing_indices[-(n_decreasing // 3) :]
 
             # calculate the decrease rates for the first and last thirds
-            first_third_decrease_rate = np.append(first_third_decrease_rate, rate_of_change[first_third_indices])
-            last_third_decrease_rate = np.append(last_third_decrease_rate, rate_of_change[last_third_indices])
+            first_third_decrease_rate = np.append(
+                first_third_decrease_rate, rate_of_change[first_third_indices]
+            )
+            last_third_decrease_rate = np.append(
+                last_third_decrease_rate, rate_of_change[last_third_indices]
+            )
         else:
-            first_third_decrease_rate = np.append(first_third_decrease_rate, 0.)
-            last_third_decrease_rate = np.append(last_third_decrease_rate, 0.)
+            first_third_decrease_rate = np.append(first_third_decrease_rate, 0.0)
+            last_third_decrease_rate = np.append(last_third_decrease_rate, 0.0)
 
     rate = []
 
     # compute the mean rates
     for r in [increase_rate, first_third_decrease_rate, last_third_decrease_rate]:
-        if np.any(r) != 0.:
+        if np.any(r) != 0.0:
             np.array(r)[np.array(r) == 0] = np.nan
             rate.append(np.nanmean(r))
         else:
-            rate.append(0.)
+            rate.append(0.0)
 
     return rate[0], rate[1], rate[2]
 
@@ -139,10 +144,9 @@ def compute_colours(times, mags, filts):
     mean_colours: array
         Array containing the mean colours for the filter pairs g-r and r-i
     """
-
     mean_colours = np.array([])
 
-    filter_pairs = [('g', 'r'), ('r', 'i')]
+    filter_pairs = [("g", "r"), ("r", "i")]
 
     for pair in filter_pairs:
         filter1, filter2 = pair
@@ -166,6 +170,6 @@ def compute_colours(times, mags, filts):
         colour_index = interpolated_mag_filter1 - mag_filter2
 
         # store the mean color index for the current filter pair
-        mean_colours = np.append(colour, np.mean(colour_index))
+        mean_colours = np.append(mean_colours, np.mean(colour_index))
 
     return mean_colours
