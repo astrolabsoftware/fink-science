@@ -71,7 +71,7 @@ def compute_rates(times, mags, filts):
     rate[3]: float
         Decrease rate in the 3/3 of the decreasing part of the light curve
     """
-    filters = ["u", "g", "r", "i", "z", "Y"]
+    filters = ["u", "g", "r", "i", "z", "y"]
 
     increase_rate = np.array([])
     first_third_decrease_rate = np.array([])
