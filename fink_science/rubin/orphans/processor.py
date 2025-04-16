@@ -18,7 +18,7 @@ import numpy as np
 
 from fink_science.orphans.classifier import orphan_classifier
 
-from fink_filters.tester import spark_unit_tests
+from fink_science.tester import spark_unit_tests
 
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import FloatType

@@ -159,7 +159,7 @@ def run_potential_hostless(
     Examples
     --------
     >>> from pyspark.sql.functions import lit
-    >>> from fink_filters.classification import extract_fink_classification
+    >>> from fink_filters.ztf.classification import extract_fink_classification
 
     >>> df = spark.read.load(sample_file)
     >>> df.count()
