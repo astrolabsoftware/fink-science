@@ -20,13 +20,13 @@ import joblib
 
 from sklearn import preprocessing
 
-from fink_science.orphans.features_extraction import (
+from fink_science.rubin.orphans.features_extraction import (
     compute_duration_between_first_and_peak,
     compute_rates,
     compute_colours,
 )
-from fink_science.orphans.basic_functions import clean_and_sort_light_curve
-from fink_science.orphans.fit import fit_light_curve
+from fink_science.rubin.orphans.basic_functions import clean_and_sort_light_curve
+from fink_science.rubin.orphans.fit import fit_light_curve
 
 
 def get_features(ctimemjd, cabmags, cabmagserr, cfilts, valid):

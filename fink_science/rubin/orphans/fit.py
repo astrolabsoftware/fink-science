@@ -18,7 +18,7 @@ import numpy as np
 from iminuit import Minuit
 from iminuit.cost import LeastSquares
 
-from fink_science.orphans.basic_functions import flux_to_mag, mag_to_flux
+from fink_science.rubin.orphans.basic_functions import flux_to_mag, mag_to_flux
 
 
 def rescale_filters(times, mags, mags_err, filts):
