@@ -32,6 +32,7 @@ CONFIGS_BASE = load_json("{}/config_base.json".format(current_directory))
 CONFIGS = load_json("{}/config.json".format(current_directory))
 CONFIGS.update(CONFIGS_BASE)
 
+
 @pandas_udf(ArrayType(FloatType()))
 @profile
 def run_base_potential_hostless(
@@ -85,10 +86,8 @@ def run_base_potential_hostless(
     for index in range(cutoutScience.shape[0]):
         science_stamp = cutoutScience[index]
         template_stamp = cutoutTemplate[index]
-        kstest_science, kstest_template = (
-            hostless_science_class.process_candidate_fink(
-                science_stamp, template_stamp
-            )
+        kstest_science, kstest_template = hostless_science_class.process_candidate_fink(
+            science_stamp, template_stamp
         )
         kstest_results.append([kstest_science, kstest_template])
     return pd.Series(kstest_results)
