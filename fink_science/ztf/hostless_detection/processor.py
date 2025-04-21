@@ -32,10 +32,10 @@ CONFIGS_BASE = load_json("{}/config_base.json".format(current_directory))
 CONFIGS = load_json("{}/config.json".format(current_directory))
 CONFIGS.update(CONFIGS_BASE)
 
+
 @pandas_udf(ArrayType(FloatType()))
 @profile
 def run_base_potential_hostless(
-    magpsf: pd.Series,
     cutoutScience: pd.Series,
     cutoutTemplate: pd.Series,
 ) -> pd.Series:
@@ -48,8 +48,6 @@ def run_base_potential_hostless(
 
     Parameters
     ----------
-    magpsf: pd.Series
-        Magnitude from PSF-fit photometry [mag]
     cutoutScience: pd.Series
         science stamp images
     cutoutTemplate: pd.Series
@@ -75,7 +73,6 @@ def run_base_potential_hostless(
     # Add a new column
     >>> df = df.withColumn('kstest_static',
     ...     run_base_potential_hostless(
-    ...         df["cmagpsf"],
     ...         df["cutoutScience.stampData"],
     ...         df["cutoutTemplate.stampData"]))
     >>> df.filter(df.kstest_static[0] >= 0).count()
@@ -89,10 +86,8 @@ def run_base_potential_hostless(
     for index in range(cutoutScience.shape[0]):
         science_stamp = cutoutScience[index]
         template_stamp = cutoutTemplate[index]
-        kstest_science, kstest_template = (
-            hostless_science_class.process_candidate_fink(
-                science_stamp, template_stamp
-            )
+        kstest_science, kstest_template = hostless_science_class.process_candidate_fink(
+            science_stamp, template_stamp
         )
         kstest_results.append([kstest_science, kstest_template])
     return pd.Series(kstest_results)
@@ -160,7 +155,7 @@ def run_potential_hostless(
     Examples
     --------
     >>> from pyspark.sql.functions import lit
-    >>> from fink_filters.classification import extract_fink_classification
+    >>> from fink_filters.ztf.classification import extract_fink_classification
 
     >>> df = spark.read.load(sample_file)
     >>> df.count()
