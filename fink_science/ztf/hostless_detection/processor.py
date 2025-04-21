@@ -35,7 +35,6 @@ CONFIGS.update(CONFIGS_BASE)
 @pandas_udf(ArrayType(FloatType()))
 @profile
 def run_base_potential_hostless(
-    magpsf: pd.Series,
     cutoutScience: pd.Series,
     cutoutTemplate: pd.Series,
 ) -> pd.Series:
@@ -48,8 +47,6 @@ def run_base_potential_hostless(
 
     Parameters
     ----------
-    magpsf: pd.Series
-        Magnitude from PSF-fit photometry [mag]
     cutoutScience: pd.Series
         science stamp images
     cutoutTemplate: pd.Series
@@ -75,7 +72,6 @@ def run_base_potential_hostless(
     # Add a new column
     >>> df = df.withColumn('kstest_static',
     ...     run_base_potential_hostless(
-    ...         df["cmagpsf"],
     ...         df["cutoutScience.stampData"],
     ...         df["cutoutTemplate.stampData"]))
     >>> df.filter(df.kstest_static[0] >= 0).count()
