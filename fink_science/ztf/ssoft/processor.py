@@ -27,7 +27,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import MapType, FloatType, StringType
 
-from fink_utils.sso.utils import query_miriade, query_miriade_epehemcc, get_miriade_data
+from fink_utils.sso.utils import query_miriade, query_miriade_ephemcc, get_miriade_data
 from fink_utils.sso.utils import compute_light_travel_correction
 from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.periods import estimate_synodic_period
@@ -675,7 +675,7 @@ def estimate_sso_params_spark(
                     })
 
                     # Get shifted ephemerides
-                    eph_tp = query_miriade_epehemcc(
+                    eph_tp = query_miriade_ephemcc(
                         ssname,
                         pdf["i:jd"] + synodic_period_days,
                         tcoor=2,
