@@ -680,22 +680,34 @@ def build_the_ssoft(
 
     if version is None:
         now = datetime.datetime.now()
-        version = "{}.{:02d}".format(now.year, now.month)
+        version = "{}{:02d}".format(now.year, now.month)
 
     _LOG.info("Reading {} ephemerides".format(aggregated_filename))
     df_ztf = spark.read.format("parquet").load(aggregated_filename)
 
     _LOG.info("{:,} SSO objects in Fink".format(df_ztf.count()))
 
+    df = df_ztf.withColumn("finkmeasurements", F.size(df_ztf["cra"])).filter(
+        F.col("finkmeasurements") >= nmin
+    )
+
+    _LOG.info(
+        "{:,} SSO objects with more than {} measurements".format(df.count(), nmin)
+    )
+
+    # Note: we compute the size of Phase
+    # because Phase can be null due to no ephemerides
     df = (
-        df_ztf.withColumn("nmeasurements", F.size(df_ztf["cra"]))
-        .filter(F.col("nmeasurements") >= nmin)
+        df.withColumn("ephemmeasurements", F.size(df["Phase"]))
+        .filter(F.col("ephemmeasurements") >= nmin)
         .repartition(nparts)
         .cache()
     )
 
     _LOG.info(
-        "{:,} SSO objects with more than {} measurements".format(df.count(), nmin)
+        "{:,} SSO objects with more than {} measurements and ephemerides".format(
+            df.count(), nmin
+        )
     )
 
     if frac is not None:
