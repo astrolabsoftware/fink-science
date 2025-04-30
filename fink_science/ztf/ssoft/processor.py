@@ -258,7 +258,7 @@ COLUMNS_SSHG1G2 = {
         "type": "double",
         "description": "Minimum of the absolute value of the cosine for the aspect angle",
     },
-        "period": {
+    "period": {
         "type": "double",
         "description": "Sidereal period estimated, in hour. Available only from 2024.10",
     },
