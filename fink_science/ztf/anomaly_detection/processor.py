@@ -51,6 +51,9 @@ MODEL_COLUMNS = [
 ]
 
 ANOMALY_MODELS = ["_beta", "_anais", "_emille", "_julien", "_maria"]  # noqa
+NOTIFICATIONS_COUNT = {
+    "_emille": 30
+}
 
 
 class TwoBandModel:
