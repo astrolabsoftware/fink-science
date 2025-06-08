@@ -50,9 +50,12 @@ MODEL_COLUMNS = [
     "stetson_K",
 ]
 
-ANOMALY_MODELS = ["_beta", "_anais", "_emille", "_julien", "_maria"]  # noqa
+ANOMALY_MODELS = ["_beta", "_anais", "_emille", "_julien", "_maria", "_emille_30days"]  # noqa
 NOTIFICATIONS_COUNT = {
     "_emille": 30
+}
+CURVE_LAST_DAYS = {
+    "_emille_30days": 30
 }
 
 
