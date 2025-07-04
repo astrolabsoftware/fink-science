@@ -12,12 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 import pandas as pd
 import numpy as np
 
 from fink_science.rubin.orphans.classifier import orphan_classifier
 
+from fink_science import __file__
 from fink_science.tester import spark_unit_tests
 
 from pyspark.sql.functions import pandas_udf
