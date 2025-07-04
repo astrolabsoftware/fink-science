@@ -23,6 +23,8 @@ SSTOP="\xF0\x9F\x9B\x91"
 SSTEP="\xF0\x9F\x96\xA7"
 SDONE="\xE2\x9C\x85"
 
+export ROCKS_CACHE_DIR="no-cache"
+
 message_help="""
 Run the test suite of the modules\n\n
 Usage:\n
