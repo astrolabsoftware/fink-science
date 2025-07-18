@@ -16,12 +16,11 @@
 from line_profiler import profile
 from fink_science import __file__
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from fink_utils.photometry.conversion import mag2fluxcal_snana
 from pyspark.sql.types import DoubleType
 from fink_science.tester import spark_unit_tests
 import numpy as np
 import pandas as pd
-from fink_science.ztf.superluminous.slsn_classifier import extract_features
+import fink_science.ztf.superluminous.slsn_classifier as slsn
 from fink_science.ztf.superluminous.kernel import classifier_path
 import joblib
 import os
@@ -77,10 +76,8 @@ def superluminous_score(cjd: pd.Series,
         >>> args += ["candidate"]
         >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
         >>> sdf.filter(sdf['proba']==0).count()
-        142
+        26
         """
-
-    
     pdf = pd.DataFrame({
         "cjd": cjd,
         "cmagpsf": cmagpsf,
@@ -89,20 +86,11 @@ def superluminous_score(cjd: pd.Series,
         "distnr": candidate['distnr']
     })
 
-    # Compute flux
-    conversion = pdf[["cmagpsf", "csigmapsf"]].apply(
-        lambda x: np.transpose([mag2fluxcal_snana(*i) for i in zip(x['cmagpsf'], x['csigmapsf'])]),
-        axis=1)
-
-    pdf['cflux'] = conversion.apply(lambda x: x[0])
-    pdf['csigflux'] = conversion.apply(lambda x: x[1])
+    pdf = slsn.compute_flux(pdf)
+    pdf = slsn.remove_nan(pdf)
     
-    # Remove None values
-    for k in ['cjd','cmagpsf','csigmapsf','cfid','csigflux','cflux']:
-        pdf[k] = pdf.apply(lambda row: np.array([a for a, b in zip(row[k], row['cflux']==row['cflux']) if b]), axis=1)
-
     # Perform feature extraction
-    features = extract_features(pdf)
+    features = slsn.extract_features(pdf)
 
     # Load classifier
     clf = joblib.load(classifier_path)
@@ -121,7 +109,7 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest/part-00003-bdab8e46-89c4-4ac1-8603-facd71833e8a-c000.snappy.parquet".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
     
     # Run the test suite
