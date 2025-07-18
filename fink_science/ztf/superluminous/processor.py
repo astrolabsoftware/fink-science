@@ -25,70 +25,74 @@ from fink_science.ztf.superluminous.kernel import classifier_path
 import joblib
 import os
 
+
 @pandas_udf(DoubleType())
 @profile
-def superluminous_score(cjd: pd.Series,
-                        cfid: pd.Series,
-                        cmagpsf: pd.Series,
-                        csigmapsf: pd.Series,
-                        candidate: pd.Series) -> pd.Series:
-    
+def superluminous_score(
+    cjd: pd.Series,
+    cfid: pd.Series,
+    cmagpsf: pd.Series,
+    csigmapsf: pd.Series,
+    candidate: pd.Series,
+) -> pd.Series:
     """High level spark wrapper for the superluminous classifier on ztf data
-    
-        Parameters
-        ----------
-        cjd: Spark DataFrame Column
-            JD times (vectors of floats)
-        cfid: Spark DataFrame Column
-            Filter IDs (vectors of str)
-        cmagpsf, csigmapsf: Spark DataFrame Columns
-            Magnitude and magnitude error from photometry (vectors of floats)
-        candidate: Spark DataFrame Column
-            Additionnal info about the source. Contains distnr, the angular
-            distance to the nearest reference source. 
-    
-        Returns
-        -------
-        np.array
-            Superluminous supernovae classification probability vector
-            Return 0 if not enough points were available for feature extraction
-    
-        Examples
-        --------
-        >>> from fink_utils.spark.utils import concat_col
-        >>> from pyspark.sql import functions as F
 
-        >>> sdf = spark.read.load(ztf_alert_sample)
-    
-        # Required alert columns
-        >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
-        
-        # Use for creating temp name
-        >>> prefix = 'c'
-        >>> what_prefix = [prefix + i for i in what]
-        
-        # Append temp columns with historical + current measurements
-        >>> for colname in what:
-        ...     sdf = concat_col(sdf, colname, prefix=prefix)
+    Parameters
+    ----------
+    cjd: Spark DataFrame Column
+        JD times (vectors of floats)
+    cfid: Spark DataFrame Column
+        Filter IDs (vectors of str)
+    cmagpsf, csigmapsf: Spark DataFrame Columns
+        Magnitude and magnitude error from photometry (vectors of floats)
+    candidate: Spark DataFrame Column
+        Additionnal info about the source. Contains distnr, the angular
+        distance to the nearest reference source.
 
-        # Perform the fit + classification (default model)
-        >>> args = [F.col(i) for i in what_prefix]
-        >>> args += ["candidate"]
-        >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
-        >>> sdf.filter(sdf['proba']==0).count()
-        26
-        """
-    pdf = pd.DataFrame({
-        "cjd": cjd,
-        "cmagpsf": cmagpsf,
-        "csigmapsf": csigmapsf,
-        "cfid": cfid,
-        "distnr": candidate['distnr']
-    })
+    Returns
+    -------
+    np.array
+        Superluminous supernovae classification probability vector
+        Return 0 if not enough points were available for feature extraction
+
+    Examples
+    --------
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> sdf = spark.read.load(ztf_alert_sample)
+
+    # Required alert columns
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...     sdf = concat_col(sdf, colname, prefix=prefix)
+
+    # Perform the fit + classification (default model)
+    >>> args = [F.col(i) for i in what_prefix]
+    >>> args += ["candidate"]
+    >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
+    >>> sdf.filter(sdf['proba']==0).count()
+    26
+    """
+    pdf = pd.DataFrame(
+        {
+            "cjd": cjd,
+            "cmagpsf": cmagpsf,
+            "csigmapsf": csigmapsf,
+            "cfid": cfid,
+            "distnr": candidate["distnr"],
+        }
+    )
 
     pdf = slsn.compute_flux(pdf)
     pdf = slsn.remove_nan(pdf)
-    
+
     # Perform feature extraction
     features = slsn.extract_features(pdf)
 
@@ -99,8 +103,10 @@ def superluminous_score(cjd: pd.Series,
     probas = np.zeros(len(features))
 
     # Modify proba for alerts that were feature extracted
-    extracted = np.sum(features.isnull(), axis=1)==0
-    probas[extracted] = clf.predict_proba(features.loc[extracted, clf.feature_names_in_])[:, 1]
+    extracted = np.sum(features.isnull(), axis=1) == 0
+    probas[extracted] = clf.predict_proba(
+        features.loc[extracted, clf.feature_names_in_]
+    )[:, 1]
 
     return pd.Series(probas)
 
@@ -109,8 +115,10 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    ztf_alert_sample = "file://{}/data/alerts/datatest/part-00003-bdab8e46-89c4-4ac1-8603-facd71833e8a-c000.snappy.parquet".format(path)
+    ztf_alert_sample = "file://{}/data/alerts/datatest/part-00003-bdab8e46-89c4-4ac1-8603-facd71833e8a-c000.snappy.parquet".format(
+        path
+    )
     globs["ztf_alert_sample"] = ztf_alert_sample
-    
+
     # Run the test suite
     spark_unit_tests(globs)
