@@ -18,7 +18,7 @@ from line_profiler import profile
 import os
 
 import numpy as np
-from pyspark.sql.functions import pandas_udf
+from pyspark.sql.functions import col, pandas_udf, sum
 from pyspark.sql.types import ArrayType, FloatType
 import pandas as pd
 
@@ -188,6 +188,8 @@ def run_potential_hostless(
     ...         df["roid"]))
     >>> df.filter(df.kstest_static[0] >= 0).count()
     0
+    >>> int(df.select(sum(col("kstest_static")[2])).collect()[0][0])
+    11
     """
     # load the configuration file
     hostless_science_class = HostLessExtragalactic(CONFIGS)
@@ -204,7 +206,8 @@ def run_potential_hostless(
     c1 = snn_sn_vs_all >= 0.5
     c2 = rf_snia_vs_nonia >= 0.5
     c3 = rf_kn_vs_nonkn >= 0.5
-
+    is_processed_true = 1
+    is_processed_false = 0
     for index in range(cutoutScience.shape[0]):
         # xmatch conditions
         c4 = finkclass[index] in CONFIGS["finkclass"]
@@ -226,11 +229,11 @@ def run_potential_hostless(
                         science_stamp, template_stamp
                     )
                 )
-                kstest_results.append([kstest_science, kstest_template])
+                kstest_results.append([kstest_science, kstest_template, is_processed_true])
             else:
-                kstest_results.append([default_result, default_result])
+                kstest_results.append([default_result, default_result, is_processed_false])
         else:
-            kstest_results.append([default_result, default_result])
+            kstest_results.append([default_result, default_result, is_processed_false])
     return pd.Series(kstest_results)
 
 
