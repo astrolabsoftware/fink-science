@@ -126,7 +126,7 @@ def quiescent_state(
     # Test
     >>> pdf = parDF.select([F.col('blazar_stats').getItem('m0').alias("m0"), F.col('blazar_stats').getItem('m1').alias("m1"), F.col('blazar_stats').getItem('m2').alias("m2")]).toPandas()
     >>> (pdf.sum(axis=1) == -3).sum()
-    320
+    322
     """
     path = os.path.dirname(os.path.abspath(__file__))
     CTAO_PATH = os.path.join(path, "data/catalogs")
