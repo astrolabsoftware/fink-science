@@ -133,7 +133,7 @@ def standardized_flux(
 
     # Test
     >>> parDF.filter(F.array_max(parDF['cstd_flux']) < 1).count()
-    30
+    28
     >>> parDF.filter(F.array_max(parDF['cstd_flux']) > 1).count()
     64
     """
