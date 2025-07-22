@@ -1,3 +1,18 @@
+# Copyright 2025 AstroLab Software
+# Author: Etienne Russeil
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import pandas as pd
 import numpy as np
 from light_curve.light_curve_py import RainbowFit
@@ -13,7 +28,6 @@ from fink_science.tester import spark_unit_tests
 from fink_utils.photometry.conversion import mag2fluxcal_snana
 import os
 from fink_science import __file__
-warnings.filterwarnings("ignore", category=rainbow_warnings.ExperimentalWarning)
 
 
 def compute_flux(pdf):
@@ -216,7 +230,7 @@ def statistical_features(lc):
     result = extractor(
         lc["cjd"],
         lc["cflux"],
-        lc["csigflux"].astype(np.float64),
+        lc["csigflux"],
         sorted=True,
         check=True,
     )
