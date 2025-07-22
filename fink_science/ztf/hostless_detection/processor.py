@@ -18,7 +18,7 @@ from line_profiler import profile
 import os
 
 import numpy as np
-from pyspark.sql.functions import col, pandas_udf, sum
+import pyspark.sql.functions as F
 from pyspark.sql.types import ArrayType, FloatType
 import pandas as pd
 
@@ -33,7 +33,7 @@ CONFIGS = load_json("{}/config.json".format(current_directory))
 CONFIGS.update(CONFIGS_BASE)
 
 
-@pandas_udf(ArrayType(FloatType()))
+@F.pandas_udf(ArrayType(FloatType()))
 @profile
 def run_base_potential_hostless(
     cutoutScience: pd.Series,
@@ -93,7 +93,7 @@ def run_base_potential_hostless(
     return pd.Series(kstest_results)
 
 
-@pandas_udf(ArrayType(FloatType()))
+@F.pandas_udf(ArrayType(FloatType()))
 @profile
 def run_potential_hostless(
     magpsf: pd.Series,
@@ -188,7 +188,7 @@ def run_potential_hostless(
     ...         df["roid"]))
     >>> df.filter(df.kstest_static[0] >= 0).count()
     0
-    >>> int(df.select(sum(col("kstest_static")[2])).collect()[0][0])
+    >>> int(df.select(F.sum(F.col("kstest_static")[2])).collect()[0][0])
     11
     """
     # load the configuration file
