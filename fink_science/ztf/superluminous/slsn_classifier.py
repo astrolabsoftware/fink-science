@@ -83,7 +83,7 @@ def remove_nan(pdf):
                         a
                         for a, b in zip(
                             row[k],
-                            (np.array(row["cflux"]) == row["cflux"]) & (np.array(row["cflux"]) is not None),
+                            (np.array(row["cflux"]) == row["cflux"]) & (np.array(row["cflux"]) != None),
                         )
                         if b
                     ]
