@@ -44,7 +44,5 @@ jobs:
     - name: Run test suites for ZTF
       run: |
         rm -f /tmp/forest_*.onnx
-        pip install sncosmo==2.12.1
-        pip install xgboost==2.1.4
         ./run_tests.sh -s rubin
         curl -s https://codecov.io/bash | bash
