@@ -229,9 +229,17 @@ def run_potential_hostless(
                         science_stamp, template_stamp
                     )
                 )
-                kstest_results.append([kstest_science, kstest_template, is_processed_true])
+                kstest_results.append([
+                    kstest_science,
+                    kstest_template,
+                    is_processed_true,
+                ])
             else:
-                kstest_results.append([default_result, default_result, is_processed_false])
+                kstest_results.append([
+                    default_result,
+                    default_result,
+                    is_processed_false,
+                ])
         else:
             kstest_results.append([default_result, default_result, is_processed_false])
     return pd.Series(kstest_results)
