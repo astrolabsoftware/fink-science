@@ -27,6 +27,21 @@ from fink_science.tester import spark_unit_tests
 @profile
 def r2_from_arrays(xs: pd.Series, ys: pd.Series) -> pd.Series:
     def r2_one(x, y):
+        """
+        Calculates the r2 statistics. Goal is to check goodness of fit.
+
+        Parameters
+        ----------
+        x: Spark DataFrame Column
+           observed jd
+        y: Spark DataFrame Column
+            observed psf magnitude
+
+        Returns
+        -------
+        out: Spark DataFrame Column
+            R2 statistics        
+        """
         if x is None or y is None:
             return np.nan
         x = np.asarray(x, dtype=float)
@@ -44,31 +59,53 @@ def r2_from_arrays(xs: pd.Series, ys: pd.Series) -> pd.Series:
         y_hat = beta0 + beta1 * x
         ss_res = np.sum((y - y_hat) ** 2)
         ss_tot = np.sum((y - y_mean) ** 2)
-        return 1.0 - (ss_res / ss_tot) if ss_tot != 0 else np.nan
+
+        out = 1.0 - (ss_res / ss_tot) if ss_tot != 0 else np.nan
+        
+        return out
 
     return pd.Series([r2_one(x, y) for x, y in zip(xs, ys)])
 
-@F.pandas_udf(ArrayType(FloatType()))
+@F.pandas_udf(FloatType())
 @profile
 def filter_spicy_trend(spicy_class: pd.Series, linear_fit_slope: pd.Series,
                    cjd_r: pd.Series, cmagpsf_r: pd.Series, n_rband:pd.Series) -> pd.Series:
-    """ Compute the change in magnitude between the 
-    2 latest magnitudes.
+    """ Filter objects in spicy with significant trend in the last 30 days.
 
+    Notes
+    -----
+    First iteration cuts: 
+        min npoints in r-band = 5
+        r2 > 0.6
+        linear_fit_slope > 0.025
+    
     Parameters
     ----------
-    magpsf: Spark DataFrame Column
-        Magnitude from PSF-fit photometry
+    spicy_class: Spark DataFrame Column
+        Class of the xmatched spicy object
+    linear_fit_slope: Spark DataFrame Column
+        from lc_features_r
+    cjd_r: Spark DataFrame Column
+        time of observation, current alert + history - r-band only
+    cmagpsf_r: Spark DataFrame Column
+        observed psf magnitude, current alert + history - r-band only
+    n_rband: Spark DataFrame Column
+        number of observations in the r-band
 
     Returns
     ----------
-    delta_mag: pd.Series
+    r2: pd.Series
         Difference magnitude between last 2 measurements
 
     Examples
     ----------
-    >>> from fink_science.utilities import concat_col
-    >>> df = spark.read.format('parquet').load(test_yso_cut.parquet)
+    >>> from pyspark.sql import SparkSession
+    >>> spark = SparkSession.builder.getOrCreate()
+    
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+    
+    >>> df = spark.read.format('parquet').load(test_yso_cuts)
     >>> df.count()
     26
 
@@ -80,29 +117,21 @@ def filter_spicy_trend(spicy_class: pd.Series, linear_fit_slope: pd.Series,
     >>> what_prefix = [prefix + i for i in what]
 
     # Append temp columns with historical + current measurements
-    >>> for colname in what:
-            df = concat_col(df, colname, prefix=prefix)
+    >>> df = concat_col(df, 'jd', prefix=prefix)
+    >>> df = concat_col(df, 'magpsf', prefix=prefix)
+    >>> df = concat_col(df, 'fid', prefix=prefix)
 
-    >>> df2 = (
-        df.withColumn("z", F.arrays_zip("cfid", "cmagpsf", "cjd"))
-        # keep only positions r-band (cfid == 2)
-        .withColumn("z2", F.expr("filter(z, x -> x.cfid = 2 AND x.cmagpsf IS NOT NULL AND x.cjd IS NOT NULL)"))
-        # project masked arrays back out
-        .withColumn("cmagpsf_masked", F.expr("transform(z2, x -> x.cmagpsf)"))
-        .withColumn("cjd_masked",     F.expr("transform(z2, x -> x.cjd)"))
-        # count number of points in the r-band
-        .withColumn('n_rband', F.size('cmagpsf_masked'))
-        .drop("z", "z2")
-    )
+    >>> df = df.withColumn("z", F.arrays_zip("cfid", "cmagpsf","cjd"))
+    >>> df = df.withColumn("z2", F.expr("filter(z, x -> x.cfid = 2 AND x.cmagpsf IS NOT NULL AND x.cjd IS NOT NULL)"))
+    >>> df = df.withColumn("cmagpsf_masked", F.expr("transform(z2, x -> x.cmagpsf)"))
+    >>> df = df.withColumn("cjd_masked",     F.expr("transform(z2, x -> x.cjd)"))
+    >>> df = df.withColumn('n_rband', F.size('cmagpsf_masked')).drop("z", "z2")
     
     # apply the science module
-    >>> df2 = df2.withColumn('spicy_trend', 
-                            filter_spicy_trend('spicy_class', 'lc_features_r.linear_fit_slope',
-                            'cjd_masked', 'cmagpsf_masked', 'n_rband'))
+    >>> df = df.withColumn('spicy_trend',filter_spicy_trend('spicy_class','lc_features_r.linear_fit_slope',  'cjd_masked', 'cmagpsf_masked', 'n_rband'))
 
     # Count the number of survivors
-    >>> df3 = df2.filter(F.col('spicy_trend') == 1.0)
-    >>> df3.count()
+    >>> int(df.select(F.sum(F.col("spicy_trend"))).collect()[0][0])
     6
     """
     
@@ -125,18 +154,17 @@ def filter_spicy_trend(spicy_class: pd.Series, linear_fit_slope: pd.Series,
     r2 = r2_from_arrays(use_jd, use_magpsf)
     mask = r2 > r2_lim
 
-    return pd.Series(mask)
+    return mask.astype(float)
 
 
 
 if __name__ == "__main__":
     """ Execute the test suite """
-
+    
     globs = globals()
     path = os.path.dirname(__file__)
-
-    test_yso_cut = "file://{}/data/alerts".format(path)
-    globs["test_yso_cut"] = test_yso_cut
-
-    # Run the test suite
+    sample_file = (
+        "./fink_science/data/alerts/test_yso_cuts.parquet"
+    )
+    globs["test_yso_cuts"] = sample_file
     spark_unit_tests(globs)
