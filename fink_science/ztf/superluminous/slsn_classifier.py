@@ -343,8 +343,8 @@ def extract_features(data):
             kern.min_points_perband <= np.array([sum(lc["cfid"] == band) for band in np.unique(lc["cfid"])])
         )
         enough_total_points = len(lc["cjd"]) > kern.min_points_total
-    	duration = np.ptp(lc["cjd"])
-        enough_duration = np.ptp(lc["cjd"]) > kern.min_duration
+        duration = np.ptp(lc["cjd"])
+        enough_duration = duration > kern.min_duration
         distnr = lc["distnr"]
 
         if all_valid_bands & enough_total_points & enough_duration:
