@@ -344,7 +344,7 @@ def extract_features(data):
         )
         enough_total_points = len(lc["cjd"]) > kern.min_points_total
 	enough_duration = np.ptp(lc["cjd"]) > kern.min_duration
-        duration = np.ptp(lc["cjd"])
+	duration = np.ptp(lc["cjd"])
         distnr = lc["distnr"]
 
         if all_valid_bands & enough_total_points & enough_duration:
