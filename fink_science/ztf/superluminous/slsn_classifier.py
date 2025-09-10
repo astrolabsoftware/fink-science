@@ -343,10 +343,11 @@ def extract_features(data):
             kern.min_points_perband <= np.array([sum(lc["cfid"] == band) for band in np.unique(lc["cfid"])])
         )
         enough_total_points = len(lc["cjd"]) > kern.min_points_total
+	enough_duration = np.ptp(lc["cjd"]) > kern.min_duration
         duration = np.ptp(lc["cjd"])
         distnr = lc["distnr"]
 
-        if all_valid_bands & enough_total_points:
+        if all_valid_bands & enough_total_points & enough_duration:
             rainbow_features = fit_rainbow(lc, rainbow_model)
             salt_features = fit_salt(lc, salt_model)
             stat_features = statistical_features(lc)
