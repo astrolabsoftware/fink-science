@@ -300,16 +300,15 @@ def extract_features(data):
     ... 8.569830e+03,   9.043603e+03,   6.207734e+00,   6.221343e-01,
     ... 2.553051e+01,   1.212390e+00,   9.019693e-01,   9.229657e+00,
     ... 1.846910e+01,   5.537009e-01,   9.581437e-02], rtol=5e-2)
-
+    
     # Check full feature extraction function
-    >>> pdf_check = pdf.iloc[[0, 6]].copy()
+    >>> pdf_check = pdf.copy()
     >>> full_features = extract_features(pdf_check)
-
-    # The first one should be fitted
-    # The second one shouldn't (not enough points)
+    
+    # No alerts should be fitted as they are all <30 days
     >>> np.testing.assert_equal(
     ... np.array(np.sum(full_features.isnull(), axis=1)),
-    ... np.array([0, 25]))
+    ... np.array([25]*len(pdf)))
     """
 
     rainbow_model = RainbowFit.from_angstrom(

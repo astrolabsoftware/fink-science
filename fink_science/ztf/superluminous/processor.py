@@ -78,7 +78,7 @@ def superluminous_score(
     >>> args += ["candidate"]
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
     >>> sdf.filter(sdf['proba']==0).count()
-    26
+    57
     """
     pdf = pd.DataFrame(
         {
