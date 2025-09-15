@@ -26,9 +26,9 @@ import fink_science.ztf.superluminous.kernel as kern
 import joblib
 from fink_science.tester import spark_unit_tests
 from fink_utils.photometry.conversion import mag2fluxcal_snana
-import os
+import os, contextlib
 from fink_science import __file__
-
+import io
 
 def compute_flux(pdf):
     """Convert cmagpsf and csigmapsf to cflux and csigflux.
@@ -236,7 +236,23 @@ def statistical_features(lc):
     )
     return list(result)
 
+def quiet_model():
+    """Call the salt model but muting download messages.
+    Intended for doctests.
+    """
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+        return sncosmo.Model(source='salt2')
 
+
+def quiet_fit_salt(lc, model):
+    """Fit the salt model but muting download messages.
+    Intended for doctests.
+    """
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+        return fit_salt(lc, model)
+        
 def extract_features(data):
     """Extract all features, i.e. Rainbow + salt + some statistical features
      for a set of light curves.
@@ -286,8 +302,8 @@ def extract_features(data):
     >>> stat_features = statistical_features(lc)
 
     # Salt
-    >>> salt_model = sncosmo.Model(source='salt2')
-    >>> salt_features = fit_salt(lc, salt_model)
+    >>> salt_model = quiet_model()
+    >>> salt_features = quiet_fit_salt(lc, salt_model)
 
     # Check their values
     >>> np.testing.assert_allclose(stat_features,
