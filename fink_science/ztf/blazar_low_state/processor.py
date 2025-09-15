@@ -24,7 +24,7 @@ from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 import os
 
-RELEASE = 22
+CATALOG_TAG = "23.v7_2025"
 
 
 @pandas_udf(MapType(StringType(), FloatType()))
@@ -126,11 +126,11 @@ def quiescent_state(
     # Test
     >>> pdf = parDF.select([F.col('blazar_stats').getItem('m0').alias("m0"), F.col('blazar_stats').getItem('m1').alias("m1"), F.col('blazar_stats').getItem('m2').alias("m2")]).toPandas()
     >>> (pdf.sum(axis=1) == -3).sum()
-    320
+    322
     """
     path = os.path.dirname(os.path.abspath(__file__))
     CTAO_PATH = os.path.join(path, "data/catalogs")
-    CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(RELEASE)
+    CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(CATALOG_TAG)
     CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
 
     pdf = pd.DataFrame({
