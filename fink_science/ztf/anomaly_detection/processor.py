@@ -62,10 +62,63 @@ class TwoBandModel:
         self.forest_r = forest_r
         self.forest_g = forest_g
 
-    def anomaly_score(self, data_r, data_g):
-        scores_g = self.forest_g.run(None, {"X": data_g.to_numpy().astype(np.float32)})
-        scores_r = self.forest_r.run(None, {"X": data_r.to_numpy().astype(np.float32)})
-        return (scores_g[-1] + scores_r[-1]) / 2
+    def anomaly_score(self, data_r, data_g, mask_r, mask_g):
+        """
+        Calculates anomaly score based on data from two filters (bands).
+
+        The logic is as follows:
+        - If data is valid for both bands, return the minimum of the two scores.
+        - If data is valid for only one band, return the score for that band.
+        - If data is invalid for both bands, return 0.0.
+
+        Parameters
+        ----------
+        data_r: pd.DataFrame
+            Features for the r-band.
+        data_g: pd.DataFrame
+            Features for the g-band.
+        mask_r: pd.Series (bool)
+            Mask indicating if the original r-band data was invalid (True) or not (False).
+        mask_g: pd.Series (bool)
+            Mask indicating if the original g-band data was invalid (True) or not (False).
+
+        Returns
+        -------
+        np.ndarray
+            A 1D array of anomaly scores.
+        """
+        # Calculate scores for all objects. NaNs in the data have already been
+        # replaced by mean values, so the models will run for all rows.
+        scores_g_raw = self.forest_g.run(None, {"X": data_g.to_numpy().astype(np.float32)})
+        scores_r_raw = self.forest_r.run(None, {"X": data_r.to_numpy().astype(np.float32)})
+
+        # Extract the 1D arrays of scores
+        scores_g = np.transpose(scores_g_raw[-1])[0]
+        scores_r = np.transpose(scores_r_raw[-1])[0]
+
+        # Convert pandas masks to numpy arrays for vectorized operations
+        m_r = mask_r.to_numpy()
+        m_g = mask_g.to_numpy()
+
+        # Initialize the final score array with zeros.
+        # This handles the case where data in both filters is NaN by default.
+        final_scores = np.zeros_like(scores_g, dtype=np.float64)
+
+        # Case 1: Data is valid in both filters (masks are False)
+        both_valid = ~m_g & ~m_r
+        final_scores[both_valid] = np.minimum(scores_g[both_valid], scores_r[both_valid])
+
+        # Case 2: Data is valid only in the g-filter
+        only_g_valid = ~m_g & m_r
+        final_scores[only_g_valid] = scores_g[only_g_valid]
+
+        # Case 3: Data is valid only in the r-filter
+        only_r_valid = m_g & ~m_r
+        final_scores[only_r_valid] = scores_r[only_r_valid]
+
+        # Case 4 (both are invalid) is already handled by the zero initialization.
+
+        return final_scores
 
 
 @pandas_udf(DoubleType())
@@ -162,7 +215,7 @@ def anomaly_score(lc_features, model=None):
 
     mask_r = data_r.isna().all(1)
     mask_g = data_g.isna().all(1)
-    mask = mask_r.to_numpy() * mask_g.to_numpy()
+
     if model is not None:
         model = model.to_numpy()[0]
     else:
@@ -191,19 +244,9 @@ def anomaly_score(lc_features, model=None):
     forest_r_AAD = rt.InferenceSession(r_model_path_AAD)
     forest_g_AAD = rt.InferenceSession(g_model_path_AAD)
 
-    # load the mean values used to replace Nan values from the features extraction
-    r_means = pd.read_csv(
-        f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True
-    )
-    g_means = pd.read_csv(
-        f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True
-    )
 
     model_AAD = TwoBandModel(forest_g_AAD, forest_r_AAD)
-
-    score = model_AAD.anomaly_score(data_r, data_g)
-    score_ = np.transpose(score)[0]
-    score_[mask] = 0.0
+    score_ = model_AAD.anomaly_score(data_r, data_g, mask_r, mask_g)
     return pd.Series(score_)
 
 
