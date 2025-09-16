@@ -105,7 +105,6 @@ class TwoBandModel:
         final_scores = np.zeros_like(scores_g, dtype=np.float64)
 
         # Case 1: Data is valid in both filters (masks are False)
-        # ~m_g means "not m_g", i.e., where data is valid.
         both_valid = ~m_g & ~m_r
         final_scores[both_valid] = np.minimum(scores_g[both_valid], scores_r[both_valid])
 
