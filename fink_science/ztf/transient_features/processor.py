@@ -179,7 +179,7 @@ def is_faint(df, colname="faint"):
 
 
 def positive_subtraction(df, colname="positivesubtraction"):
-    """"""
+    """Is brighter than the template image."""
     df = df.withColumn(colname, col("isdiffpos").cast("string").isin("1", "t", "true"))
     return df
 
@@ -251,7 +251,7 @@ def real_transient(df, colname="real"):
 
 
 def point_underneath(df, colname="pointunderneath"):
-    """"""
+    """Is likely sitting on top of or blended with a star in Pan-STARRS."""
     # First condition: high star-galaxy score, moderate distance
     cond1 = (col("sgscore1") > 0.76) & (col("distpsnr1") < 2.5)
 
@@ -280,7 +280,7 @@ def point_underneath(df, colname="pointunderneath"):
 
 
 def bright_star(df, colname="brightstar"):
-    """"""
+    """Is likely contaminated by a nearby bright star."""
     # Condition 1: Close to a bright Gaia star
     cond1 = (abs_(col("neargaiabright")) < 20) & (abs_(col("maggaiabright")) < 12)
 
@@ -379,7 +379,7 @@ def varstar(df, colname="variablesource"):
 
 
 def is_stationary(df, colname="stationary"):
-    """"""
+    """At least one previous detection at this position."""
     df = df.withColumn(
         colname,
         coalesce(
@@ -404,7 +404,7 @@ def is_stationary(df, colname="stationary"):
 
 
 @profile
-def rcf(df):
+def extract_transient_features(df):
     """Add various columns to the Spark DataFrame
 
     Notes
@@ -418,10 +418,10 @@ def rcf(df):
 
     Additional columns:
     1. faint: magpsf is currently fainter than 19.8, or the source had a very recent detection fainter than 19.
-    2. pointunderneath:  is likely sitting on top of or blended with a star in Pan-STARRS.
+    2. pointunderneath: is likely sitting on top of or blended with a star in Pan-STARRS.
     3. positivesubtraction: is brighter than the template image.
     4. real: is likely a genuine astrophysical transient and not an artifact.
-    5. stationary: is not a moving source.
+    5. stationary: at least one previous detection at this position.
     6. brightstar: is likely contaminated by a nearby bright star.
     7. variablesource: is likely a variable star
     8. rock --> is it really necessary?
@@ -441,7 +441,7 @@ def rcf(df):
     >>> df = spark.read.load(ztf_alert_sample)
     >>> cols = df.columns
 
-    >>> df2 = rcf(df)
+    >>> df2 = extract_transient_features(df)
     >>> cols2 = df2.columns
     >>> assert len(cols2) == len(cols) + 7, (len(cols), len(cols2), cols2)
     """
