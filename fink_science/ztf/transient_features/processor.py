@@ -424,7 +424,6 @@ def extract_transient_features(df):
     5. stationary: at least one previous detection at this position.
     6. brightstar: is likely contaminated by a nearby bright star.
     7. variablesource: is likely a variable star
-    8. rock --> is it really necessary?
 
     Parameters
     ----------
