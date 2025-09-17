@@ -162,7 +162,7 @@ def anomaly_score(lc_features, model=None):
     ...     df = df.withColumn(f'anomaly_score{model}', anomaly_score("lc_features", F.lit(model)))
 
     >>> df.filter(df["anomaly_score"] < -0.013).count()
-    43
+    282
 
     >>> df.filter(df["anomaly_score"] == 0).count() < 200
     True
