@@ -34,6 +34,7 @@ def superluminous_score(
     cmagpsf: pd.Series,
     csigmapsf: pd.Series,
     candidate: pd.Series,
+    is_transient: pd.Series,
 ) -> pd.Series:
     """High level spark wrapper for the superluminous classifier on ztf data
 
@@ -48,6 +49,8 @@ def superluminous_score(
     candidate: Spark DataFrame Column
         Additionnal info about the source. Contains distnr, the angular
         distance to the nearest reference source.
+    is_transient: Spark DataFrame Column
+        Is the source likely a transient.
 
     Returns
     -------
@@ -59,8 +62,15 @@ def superluminous_score(
     --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
-
+    >>> from fink_filters.ztf.filter_transient_complete.filter import transient_complete_filter
+    >>> from fink_science.ztf.transient_features.processor import extract_transient_features
     >>> sdf = spark.read.load(ztf_alert_sample)
+    >>> sdf = extract_transient_features(sdf)
+    >>> sdf = sdf.withColumn(
+    ... "is_transient",
+    ... transient_complete_filter(
+    ... "faint", "positivesubtraction", "real", "pointunderneath",
+    ... "brightstar", "variablesource", "stationary", "roid"))
 
     # Required alert columns
     >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
@@ -75,10 +85,12 @@ def superluminous_score(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += ["candidate"]
+    >>> args += ["candidate", "is_transient"]
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
+    >>> sdf.filter(sdf['proba']==-1).count()
+    55
     >>> sdf.filter(sdf['proba']==0).count()
-    57
+    2
     """
     pdf = pd.DataFrame(
         {
@@ -87,28 +99,38 @@ def superluminous_score(
             "csigmapsf": csigmapsf,
             "cfid": cfid,
             "distnr": candidate["distnr"],
+            "is_transient": is_transient,
         }
     )
 
-    pdf = slsn.compute_flux(pdf)
-    pdf = slsn.remove_nan(pdf)
+    # If no alert pass the transient filter,
+    # directly return invalid value for everyone.
+    if sum(pdf["is_transient"]) == 0:
+        return pd.Series([-1]*len(pdf))
 
-    # Perform feature extraction
-    features = slsn.extract_features(pdf)
+    else:
+        # Assign default 0 proba for every alert
+        probas = np.zeros(len(pdf))
 
-    # Load classifier
-    clf = joblib.load(classifier_path)
+        # Assign -1 for non-transient alerts
+        probas[~pdf["is_transient"]] = -1
 
-    # Assign default 0 proba for every alert
-    probas = np.zeros(len(features))
+        pdf = slsn.compute_flux(pdf)
+        pdf = slsn.remove_nan(pdf)
 
-    # Modify proba for alerts that were feature extracted
-    extracted = np.sum(features.isnull(), axis=1) == 0
-    probas[extracted] = clf.predict_proba(
-        features.loc[extracted, clf.feature_names_in_]
-    )[:, 1]
+        # Perform feature extraction
+        features = slsn.extract_features(pdf)
 
-    return pd.Series(probas)
+        # Load classifier
+        clf = joblib.load(classifier_path)
+
+        # Modify proba for alerts that were feature extracted
+        extracted = np.sum(features.isnull(), axis=1) == 0
+        probas[extracted] = clf.predict_proba(
+            features.loc[extracted, clf.feature_names_in_]
+        )[:, 1]
+
+        return pd.Series(probas)
 
 
 if __name__ == "__main__":
