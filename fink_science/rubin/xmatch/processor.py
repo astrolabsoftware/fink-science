@@ -160,7 +160,7 @@ def cdsxmatch(
 
             if pdf.empty:
                 # null values
-                name = ",".join([np.nan] * len(col_list))
+                name = ",".join([None] * len(col_list))
                 names = [name] * len(diaSourceId)
                 return pd.Series(names)
 
@@ -315,7 +315,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     tns_raw_output: str, optional
         Folder that contains raw TNS catalog. Inside, it is expected
         to find the file `tns_raw.parquet` downloaded using
-        `fink-broker/bin/download_tns.py`. Default is "", in
+        `fink-broker/bin/download_tns.py`. Default is None, in
         which case the catalog will be downloaded. Beware that
         to download the catalog, you need to set environment variables:
         - TNS_API_MARKER: path to the TNS API marker (tns_marker.txt)
@@ -333,11 +333,11 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
     >>> path = curdir + '/data/catalogs'
     >>> df_tns = xmatch_tns(df, tns_raw_output=path)
-    >>> 'tns' in df_tns.columns
+    >>> 'tns_type' in df_tns.columns
     True
 
-    >>> df_tns.filter(df_tns["tns"] != "").count()
-    0
+    >>> df_tns.filter(df_tns["tns_type"].isNull()).count()
+    50
 
     """
     if tns_raw_output == "":
@@ -351,8 +351,10 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
             _LOG.warning(
                 "TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master."
             )
-            _LOG.warning("Skipping crossmatch with TNS.")
-            df = df.withColumn("tns_type", F.lit(""))
+            _LOG.warning(
+                "Skipping crossmatch with TNS. Creating a tns_type columns with null values."
+            )
+            df = df.withColumn("tns_type", F.lit(None))
             return df
     else:
         pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, "tns_raw.parquet"))
@@ -410,13 +412,13 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         # set separation length
         sep_constraint2 = d2d2.degree < distmaxarcsec / 3600.0
 
-        sub_pdf["TNS"] = [""] * len(sub_pdf)
+        sub_pdf["TNS"] = [None] * len(sub_pdf)
         sub_pdf["TNS"][sep_constraint2] = type2.to_numpy()[idx2[sep_constraint2]]
 
         # Here we take the first match
         # What if there are many? AT & SN?
         to_return = diaSourceId.apply(
-            lambda x: ""
+            lambda x: None
             if x not in sub_pdf["diaSourceId"].to_numpy()
             else sub_pdf["TNS"][sub_pdf["diaSourceId"] == x].to_numpy()[0]
         )
@@ -424,7 +426,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         return to_return
 
     df = df.withColumn(
-        "tns",
+        "tns_type",
         crossmatch_with_tns(
             df["diaSource.diaSourceId"], df["diaSource.ra"], df["diaSource.dec"]
         ),
