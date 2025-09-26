@@ -39,6 +39,10 @@ scikit-image
 #light-curve>=0.4.0
 onnxruntime==1.20.1
 
+#Superluminous SN
+sncosmo==2.12.1
+xgboost==2.1.4
+
 #for ELAsTiCC
 light-curve[full]
 
