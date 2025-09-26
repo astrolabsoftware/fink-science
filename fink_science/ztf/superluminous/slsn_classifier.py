@@ -62,8 +62,8 @@ def compute_flux(pdf):
         axis=1,
     )
 
-    pdf["cflux"] = conversion.apply(lambda x: x[0])
-    pdf["csigflux"] = conversion.apply(lambda x: x[1])
+    pdf.loc[:, "cflux"] = conversion.apply(lambda x: x[0])
+    pdf.loc[:, "csigflux"] = conversion.apply(lambda x: x[1])
 
     return pdf
 
@@ -91,7 +91,7 @@ def remove_nan(pdf):
 
     for k in ["cjd", "cmagpsf", "csigmapsf", "cfid", "csigflux", "cflux"]:
         if k in pdf.columns:
-            pdf[k] = pdf.apply(
+            pdf.loc[:, k] = pdf.apply(
                 lambda row: np.array(
                     [
                         a

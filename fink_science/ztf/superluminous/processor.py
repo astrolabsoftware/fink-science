@@ -33,7 +33,7 @@ def superluminous_score(
     cfid: pd.Series,
     cmagpsf: pd.Series,
     csigmapsf: pd.Series,
-    candidate: pd.Series,
+    distnr: pd.Series,
     is_transient: pd.Series,
 ) -> pd.Series:
     """High level spark wrapper for the superluminous classifier on ztf data
@@ -46,9 +46,8 @@ def superluminous_score(
         Filter IDs (vectors of str)
     cmagpsf, csigmapsf: Spark DataFrame Columns
         Magnitude and magnitude error from photometry (vectors of floats)
-    candidate: Spark DataFrame Column
-        Additionnal info about the source. Contains distnr, the angular
-        distance to the nearest reference source.
+    distnr: Spark DataFrame Column
+        The angular distance to the nearest reference source.
     is_transient: Spark DataFrame Column
         Is the source likely a transient.
 
@@ -85,7 +84,7 @@ def superluminous_score(
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
-    >>> args += ["candidate", "is_transient"]
+    >>> args += ["candidate.distnr", "is_transient"]
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
     >>> sdf.filter(sdf['proba']==-1).count()
     55
@@ -98,7 +97,7 @@ def superluminous_score(
             "cmagpsf": cmagpsf,
             "csigmapsf": csigmapsf,
             "cfid": cfid,
-            "distnr": candidate["distnr"],
+            "distnr": distnr,
             "is_transient": is_transient,
         }
     )
@@ -106,20 +105,25 @@ def superluminous_score(
     # If no alert pass the transient filter,
     # directly return invalid value for everyone.
     if sum(pdf["is_transient"]) == 0:
-        return pd.Series([-1]*len(pdf))
+        return pd.Series([-1.0]*len(pdf))
 
     else:
-        # Assign default 0 proba for every alert
-        probas = np.zeros(len(pdf))
 
-        # Assign -1 for non-transient alerts
-        probas[~pdf["is_transient"]] = -1
+        # Initialise all probas to -1
+        probas_total = np.zeros(len(pdf), dtype=float) - 1
+        mask_valid = pdf["is_transient"]
+        
+        # select only trasnient alerts
+        pdf_valid = pdf[mask_valid]
+        
+        # Assign default 0 proba for every valid alert
+        probas = np.zeros(len(pdf_valid))
 
-        pdf = slsn.compute_flux(pdf)
-        pdf = slsn.remove_nan(pdf)
+        pdf_valid = slsn.compute_flux(pdf_valid)
+        pdf_valid = slsn.remove_nan(pdf_valid)
 
         # Perform feature extraction
-        features = slsn.extract_features(pdf)
+        features = slsn.extract_features(pdf_valid)
 
         # Load classifier
         clf = joblib.load(classifier_path)
@@ -130,7 +134,9 @@ def superluminous_score(
             features.loc[extracted, clf.feature_names_in_]
         )[:, 1]
 
-        return pd.Series(probas)
+        probas_total[mask_valid] = probas
+
+        return pd.Series(probas_total)
 
 
 if __name__ == "__main__":
