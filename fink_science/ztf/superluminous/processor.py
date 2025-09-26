@@ -137,7 +137,7 @@ def get_and_format(ZTF_name):
     -------
     pd.DataFrame
         DataFrame containing all light curve information.
-        1 row = 1 source. Returns None if the list is empty
+        1 row = 1 source. Returns None if the list is empty.
     """
     if len(ZTF_name) == 0:
         return None
