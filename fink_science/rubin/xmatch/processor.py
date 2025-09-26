@@ -85,7 +85,7 @@ def cdsxmatch(
         Return Pandas DataFrame with a new single column
         containing comma-separated values of extra-columns.
         If the object is not found in Simbad, the type is
-        marked as Unknown. In the case several objects match
+        marked as null. In the case several objects match
         the centroid of the alert, only the closest is returned.
         If the request Failed (no match at all), return Column of Fails.
 
@@ -382,7 +382,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         Returns
         -------
         to_return: pd.Series of str
-            TNS type for the alert. `Unknown` if no match.
+            TNS type for the alert. null if no match.
         """
         pdf = pdf_tns_filt_b.value
         ra2, dec2, type2 = pdf["ra"], pdf["declination"], pdf["type"]
@@ -462,7 +462,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     Returns
     -------
     type: str
-        Object type from the catalog. `Unknown` if no match.
+        Object type from the catalog. null if no match.
 
     Examples
     --------
@@ -607,7 +607,7 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     Returns
     -------
     type: str
-        Object type from the catalog. `Unknown` if no match.
+        Object type from the catalog. null if no match.
 
     Examples
     --------
