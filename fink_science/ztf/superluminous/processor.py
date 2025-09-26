@@ -15,7 +15,7 @@
 
 from line_profiler import profile
 from fink_science import __file__
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 from fink_science.tester import spark_unit_tests
 import numpy as np
@@ -74,6 +74,7 @@ def superluminous_score(is_transient: pd.Series, objectId: pd.Series) -> pd.Seri
     >>> sdf.filter(sdf['proba']==-1.0).count()
     57
     """
+
     pdf = pd.DataFrame(
         {
             "is_transient": is_transient,
@@ -81,13 +82,15 @@ def superluminous_score(is_transient: pd.Series, objectId: pd.Series) -> pd.Seri
         }
     )
 
+  
+
     # If no alert pass the transient filter,
     # directly return invalid value for everyone.
     if sum(pdf["is_transient"]) == 0:
         return pd.Series([-1.0] * len(pdf))
 
     else:
-        # Initialise all probas to -1pi
+        # Initialise all probas to -1
         probas_total = np.zeros(len(pdf), dtype=float) - 1
         mask_valid = pdf["is_transient"]
 
