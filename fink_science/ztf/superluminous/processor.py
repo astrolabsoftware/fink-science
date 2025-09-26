@@ -15,7 +15,7 @@
 
 from line_profiler import profile
 from fink_science import __file__
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 from fink_science.tester import spark_unit_tests
 import numpy as np
@@ -89,24 +89,21 @@ def superluminous_score(
     >>> sdf.filter(sdf['proba']==-1.0).count()
     57
     """
-    pdf = pd.DataFrame(
-        {
-            "cjd": cjd,
-            "cmagpsf": cmagpsf,
-            "csigmapsf": csigmapsf,
-            "cfid": cfid,
-            "distnr": distnr,
-            "is_transient": is_transient,
-        }
-    )
+    pdf = pd.DataFrame({
+        "cjd": cjd,
+        "cmagpsf": cmagpsf,
+        "csigmapsf": csigmapsf,
+        "cfid": cfid,
+        "distnr": distnr,
+        "is_transient": is_transient,
+    })
 
     # If no alert pass the transient filter,
     # directly return invalid value for everyone.
     if sum(pdf["is_transient"]) == 0:
-        return pd.Series([-1.0]*len(pdf))
+        return pd.Series([-1.0] * len(pdf))
 
     else:
-
         # Initialise all probas to -1
         probas_total = np.zeros(len(pdf), dtype=float) - 1
         mask_valid = pdf["is_transient"]
@@ -127,7 +124,7 @@ def superluminous_score(
         clf = joblib.load(classifier_path)
 
         # Modify proba for alerts that were feature extracted
-        extracted = np.sum(features.isnull(), axis=1) == 0
+        extracted = np.sum(features.isna(), axis=1) == 0
         probas[extracted] = clf.predict_proba(
             features.loc[extracted, clf.feature_names_in_]
         )[:, 1]
