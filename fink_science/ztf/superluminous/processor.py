@@ -24,18 +24,13 @@ import fink_science.ztf.superluminous.slsn_classifier as slsn
 from fink_science.ztf.superluminous.kernel import classifier_path
 import joblib
 import os
+import requests
+import io
 
 
 @pandas_udf(DoubleType())
 @profile
-def superluminous_score(
-    cjd: pd.Series,
-    cfid: pd.Series,
-    cmagpsf: pd.Series,
-    csigmapsf: pd.Series,
-    distnr: pd.Series,
-    is_transient: pd.Series,
-) -> pd.Series:
+def superluminous_score(is_transient: pd.Series, objectId: pd.Series) -> pd.Series:
     """High level spark wrapper for the superluminous classifier on ztf data
 
     Parameters
@@ -50,6 +45,8 @@ def superluminous_score(
         The angular distance to the nearest reference source.
     is_transient: Spark DataFrame Column
         Is the source likely a transient.
+    objectId: Spark DataFrame Column
+        Unique source ZTF name
 
     Returns
     -------
@@ -71,70 +68,118 @@ def superluminous_score(
     ... "faint", "positivesubtraction", "real", "pointunderneath",
     ... "brightstar", "variablesource", "stationary", "roid"))
 
-    # Required alert columns
-    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
-
-    # Use for creating temp name
-    >>> prefix = 'c'
-    >>> what_prefix = [prefix + i for i in what]
-
-    # Append temp columns with historical + current measurements
-    >>> for colname in what:
-    ...     sdf = concat_col(sdf, colname, prefix=prefix)
-
     # Perform the fit + classification (default model)
-    >>> args = [F.col(i) for i in what_prefix]
-    >>> args += ["candidate.distnr", "is_transient"]
+    >>> args = ["is_transient", 'objectId']
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
     >>> sdf.filter(sdf['proba']==-1.0).count()
     57
     """
     pdf = pd.DataFrame(
         {
-            "cjd": cjd,
-            "cmagpsf": cmagpsf,
-            "csigmapsf": csigmapsf,
-            "cfid": cfid,
-            "distnr": distnr,
             "is_transient": is_transient,
+            "objectId": objectId,
         }
     )
 
     # If no alert pass the transient filter,
     # directly return invalid value for everyone.
     if sum(pdf["is_transient"]) == 0:
-        return pd.Series([-1.0]*len(pdf))
+        return pd.Series([-1.0] * len(pdf))
 
     else:
-
-        # Initialise all probas to -1
+        # Initialise all probas to -1pi
         probas_total = np.zeros(len(pdf), dtype=float) - 1
         mask_valid = pdf["is_transient"]
 
-        # select only trasnient alerts
+        # select only transient alerts
         pdf_valid = pdf[mask_valid]
+        valid_ids = list(pdf_valid["objectId"])
 
-        # Assign default -1 proba for every valid alert
-        probas = np.zeros(len(pdf_valid), dtype=float) - 1
+        # Use Fink API to get the full light curves
+        lcs = get_and_format(valid_ids)
 
-        pdf_valid = slsn.compute_flux(pdf_valid)
-        pdf_valid = slsn.remove_nan(pdf_valid)
+        if lcs is not None:
+            # Assign default -1 proba for every valid alert
+            probas = np.zeros(len(pdf_valid), dtype=float) - 1
 
-        # Perform feature extraction
-        features = slsn.extract_features(pdf_valid)
+            lcs = slsn.compute_flux(lcs)
+            lcs = slsn.remove_nan(lcs)
 
-        # Load classifier
-        clf = joblib.load(classifier_path)
+            # Perform feature extraction
+            features = slsn.extract_features(lcs)
 
-        # Modify proba for alerts that were feature extracted
-        extracted = np.sum(features.isnull(), axis=1) == 0
-        probas[extracted] = clf.predict_proba(
-            features.loc[extracted, clf.feature_names_in_]
-        )[:, 1]
+            # Load classifier
+            clf = joblib.load(classifier_path)
 
-        probas_total[mask_valid] = probas
+            # Modify proba for alerts that were feature extracted
+            extracted = np.sum(features.isnull(), axis=1) == 0
+            probas[extracted] = clf.predict_proba(
+                features.loc[extracted, clf.feature_names_in_]
+            )[:, 1]
 
-        return pd.Series(probas_total)
+            probas_total[mask_valid] = probas
+            return pd.Series(probas_total)
+
+        else:
+            return pd.Series([-1.0] * len(pdf))
+
+
+def get_and_format(ZTF_name):
+    """Use the fink API to collect the full light curve
+    sources based on a list of ZTF names
+
+    Parameters
+    ----------
+    ZTF_name: list
+        List of objectId (ZTF names)
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing all light curve information.
+        1 row = 1 source. Returns None if the list is empty
+    """
+    if len(ZTF_name) == 0:
+        return None
+
+    # Prepare the result table
+    columns = ["objectId", "cjd", "cmagpsf", "csigmapsf", "cfid"]
+    final_pdf = pd.DataFrame(columns=columns)
+
+    r = requests.post(
+        "https://api.fink-portal.org/api/v1/objects",
+        json={
+            "objectId": ",".join(ZTF_name),
+            "columns": "i:objectId,i:jd,i:magpsf,i:sigmapsf,i:fid,i:jd,i:distnr,d:tag",
+            "output-format": "json",
+            "withupperlim": "True",
+        },
+    )
+
+    # Format output in a DataFrame
+    pdf = pd.read_json(io.BytesIO(r.content))
+
+    if len(pdf) != 0:
+        pdf = pdf.sort_values("i:jd")
+        valid = (pdf["d:tag"] == "valid") | (pdf["d:tag"] == "badquality")
+        pdf = pdf[valid]
+        pdfs = [group for _, group in pdf.groupby("i:objectId")]
+        lcs = pd.DataFrame(
+            data={
+                "objectId": ZTF_name,
+                "cjd": [np.array(pdf["i:jd"].values, dtype=float) for pdf in pdfs],
+                "cmagpsf": [
+                    np.array(pdf["i:magpsf"].values, dtype=float) for pdf in pdfs
+                ],
+                "csigmapsf": [
+                    np.array(pdf["i:sigmapsf"].values, dtype=float) for pdf in pdfs
+                ],
+                "cfid": [np.array(pdf["i:fid"].values, dtype=int) for pdf in pdfs],
+                "distnr": [np.mean(pdf["i:distnr"]) for pdf in pdfs],
+            }
+        )
+        return lcs
+    return None
 
 
 if __name__ == "__main__":
