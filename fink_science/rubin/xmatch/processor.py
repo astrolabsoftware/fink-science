@@ -85,9 +85,9 @@ def cdsxmatch(
         Return Pandas DataFrame with a new single column
         containing comma-separated values of extra-columns.
         If the object is not found in Simbad, the type is
-        marked as Unknown. In the case several objects match
+        marked as null. In the case several objects match
         the centroid of the alert, only the closest is returned.
-        If the request Failed (no match at all), return Column of Fail.
+        If the request Failed (no match at all), return Column of Fails.
 
     Examples
     --------
@@ -110,16 +110,16 @@ def cdsxmatch(
 
     Test the processor by adding a new column with the result of the xmatch
     >>> df = df.withColumn(
-    ...     'cdsxmatch',
+    ...     'simbad_otype',
     ...     cdsxmatch(
     ...         df['id'], df['ra'], df['dec'],
-    ...         F.lit(1.0), F.lit('simbad'), F.lit('main_type')))
+    ...         F.lit(1.0), F.lit('simbad'), F.lit('otype')))
     >>> df.show() # doctest: +NORMALIZE_WHITESPACE
     +---+----------+-----------+------------+
-    | id|        ra|        dec|   cdsxmatch|
+    | id|        ra|        dec|simbad_otype|
     +---+----------+-----------+------------+
-    |  a|26.8566983|-26.9677112|LongPeriodV*|
-    |  b|  26.24497|-26.7569436|        Star|
+    |  a|26.8566983|-26.9677112|         LP*|
+    |  b|  26.24497|-26.7569436|           *|
     +---+----------+-----------+------------+
     <BLANKLINE>
     """
@@ -149,15 +149,18 @@ def cdsxmatch(
             files={"cat1": table},
         )
 
+        col_list = cols.to_numpy()[0].split(",")
+
         if r.status_code != 200:
-            names = ["Fail {}".format(r.status_code)] * len(diaSourceId)
+            msg = "Fail {}".format(r.status_code)
+            names = [",".join([msg] * len(col_list))] * len(diaSourceId)
             return pd.Series(names)
         else:
-            cols = cols.to_numpy()[0].split(",")
             pdf = pd.read_csv(io.BytesIO(r.content))
 
             if pdf.empty:
-                name = ",".join(["Unknown"] * len(cols))
+                # null values
+                name = ",".join([None] * len(col_list))
                 names = [name] * len(diaSourceId)
                 return pd.Series(names)
 
@@ -171,27 +174,22 @@ def cdsxmatch(
 
             pdf_out = pdf_in.join(pdf_nodedup)
 
-            # only for SIMBAD as we use `main_type` for our classification
-            if "main_type" in pdf_out.columns:
-                pdf_out["main_type"] = pdf_out["main_type"].replace(np.nan, "Unknown")
-
-            if len(cols) > 1:
+            if len(col_list) > 1:
                 # Concatenate all columns in one
                 # use comma-separated values
-                cols = [i.strip() for i in cols]
-                pdf_out = pdf_out[cols]
+                col_list = [i.strip() for i in col_list]
+                pdf_out = pdf_out[col_list]
                 pdf_out["concat_cols"] = pdf_out.apply(
                     lambda x: ",".join(x.astype(str).to_numpy().tolist()), axis=1
                 )
                 return pdf_out["concat_cols"]
-            elif len(cols) == 1:
+            elif len(col_list) == 1:
                 # single column to return
-                return pdf_out[cols[0]].astype(str)
+                return pdf_out[col_list[0]].astype(str)
 
     except (ConnectionError, TimeoutError, ValueError) as ce:
         logging.warning("XMATCH failed " + repr(ce))
-        ncols = len(cols.to_numpy()[0].split(","))
-        name = ",".join(["Fail"] * ncols)
+        name = ",".join(["Fail"] * len(col_list))
         names = [name] * len(diaSourceId)
         return pd.Series(names)
 
@@ -205,6 +203,11 @@ def xmatch_cds(
     types=None,
 ):
     """Cross-match Fink data from a Spark DataFrame with a catalog in CDS
+
+    Notes
+    -----
+    To check available columns and their name:
+    http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync/tables?action=getColList&tabName=I/355/gaiadr3&RESPONSEFORMAT=json
 
     Parameters
     ----------
@@ -220,9 +223,11 @@ def xmatch_cds(
         Default is ["diaSource.diaSourceId", "diaSource.ra", "diaSource.dec"]
     cols_out: list of str
         N column names to get from the external catalog.
+        If None, assume ["otype"] for simbad.
     types: list of str
         N types of columns from the external catalog.
-        Should be SQL syntax (str=string, etc.)
+        Should be SQL syntax (str=string, etc.).
+        If None, return ["str"] for simbad.
 
     Returns
     -------
@@ -235,7 +240,7 @@ def xmatch_cds(
 
     # Simbad
     >>> df_simbad = xmatch_cds(df)
-    >>> 'cdsxmatch' in df_simbad.columns
+    >>> 'simbad_otype' in df_simbad.columns
     True
 
     # Gaia
@@ -245,7 +250,7 @@ def xmatch_cds(
     ...     catalogname='vizier:I/355/gaiadr3',
     ...     cols_out=['DR3Name', 'Plx', 'e_Plx'],
     ...     types=['string', 'float', 'float'])
-    >>> 'Plx' in df_gaia.columns
+    >>> 'vizier:I/355/gaiadr3_Plx' in df_gaia.columns
     True
 
     # VSX
@@ -255,7 +260,7 @@ def xmatch_cds(
     ...     distmaxarcsec=1.5,
     ...     cols_out=['Type'],
     ...     types=['string'])
-    >>> 'Type' in df_vsx.columns
+    >>> 'vizier:B/vsx/vsx_Type' in df_vsx.columns
     True
 
     # SPICY
@@ -265,13 +270,13 @@ def xmatch_cds(
     ...     distmaxarcsec=1.2,
     ...     cols_out=['SPICY', 'class'],
     ...     types=['int', 'string'])
-    >>> 'SPICY' in df_spicy.columns
+    >>> 'vizier:J/ApJS/254/33/table1_SPICY' in df_spicy.columns
     True
     """
     if cols_in is None:
         cols_in = ["diaSource.diaSourceId", "diaSource.ra", "diaSource.dec"]
     if cols_out is None:
-        cols_out = ["main_type"]
+        cols_out = ["otype"]
     if types is None:
         types = ["string"]
 
@@ -285,20 +290,15 @@ def xmatch_cds(
             F.lit(catalogname),
             F.lit(",".join(cols_out)),
         ),
-    ).withColumn("xmatch_split", F.split("xmatch", ","))
+    )
 
     for index, col_, type_ in zip(range(len(cols_out)), cols_out, types):
         df_out = df_out.withColumn(
-            col_, F.col("xmatch_split").getItem(index).astype(type_)
+            "{}_{}".format(catalogname, col_),
+            F.split("xmatch", ",").getItem(index).astype(type_),
         )
 
-    df_out = df_out.drop("xmatch", "xmatch_split")
-
-    # Keep compatibility with previous definitions
-    if "main_type" in df_out.columns:
-        # remove previous declaration if any
-        df_out = df_out.drop("cdsxmatch")
-        df_out = df_out.withColumnRenamed("main_type", "cdsxmatch")
+    df_out = df_out.drop("xmatch")
 
     return df_out
 
@@ -315,7 +315,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     tns_raw_output: str, optional
         Folder that contains raw TNS catalog. Inside, it is expected
         to find the file `tns_raw.parquet` downloaded using
-        `fink-broker/bin/download_tns.py`. Default is "", in
+        `fink-broker/bin/download_tns.py`. Default is None, in
         which case the catalog will be downloaded. Beware that
         to download the catalog, you need to set environment variables:
         - TNS_API_MARKER: path to the TNS API marker (tns_marker.txt)
@@ -333,11 +333,11 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
     >>> path = curdir + '/data/catalogs'
     >>> df_tns = xmatch_tns(df, tns_raw_output=path)
-    >>> 'tns' in df_tns.columns
+    >>> 'tns_type' in df_tns.columns
     True
 
-    >>> df_tns.filter(df_tns["tns"] != "").count()
-    0
+    >>> df_tns.filter(df_tns["tns_type"].isNull()).count()
+    50
 
     """
     if tns_raw_output == "":
@@ -351,8 +351,10 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
             _LOG.warning(
                 "TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master."
             )
-            _LOG.warning("Skipping crossmatch with TNS.")
-            df = df.withColumn("tns", F.lit(""))
+            _LOG.warning(
+                "Skipping crossmatch with TNS. Creating a tns_type columns with null values."
+            )
+            df = df.withColumn("tns_type", F.lit(None))
             return df
     else:
         pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, "tns_raw.parquet"))
@@ -380,7 +382,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         Returns
         -------
         to_return: pd.Series of str
-            TNS type for the alert. `Unknown` if no match.
+            TNS type for the alert. null if no match.
         """
         pdf = pdf_tns_filt_b.value
         ra2, dec2, type2 = pdf["ra"], pdf["declination"], pdf["type"]
@@ -410,13 +412,13 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         # set separation length
         sep_constraint2 = d2d2.degree < distmaxarcsec / 3600.0
 
-        sub_pdf["TNS"] = [""] * len(sub_pdf)
+        sub_pdf["TNS"] = [None] * len(sub_pdf)
         sub_pdf["TNS"][sep_constraint2] = type2.to_numpy()[idx2[sep_constraint2]]
 
         # Here we take the first match
         # What if there are many? AT & SN?
         to_return = diaSourceId.apply(
-            lambda x: ""
+            lambda x: None
             if x not in sub_pdf["diaSourceId"].to_numpy()
             else sub_pdf["TNS"][sub_pdf["diaSourceId"] == x].to_numpy()[0]
         )
@@ -424,7 +426,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         return to_return
 
     df = df.withColumn(
-        "tns",
+        "tns_type",
         crossmatch_with_tns(
             df["diaSource.diaSourceId"], df["diaSource.ra"], df["diaSource.dec"]
         ),
@@ -460,7 +462,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     Returns
     -------
     type: str
-        Object type from the catalog. `Unknown` if no match.
+        Object type from the catalog. null if no match.
 
     Examples
     --------
@@ -490,28 +492,28 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     ...     'gcvs',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
-    +---+-----------+-----------+-------+
-    | id|         ra|        dec|   gcvs|
-    +---+-----------+-----------+-------+
-    |  1| 26.8566983|-26.9677112|Unknown|
-    |  2|101.3520545| 24.5421872|     RR|
-    |  3|     0.3126|    47.6859|Unknown|
-    |  4| 0.31820833|29.59277778|Unknown|
-    +---+-----------+-----------+-------+
+    +---+-----------+-----------+----+
+    | id|         ra|        dec|gcvs|
+    +---+-----------+-----------+----+
+    |  1| 26.8566983|-26.9677112|null|
+    |  2|101.3520545| 24.5421872|  RR|
+    |  3|     0.3126|    47.6859|null|
+    |  4| 0.31820833|29.59277778|null|
+    +---+-----------+-----------+----+
     <BLANKLINE>
 
     >>> df.withColumn(
     ...     'vsx',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
-    +---+-----------+-----------+-------+
-    | id|         ra|        dec|    vsx|
-    +---+-----------+-----------+-------+
-    |  1| 26.8566983|-26.9677112|   MISC|
-    |  2|101.3520545| 24.5421872|   RRAB|
-    |  3|     0.3126|    47.6859|Unknown|
-    |  4| 0.31820833|29.59277778|Unknown|
-    +---+-----------+-----------+-------+
+    +---+-----------+-----------+----+
+    | id|         ra|        dec| vsx|
+    +---+-----------+-----------+----+
+    |  1| 26.8566983|-26.9677112|MISC|
+    |  2|101.3520545| 24.5421872|RRAB|
+    |  3|     0.3126|    47.6859|null|
+    |  4| 0.31820833|29.59277778|null|
+    +---+-----------+-----------+----+
     <BLANKLINE>
 
     >>> df.withColumn(
@@ -521,9 +523,9 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     +---+-----------+-----------+--------------------+
     | id|         ra|        dec|                3hsp|
     +---+-----------+-----------+--------------------+
-    |  1| 26.8566983|-26.9677112|             Unknown|
-    |  2|101.3520545| 24.5421872|             Unknown|
-    |  3|     0.3126|    47.6859|             Unknown|
+    |  1| 26.8566983|-26.9677112|                null|
+    |  2|101.3520545| 24.5421872|                null|
+    |  3|     0.3126|    47.6859|                null|
     |  4| 0.31820833|29.59277778|3HSPJ000116.4+293534|
     +---+-----------+-----------+--------------------+
     <BLANKLINE>
@@ -535,10 +537,10 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     +---+-----------+-----------+-----------------+
     | id|         ra|        dec|             4lac|
     +---+-----------+-----------+-----------------+
-    |  1| 26.8566983|-26.9677112|          Unknown|
-    |  2|101.3520545| 24.5421872|          Unknown|
+    |  1| 26.8566983|-26.9677112|             null|
+    |  2|101.3520545| 24.5421872|             null|
     |  3|     0.3126|    47.6859|4FGL J0001.2+4741|
-    |  4| 0.31820833|29.59277778|          Unknown|
+    |  4| 0.31820833|29.59277778|             null|
     +---+-----------+-----------+-----------------+
     <BLANKLINE>
     """
@@ -578,7 +580,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
         pdf, catalog_rubin, catalog_other, radius_arcsec=radius_arcsec
     )
 
-    pdf_merge["Type"] = "Unknown"
+    pdf_merge["Type"] = None
     pdf_merge.loc[mask, "Type"] = [
         str(i).strip() for i in type2.astype(str).to_numpy()[idx2]
     ]
@@ -605,7 +607,7 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     Returns
     -------
     type: str
-        Object type from the catalog. `Unknown` if no match.
+        Object type from the catalog. null if no match.
 
     Examples
     --------
@@ -637,9 +639,9 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     ... ).toPandas() # doctest: +NORMALIZE_WHITESPACE
       id          ra        dec                                           mangrove
     0  1  198.955536  42.029289  {'HyperLEDA_name': 'NGC5055', '2MASS_name': '1...
-    1  2  101.352054  24.542187  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
-    2  3    0.312600  47.685900  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
-    3  4    0.318208  29.592778  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
+    1  2  101.352054  24.542187  {'HyperLEDA_name': None, '2MASS_name': None, '...
+    2  3    0.312600  47.685900  {'HyperLEDA_name': None, '2MASS_name': None, '...
+    3  4    0.318208  29.592778  {'HyperLEDA_name': None, '2MASS_name': None, '...
     """
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
@@ -666,7 +668,7 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
         pdf, catalog_rubin, catalog_other, radius_arcsec=radius_arcsec
     )
 
-    default = {name: "None" for name in MANGROVE_COLS}
+    default = {name: None for name in MANGROVE_COLS}
     pdf_merge["Type"] = [default for i in range(len(pdf_merge))]
     pdf_merge.loc[mask, "Type"] = [payload[i] for i in idx2]
 
