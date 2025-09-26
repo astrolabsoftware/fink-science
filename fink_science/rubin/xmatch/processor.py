@@ -87,7 +87,7 @@ def cdsxmatch(
         If the object is not found in Simbad, the type is
         marked as Unknown. In the case several objects match
         the centroid of the alert, only the closest is returned.
-        If the request Failed (no match at all), return Column of Fail.
+        If the request Failed (no match at all), return Column of Fails.
 
     Examples
     --------
@@ -110,16 +110,16 @@ def cdsxmatch(
 
     Test the processor by adding a new column with the result of the xmatch
     >>> df = df.withColumn(
-    ...     'cdsxmatch',
+    ...     'simbad_otype',
     ...     cdsxmatch(
     ...         df['id'], df['ra'], df['dec'],
-    ...         F.lit(1.0), F.lit('simbad'), F.lit('main_type')))
+    ...         F.lit(1.0), F.lit('simbad'), F.lit('otype')))
     >>> df.show() # doctest: +NORMALIZE_WHITESPACE
     +---+----------+-----------+------------+
-    | id|        ra|        dec|   cdsxmatch|
+    | id|        ra|        dec|simbad_otype|
     +---+----------+-----------+------------+
-    |  a|26.8566983|-26.9677112|LongPeriodV*|
-    |  b|  26.24497|-26.7569436|        Star|
+    |  a|26.8566983|-26.9677112|         LP*|
+    |  b|  26.24497|-26.7569436|           *|
     +---+----------+-----------+------------+
     <BLANKLINE>
     """
@@ -149,15 +149,18 @@ def cdsxmatch(
             files={"cat1": table},
         )
 
+        col_list = cols.to_numpy()[0].split(",")
+
         if r.status_code != 200:
-            names = ["Fail {}".format(r.status_code)] * len(diaSourceId)
+            msg = "Fail {}".format(r.status_code)
+            names = [",".join([msg] * len(col_list))] * len(diaSourceId)
             return pd.Series(names)
         else:
-            cols = cols.to_numpy()[0].split(",")
             pdf = pd.read_csv(io.BytesIO(r.content))
 
             if pdf.empty:
-                name = ",".join(["Unknown"] * len(cols))
+                # null values
+                name = ",".join([np.nan] * len(col_list))
                 names = [name] * len(diaSourceId)
                 return pd.Series(names)
 
@@ -171,27 +174,22 @@ def cdsxmatch(
 
             pdf_out = pdf_in.join(pdf_nodedup)
 
-            # only for SIMBAD as we use `main_type` for our classification
-            if "main_type" in pdf_out.columns:
-                pdf_out["main_type"] = pdf_out["main_type"].replace(np.nan, "Unknown")
-
-            if len(cols) > 1:
+            if len(col_list) > 1:
                 # Concatenate all columns in one
                 # use comma-separated values
-                cols = [i.strip() for i in cols]
-                pdf_out = pdf_out[cols]
+                col_list = [i.strip() for i in col_list]
+                pdf_out = pdf_out[col_list]
                 pdf_out["concat_cols"] = pdf_out.apply(
                     lambda x: ",".join(x.astype(str).to_numpy().tolist()), axis=1
                 )
                 return pdf_out["concat_cols"]
-            elif len(cols) == 1:
+            elif len(col_list) == 1:
                 # single column to return
-                return pdf_out[cols[0]].astype(str)
+                return pdf_out[col_list[0]].astype(str)
 
     except (ConnectionError, TimeoutError, ValueError) as ce:
         logging.warning("XMATCH failed " + repr(ce))
-        ncols = len(cols.to_numpy()[0].split(","))
-        name = ",".join(["Fail"] * ncols)
+        name = ",".join(["Fail"] * len(col_list))
         names = [name] * len(diaSourceId)
         return pd.Series(names)
 
@@ -205,6 +203,11 @@ def xmatch_cds(
     types=None,
 ):
     """Cross-match Fink data from a Spark DataFrame with a catalog in CDS
+
+    Notes
+    -----
+    To check available columns and their name:
+    http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync/tables?action=getColList&tabName=I/355/gaiadr3&RESPONSEFORMAT=json
 
     Parameters
     ----------
@@ -220,9 +223,11 @@ def xmatch_cds(
         Default is ["diaSource.diaSourceId", "diaSource.ra", "diaSource.dec"]
     cols_out: list of str
         N column names to get from the external catalog.
+        If None, assume ["otype"] for simbad.
     types: list of str
         N types of columns from the external catalog.
-        Should be SQL syntax (str=string, etc.)
+        Should be SQL syntax (str=string, etc.).
+        If None, return ["str"] for simbad.
 
     Returns
     -------
@@ -235,7 +240,7 @@ def xmatch_cds(
 
     # Simbad
     >>> df_simbad = xmatch_cds(df)
-    >>> 'cdsxmatch' in df_simbad.columns
+    >>> 'simbad_otype' in df_simbad.columns
     True
 
     # Gaia
@@ -245,7 +250,7 @@ def xmatch_cds(
     ...     catalogname='vizier:I/355/gaiadr3',
     ...     cols_out=['DR3Name', 'Plx', 'e_Plx'],
     ...     types=['string', 'float', 'float'])
-    >>> 'Plx' in df_gaia.columns
+    >>> 'vizier:I/355/gaiadr3_Plx' in df_gaia.columns
     True
 
     # VSX
@@ -255,7 +260,7 @@ def xmatch_cds(
     ...     distmaxarcsec=1.5,
     ...     cols_out=['Type'],
     ...     types=['string'])
-    >>> 'Type' in df_vsx.columns
+    >>> 'vizier:B/vsx/vsx_Type' in df_vsx.columns
     True
 
     # SPICY
@@ -265,13 +270,13 @@ def xmatch_cds(
     ...     distmaxarcsec=1.2,
     ...     cols_out=['SPICY', 'class'],
     ...     types=['int', 'string'])
-    >>> 'SPICY' in df_spicy.columns
+    >>> 'vizier:J/ApJS/254/33/table1_SPICY' in df_spicy.columns
     True
     """
     if cols_in is None:
         cols_in = ["diaSource.diaSourceId", "diaSource.ra", "diaSource.dec"]
     if cols_out is None:
-        cols_out = ["main_type"]
+        cols_out = ["otype"]
     if types is None:
         types = ["string"]
 
@@ -285,20 +290,15 @@ def xmatch_cds(
             F.lit(catalogname),
             F.lit(",".join(cols_out)),
         ),
-    ).withColumn("xmatch_split", F.split("xmatch", ","))
+    )
 
     for index, col_, type_ in zip(range(len(cols_out)), cols_out, types):
         df_out = df_out.withColumn(
-            col_, F.col("xmatch_split").getItem(index).astype(type_)
+            "{}_{}".format(catalogname, col_),
+            F.split("xmatch", ",").getItem(index).astype(type_),
         )
 
-    df_out = df_out.drop("xmatch", "xmatch_split")
-
-    # Keep compatibility with previous definitions
-    if "main_type" in df_out.columns:
-        # remove previous declaration if any
-        df_out = df_out.drop("cdsxmatch")
-        df_out = df_out.withColumnRenamed("main_type", "cdsxmatch")
+    df_out = df_out.drop("xmatch")
 
     return df_out
 
@@ -352,7 +352,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
                 "TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master."
             )
             _LOG.warning("Skipping crossmatch with TNS.")
-            df = df.withColumn("tns", F.lit(""))
+            df = df.withColumn("tns_type", F.lit(""))
             return df
     else:
         pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, "tns_raw.parquet"))
