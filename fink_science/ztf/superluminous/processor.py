@@ -86,10 +86,8 @@ def superluminous_score(
     >>> args = [F.col(i) for i in what_prefix]
     >>> args += ["candidate.distnr", "is_transient"]
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
-    >>> sdf.filter(sdf['proba']==-1).count()
-    55
-    >>> sdf.filter(sdf['proba']==0).count()
-    2
+    >>> sdf.filter(sdf['proba']==-1.0).count()
+    57
     """
     pdf = pd.DataFrame(
         {
@@ -116,8 +114,8 @@ def superluminous_score(
         # select only trasnient alerts
         pdf_valid = pdf[mask_valid]
 
-        # Assign default 0 proba for every valid alert
-        probas = np.zeros(len(pdf_valid))
+        # Assign default -1 proba for every valid alert
+        probas = np.zeros(len(pdf_valid), dtype=float) - 1
 
         pdf_valid = slsn.compute_flux(pdf_valid)
         pdf_valid = slsn.remove_nan(pdf_valid)
