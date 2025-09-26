@@ -112,10 +112,10 @@ def superluminous_score(
         # Initialise all probas to -1
         probas_total = np.zeros(len(pdf), dtype=float) - 1
         mask_valid = pdf["is_transient"]
-        
+
         # select only trasnient alerts
         pdf_valid = pdf[mask_valid]
-        
+
         # Assign default 0 proba for every valid alert
         probas = np.zeros(len(pdf_valid))
 
