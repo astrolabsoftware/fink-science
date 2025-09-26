@@ -492,28 +492,28 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     ...     'gcvs',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
-    +---+-----------+-----------+-------+
-    | id|         ra|        dec|   gcvs|
-    +---+-----------+-----------+-------+
-    |  1| 26.8566983|-26.9677112|Unknown|
-    |  2|101.3520545| 24.5421872|     RR|
-    |  3|     0.3126|    47.6859|Unknown|
-    |  4| 0.31820833|29.59277778|Unknown|
-    +---+-----------+-----------+-------+
+    +---+-----------+-----------+----+
+    | id|         ra|        dec|gcvs|
+    +---+-----------+-----------+----+
+    |  1| 26.8566983|-26.9677112|null|
+    |  2|101.3520545| 24.5421872|  RR|
+    |  3|     0.3126|    47.6859|null|
+    |  4| 0.31820833|29.59277778|null|
+    +---+-----------+-----------+----+
     <BLANKLINE>
 
     >>> df.withColumn(
     ...     'vsx',
     ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
-    +---+-----------+-----------+-------+
-    | id|         ra|        dec|    vsx|
-    +---+-----------+-----------+-------+
-    |  1| 26.8566983|-26.9677112|   MISC|
-    |  2|101.3520545| 24.5421872|   RRAB|
-    |  3|     0.3126|    47.6859|Unknown|
-    |  4| 0.31820833|29.59277778|Unknown|
-    +---+-----------+-----------+-------+
+    +---+-----------+-----------+----+
+    | id|         ra|        dec| vsx|
+    +---+-----------+-----------+----+
+    |  1| 26.8566983|-26.9677112|MISC|
+    |  2|101.3520545| 24.5421872|RRAB|
+    |  3|     0.3126|    47.6859|null|
+    |  4| 0.31820833|29.59277778|null|
+    +---+-----------+-----------+----+
     <BLANKLINE>
 
     >>> df.withColumn(
@@ -523,9 +523,9 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     +---+-----------+-----------+--------------------+
     | id|         ra|        dec|                3hsp|
     +---+-----------+-----------+--------------------+
-    |  1| 26.8566983|-26.9677112|             Unknown|
-    |  2|101.3520545| 24.5421872|             Unknown|
-    |  3|     0.3126|    47.6859|             Unknown|
+    |  1| 26.8566983|-26.9677112|                null|
+    |  2|101.3520545| 24.5421872|                null|
+    |  3|     0.3126|    47.6859|                null|
     |  4| 0.31820833|29.59277778|3HSPJ000116.4+293534|
     +---+-----------+-----------+--------------------+
     <BLANKLINE>
@@ -537,10 +537,10 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     +---+-----------+-----------+-----------------+
     | id|         ra|        dec|             4lac|
     +---+-----------+-----------+-----------------+
-    |  1| 26.8566983|-26.9677112|          Unknown|
-    |  2|101.3520545| 24.5421872|          Unknown|
+    |  1| 26.8566983|-26.9677112|             null|
+    |  2|101.3520545| 24.5421872|             null|
     |  3|     0.3126|    47.6859|4FGL J0001.2+4741|
-    |  4| 0.31820833|29.59277778|          Unknown|
+    |  4| 0.31820833|29.59277778|             null|
     +---+-----------+-----------+-----------------+
     <BLANKLINE>
     """
@@ -580,7 +580,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
         pdf, catalog_rubin, catalog_other, radius_arcsec=radius_arcsec
     )
 
-    pdf_merge["Type"] = "Unknown"
+    pdf_merge["Type"] = None
     pdf_merge.loc[mask, "Type"] = [
         str(i).strip() for i in type2.astype(str).to_numpy()[idx2]
     ]
@@ -639,9 +639,9 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     ... ).toPandas() # doctest: +NORMALIZE_WHITESPACE
       id          ra        dec                                           mangrove
     0  1  198.955536  42.029289  {'HyperLEDA_name': 'NGC5055', '2MASS_name': '1...
-    1  2  101.352054  24.542187  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
-    2  3    0.312600  47.685900  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
-    3  4    0.318208  29.592778  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
+    1  2  101.352054  24.542187  {'HyperLEDA_name': None, '2MASS_name': None, '...
+    2  3    0.312600  47.685900  {'HyperLEDA_name': None, '2MASS_name': None, '...
+    3  4    0.318208  29.592778  {'HyperLEDA_name': None, '2MASS_name': None, '...
     """
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
@@ -668,7 +668,7 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
         pdf, catalog_rubin, catalog_other, radius_arcsec=radius_arcsec
     )
 
-    default = {name: "None" for name in MANGROVE_COLS}
+    default = {name: None for name in MANGROVE_COLS}
     pdf_merge["Type"] = [default for i in range(len(pdf_merge))]
     pdf_merge.loc[mask, "Type"] = [payload[i] for i in idx2]
 
