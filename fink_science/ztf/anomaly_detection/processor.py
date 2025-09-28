@@ -20,6 +20,7 @@ from pyspark.sql.types import DoubleType
 
 import pandas as pd
 import numpy as np
+import numpy.ma as ma
 
 import onnxruntime as rt
 
@@ -87,36 +88,15 @@ class TwoBandModel:
         np.ndarray
             A 1D array of anomaly scores.
         """
-        # Calculate scores for all objects. NaNs in the data have already been
-        # replaced by mean values, so the models will run for all rows.
         scores_g_raw = self.forest_g.run(None, {"X": data_g.to_numpy().astype(np.float32)})
         scores_r_raw = self.forest_r.run(None, {"X": data_r.to_numpy().astype(np.float32)})
-
-        # Extract the 1D arrays of scores
         scores_g = np.transpose(scores_g_raw[-1])[0]
         scores_r = np.transpose(scores_r_raw[-1])[0]
-
-        # Convert pandas masks to numpy arrays for vectorized operations
-        m_r = mask_r.to_numpy()
-        m_g = mask_g.to_numpy()
-
-        # Initialize the final score array with zeros.
-        # This handles the case where data in both filters is NaN by default.
-        final_scores = np.zeros_like(scores_g, dtype=np.float64)
-
-        # Case 1: Data is valid in both filters (masks are False)
-        both_valid = ~m_g & ~m_r
-        final_scores[both_valid] = np.minimum(scores_g[both_valid], scores_r[both_valid])
-
-        # Case 2: Data is valid only in the g-filter
-        only_g_valid = ~m_g & m_r
-        final_scores[only_g_valid] = scores_g[only_g_valid]
-
-        # Case 3: Data is valid only in the r-filter
-        only_r_valid = m_g & ~m_r
-        final_scores[only_r_valid] = scores_r[only_r_valid]
-
-        # Case 4 (both are invalid) is already handled by the zero initialization.
+        masked_scores_g = ma.array(scores_g, mask=mask_g.to_numpy())
+        masked_scores_r = ma.array(scores_r, mask=mask_r.to_numpy())
+        final_scores = ma.column_stack(
+            [masked_scores_g, masked_scores_r]
+        ).min(axis=1).filled(np.nan)
 
         return final_scores
 
@@ -186,20 +166,12 @@ def anomaly_score(lc_features, model=None):
     """
 
     def get_key(x: dict, band: int):
-        if (
-            len(x) != 2
-            or x is None
-            or any(
-                map(  # noqa: W503, C417
-                    lambda fs: (fs is None or len(fs) == 0), x.values()
-                )
-            )
-        ):
+        if x is None or not isinstance(x, dict):
             return pd.Series({k: np.nan for k in MODEL_COLUMNS}, dtype=np.float64)
-        elif band in x:
+        if band in x and x[band] is not None and len(x[band]) > 0:
             return pd.Series(x[band])
         else:
-            raise IndexError("band {} not found in {}".format(band, x))
+            return pd.Series({k: np.nan for k in MODEL_COLUMNS}, dtype=np.float64)
 
     path = os.path.dirname(os.path.abspath(__file__))
     model_path = f"{path}/data/models/anomaly_detection"

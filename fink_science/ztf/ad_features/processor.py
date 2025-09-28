@@ -189,7 +189,7 @@ def extract_features_ad_raw(
     sub = pd.DataFrame({"magpsf": magpsf, "sigmapsf": sigmapsf, "jd": jd, "cfid": cfid})
 
     sub = sub.sort_values("jd", ascending=True)
-    sub = sub.drop_duplicates(subset=['jd'])
+    sub = sub.drop_duplicates(subset=['jd', 'cfid'])
 
     full_result = {}
     for passband_id in passbands:
