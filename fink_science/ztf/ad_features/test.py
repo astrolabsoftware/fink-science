@@ -37,12 +37,10 @@ features = []
 for name in names:
     with open(f"{path}/tests/{name}.features") as features_file:
         lines = features_file.readlines()[::2]
-        features.append(
-            {
-                split[0]: float(split[1][:-1])
-                for split in map(lambda ln: ln.split(": "), lines)  # noqa: C417
-            }
-        )
+        features.append({
+            split[0]: float(split[1][:-1])
+            for split in map(lambda ln: ln.split(": "), lines)  # noqa: C417
+        })
 
 result_features = []
 for index, dataset in enumerate(test_datasets):
@@ -54,9 +52,9 @@ for index, dataset in enumerate(test_datasets):
         index,
         np.ones(len(dataset.mag)) * 10.0,  # extra-galactic
     )
-    result_features.append(
-        {lc_columns[i]: result[1][lc_columns[i]] for i in range(len(lc_columns))}
-    )
+    result_features.append({
+        lc_columns[i]: result[1][lc_columns[i]] for i in range(len(lc_columns))
+    })
 
 errors = defaultdict(dict)
 # Tolerated deviance is 5%

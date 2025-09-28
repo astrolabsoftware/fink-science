@@ -228,11 +228,9 @@ extract_features_ad = udf(
     f=extract_features_ad_raw,
     returnType=MapType(
         IntegerType(),  # passband_id
-        StructType(
-            [  # features name -> value
-                StructField(name, DoubleType(), True) for name in FEATURES_COLS
-            ]
-        ),
+        StructType([  # features name -> value
+            StructField(name, DoubleType(), True) for name in FEATURES_COLS
+        ]),
     ),
 )
 
