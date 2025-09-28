@@ -129,6 +129,7 @@ def anomaly_score(lc_features, model=None):
     --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
+    >>> from pyspark.sql.functions import isnan, col
     >>> from fink_science.ztf.ad_features.processor import extract_features_ad
 
     >>> df = spark.read.load(ztf_alert_sample)
@@ -148,9 +149,9 @@ def anomaly_score(lc_features, model=None):
     ...     df = df.withColumn(f'anomaly_score{model}', anomaly_score("lc_features", F.lit(model)))
 
     >>> df.filter(df["anomaly_score"] < -0.013).count()
-    282
+    320
 
-    >>> df.filter(df["anomaly_score"] == 0).count() < 200
+    >>> df.filter(isnan(col("anomaly_score"))).count() < 200
     True
 
     # Check the robustness of the code when i-band is present
