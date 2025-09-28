@@ -88,15 +88,21 @@ class TwoBandModel:
         np.ndarray
             A 1D array of anomaly scores.
         """
-        scores_g_raw = self.forest_g.run(None, {"X": data_g.to_numpy().astype(np.float32)})
-        scores_r_raw = self.forest_r.run(None, {"X": data_r.to_numpy().astype(np.float32)})
+        scores_g_raw = self.forest_g.run(
+            None, {"X": data_g.to_numpy().astype(np.float32)}
+        )
+        scores_r_raw = self.forest_r.run(
+            None, {"X": data_r.to_numpy().astype(np.float32)}
+        )
         scores_g = np.transpose(scores_g_raw[-1])[0]
         scores_r = np.transpose(scores_r_raw[-1])[0]
         masked_scores_g = ma.array(scores_g, mask=mask_g.to_numpy())
         masked_scores_r = ma.array(scores_r, mask=mask_r.to_numpy())
-        final_scores = ma.column_stack(
-            [masked_scores_g, masked_scores_r]
-        ).min(axis=1).filled(np.nan)
+        final_scores = (
+            ma.column_stack([masked_scores_g, masked_scores_r])
+            .min(axis=1)
+            .filled(np.nan)
+        )
 
         return final_scores
 
@@ -215,7 +221,6 @@ def anomaly_score(lc_features, model=None):
 
     forest_r_AAD = rt.InferenceSession(r_model_path_AAD)
     forest_g_AAD = rt.InferenceSession(g_model_path_AAD)
-
 
     model_AAD = TwoBandModel(forest_g_AAD, forest_r_AAD)
     score_ = model_AAD.anomaly_score(data_r, data_g, mask_r, mask_g)
