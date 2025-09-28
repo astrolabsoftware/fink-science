@@ -90,5 +90,5 @@ if __name__ == "__main__":
     path = os.path.dirname(__file__)
 
     rubin_alert_sample = "./fink_science/data/alerts/or4_lsst7.1"
-    globs["sample_file"] = rubin_alert_sample
+    globs["rubin_alert_sample"] = rubin_alert_sample
     spark_unit_tests(globs)
