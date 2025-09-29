@@ -74,15 +74,12 @@ def superluminous_score(is_transient: pd.Series, objectId: pd.Series) -> pd.Seri
     >>> sdf.filter(sdf['proba']==-1.0).count()
     57
     """
-
     pdf = pd.DataFrame(
         {
             "is_transient": is_transient,
             "objectId": objectId,
         }
     )
-
-  
 
     # If no alert pass the transient filter,
     # directly return invalid value for everyone.
@@ -115,7 +112,7 @@ def superluminous_score(is_transient: pd.Series, objectId: pd.Series) -> pd.Seri
             clf = joblib.load(classifier_path)
 
             # Modify proba for alerts that were feature extracted
-            extracted = np.sum(features.isnull(), axis=1) == 0
+            extracted = np.sum(features.isna(), axis=1) == 0
             probas[extracted] = clf.predict_proba(
                 features.loc[extracted, clf.feature_names_in_]
             )[:, 1]
@@ -128,8 +125,7 @@ def superluminous_score(is_transient: pd.Series, objectId: pd.Series) -> pd.Seri
 
 
 def get_and_format(ZTF_name):
-    """Use the fink API to collect the full light curve
-    sources based on a list of ZTF names
+    """Use the fink API to collect the full light curve sources using ZTF names.
 
     Parameters
     ----------
@@ -144,10 +140,6 @@ def get_and_format(ZTF_name):
     """
     if len(ZTF_name) == 0:
         return None
-
-    # Prepare the result table
-    columns = ["objectId", "cjd", "cmagpsf", "csigmapsf", "cfid"]
-    final_pdf = pd.DataFrame(columns=columns)
 
     r = requests.post(
         "https://api.fink-portal.org/api/v1/objects",
