@@ -30,29 +30,29 @@ import io
 
 @pandas_udf(DoubleType())
 @profile
-def superluminous_score(is_transient: pd.Series, objectId: pd.Series) -> pd.Series:
+def superluminous_score(
+    is_transient: pd.Series, objectId: pd.Series, jd: pd.Series, jdstarthist: pd.Series
+) -> pd.Series:
     """High level spark wrapper for the superluminous classifier on ztf data
 
     Parameters
     ----------
-    cjd: Spark DataFrame Column
-        JD times (vectors of floats)
-    cfid: Spark DataFrame Column
-        Filter IDs (vectors of str)
-    cmagpsf, csigmapsf: Spark DataFrame Columns
-        Magnitude and magnitude error from photometry (vectors of floats)
-    distnr: Spark DataFrame Column
-        The angular distance to the nearest reference source.
     is_transient: Spark DataFrame Column
         Is the source likely a transient.
     objectId: Spark DataFrame Column
         Unique source ZTF name
+    jd: Spark DataFrame Column
+        Current time of the alert
+    jdstarthist: Spark DataFrame Column
+        Time of first alert of this source.
 
     Returns
     -------
     np.array
         Superluminous supernovae classification probability vector
-        Return 0 if not enough points were available for feature extraction
+        Return -1 if not enough points were available for feature extraction
+        if the alert is not considered a likely transient
+        or if the source is less than 30 days old
 
     Examples
     --------
@@ -69,15 +69,19 @@ def superluminous_score(is_transient: pd.Series, objectId: pd.Series) -> pd.Seri
     ... "brightstar", "variablesource", "stationary", "roid"))
 
     # Perform the fit + classification (default model)
-    >>> args = ["is_transient", 'objectId']
+    >>> args = ['is_transient', 'objectId', 'candidate.jd', 'candidate.jdstarthist']
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
     >>> sdf.filter(sdf['proba']==-1.0).count()
     57
     """
-    pdf = pd.DataFrame({
-        "is_transient": is_transient,
-        "objectId": objectId,
-    })
+    pdf = pd.DataFrame(
+        {
+            "is_transient": is_transient,
+            "objectId": objectId,
+            "jd": jd,
+            "jdstarthist": jdstarthist,
+        }
+    )
 
     # If no alert pass the transient filter,
     # directly return invalid value for everyone.
@@ -87,7 +91,9 @@ def superluminous_score(is_transient: pd.Series, objectId: pd.Series) -> pd.Seri
     else:
         # Initialise all probas to -1
         probas_total = np.zeros(len(pdf), dtype=float) - 1
-        mask_valid = pdf["is_transient"]
+        transient_mask = pdf["is_transient"]
+        old_enough_mask = pdf["jd"] - pdf["jdstarthist"] < 30
+        mask_valid = transient_mask & old_enough_mask
 
         # select only transient alerts
         pdf_valid = pdf[mask_valid]
