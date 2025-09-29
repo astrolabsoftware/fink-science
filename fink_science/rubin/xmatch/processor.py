@@ -56,13 +56,16 @@ def cdsxmatch(
 ) -> pd.Series:
     """Query the CDSXmatch service to find identified objects in alerts.
 
+    Notes
+    -----
     The catalog queried is the SIMBAD bibliographical database.
 
-    I/O specifically designed for use as `pandas_udf` in `select` or
-    `withColumn` dataframe methods
-
-    Limitations known:
-    - diaSourceId should not be small integers.
+    Notes
+    -----
+    Assuming 2 output fields, a returned row can have the following values:
+    - "a,b"       --> match
+    - None        --> No match
+    - "Fail,Fail" --> error from the service
 
     Parameters
     ----------
@@ -152,16 +155,19 @@ def cdsxmatch(
         col_list = cols.to_numpy()[0].split(",")
 
         if r.status_code != 200:
-            msg = "Fail {}".format(r.status_code)
+            msg = "Fail"
             names = [",".join([msg] * len(col_list))] * len(diaSourceId)
+
+            # Error, return "Fail,Fail,Fail..."
             return pd.Series(names)
         else:
             pdf = pd.read_csv(io.BytesIO(r.content))
 
             if pdf.empty:
                 # null values
-                name = ",".join([None] * len(col_list))
+                name = None
                 names = [name] * len(diaSourceId)
+                # No error, but no match, return None (null values for Spark)
                 return pd.Series(names)
 
             # join
@@ -174,18 +180,29 @@ def cdsxmatch(
 
             pdf_out = pdf_in.join(pdf_nodedup)
 
+            # To get null values in Spark
+            pdf_out = pdf_out.replace(np.nan, None)
+
             if len(col_list) > 1:
                 # Concatenate all columns in one
                 # use comma-separated values
                 col_list = [i.strip() for i in col_list]
                 pdf_out = pdf_out[col_list]
                 pdf_out["concat_cols"] = pdf_out.apply(
-                    lambda x: ",".join(x.astype(str).to_numpy().tolist()), axis=1
+                    lambda row: None
+                    if all(row[col] is None for col in col_list)
+                    else ",".join(
+                        str(row[col]) for col in col_list if row[col] is not None
+                    ),
+                    axis=1,
                 )
+                # No error, possible matches, several columns to return: return "a,b"
                 return pdf_out["concat_cols"]
             elif len(col_list) == 1:
-                # single column to return
-                return pdf_out[col_list[0]].astype(str)
+                # No error, possible matches, single column: return "a"
+                return pdf_out[col_list[0]].apply(
+                    lambda x: None if x is None else str(x)
+                )
 
     except (ConnectionError, TimeoutError, ValueError) as ce:
         logging.warning("XMATCH failed " + repr(ce))
