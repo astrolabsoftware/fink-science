@@ -74,12 +74,10 @@ def superluminous_score(is_transient: pd.Series, objectId: pd.Series) -> pd.Seri
     >>> sdf.filter(sdf['proba']==-1.0).count()
     57
     """
-    pdf = pd.DataFrame(
-        {
-            "is_transient": is_transient,
-            "objectId": objectId,
-        }
-    )
+    pdf = pd.DataFrame({
+        "is_transient": is_transient,
+        "objectId": objectId,
+    })
 
     # If no alert pass the transient filter,
     # directly return invalid value for everyone.
