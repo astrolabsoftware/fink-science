@@ -71,8 +71,11 @@ def superluminous_score(
     # Perform the fit + classification (default model)
     >>> args = ['is_transient', 'objectId', 'candidate.jd', 'candidate.jdstarthist']
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
-    >>> sdf.filter(sdf['proba']==-1.0).count()
+    >>> pdf = sdf.toPandas()
+    >>> sum(pdf['proba']==-1)
     57
+    >>> sum(pdf['is_transient'])
+    2
     """
     pdf = pd.DataFrame({
         "is_transient": is_transient,
@@ -139,7 +142,28 @@ def get_and_format(ZTF_name):
     pd.DataFrame
         DataFrame containing all light curve information.
         1 row = 1 source. Returns None if the list is empty.
+
+    Example
+    -------
+    >>> get_and_format([]) is None
+    True
+    >>> get_and_format(["toto"]) is None
+    True
+    >>> get_and_format("toto")
+    Traceback (most recent call last):
+    ...
+    TypeError: ZTF_name should be a list of str
+    >>> data = get_and_format(["ZTF21abfmbix"])
+    >>> (data["distnr"].iloc[0] > 3.0) & (data["distnr"].iloc[0] < 3.5)
+    True
+    >>> list(data.columns) == ['objectId', 'cjd', 'cmagpsf', 'csigmapsf', 'cfid', 'distnr']
+    True
+    >>> len(data['cjd'].iloc[0]) >= 14
+    True
     """
+    if type(ZTF_name) is not list:
+        raise TypeError("ZTF_name should be a list of str")
+
     if len(ZTF_name) == 0:
         return None
 
