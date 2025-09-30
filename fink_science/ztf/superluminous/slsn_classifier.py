@@ -52,6 +52,8 @@ def compute_flux(pdf):
     ...   {"cmagpsf":[[10, 20], [-0.1, 0]],
     ...    "csigmapsf":[[0.01, 0.001], [0.1, 0.01]]})
     >>> new = compute_flux(pdf)
+    >>> type(new) == type(pd.DataFrame())
+    True
     >>> true_flux = np.array([[1.00000000e+07, 1.00000000e+03], [1.09647820e+11, 1.00000000e+11]])
     >>> true_err = np.array([[9.21034343e+04, 9.21034685e-01], [1.00989370e+10, 9.21034000e+08]])
     >>> np.testing.assert_allclose(np.array([new['cflux'][k] for k in range(2)]), true_flux, rtol=1e-3)
@@ -301,6 +303,15 @@ def extract_features(data):
     ...     sdf = concat_col(sdf, colname, prefix=prefix)
 
     >>> pdf = sdf.toPandas()
+
+    # Create a fake light curve that would pass the cuts
+    >>> faketime, fakeflux = np.linspace(0, 50, 10), np.linspace(18, 15, 10)
+    >>> fakesig, fakefid = [0.01] * len(fakeflux), [1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
+    >>> pdf.loc[[pdf.index[-1]], 'cjd'] = pd.Series([np.array(faketime)], index=pdf.index[[-1]])
+    >>> pdf.loc[[pdf.index[-1]], 'cmagpsf'] = pd.Series([np.array(fakeflux)], index=pdf.index[[-1]])
+    >>> pdf.loc[[pdf.index[-1]], 'csigmapsf'] = pd.Series([np.array(fakesig)], index=pdf.index[[-1]])
+    >>> pdf.loc[[pdf.index[-1]], 'cfid'] = pd.Series([np.array(fakefid)], index=pdf.index[[-1]])
+
     >>> pdf['distnr'] = pdf['candidate'].apply(lambda x: x[22])
     >>> pdf = compute_flux(pdf)
     >>> pdf = remove_nan(pdf)
@@ -336,10 +347,17 @@ def extract_features(data):
     >>> pdf_check = pdf.copy()
     >>> full_features = extract_features(pdf_check)
 
-    # No alerts should be fitted as they are all <30 days
+    # Only the fake alert should pass the cuts
     >>> np.testing.assert_equal(
     ... np.array(np.sum(full_features.isnull(), axis=1)),
-    ... np.array([25]*len(pdf)))
+    ... np.array(([25]*(len(pdf)-1)) + [0]))
+
+    >>> list(full_features.columns) == ['distnr', 'duration', 'flux_amplitude', 'kurtosis', 'max_slope', 'skew',
+    ... 'reference_time', 'amplitude', 'rise_time', 'fall_time', 'Tmin', 'Tmax',
+    ... 't_color', 'snr_reference_time', 'snr_amplitude', 'snr_rise_time',
+    ... 'snr_fall_time', 'snr_Tmin', 'snr_Tmax', 'snr_t_color', 'chi2_rainbow',
+    ... 'z', 't0', 'x0', 'x1', 'c', 'chi2_salt']
+    True
     """
     rainbow_model = RainbowFit.from_angstrom(
         kern.band_wave_aa,
