@@ -373,7 +373,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
             _LOG.warning(
                 "Skipping crossmatch with TNS. Creating a tns_type columns with null values."
             )
-            df = df.withColumn("tns_type", F.lit(None))
+            df = df.withColumn("tns_type", F.lit(None).cast("string"))
             return df
     else:
         pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, "tns_raw.parquet"))
