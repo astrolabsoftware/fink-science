@@ -31,7 +31,13 @@ import io
 @pandas_udf(DoubleType())
 @profile
 def superluminous_score(
-    is_transient: pd.Series, objectId: pd.Series, jd: pd.Series, jdstarthist: pd.Series
+    is_transient: pd.Series,
+    objectId: pd.Series,
+    jdstarthist: pd.Series,
+    cjd: pd.Series,
+    cfid: pd.Series,
+    cmagpsf: pd.Series,
+    csigmapsf: pd.Series,
 ) -> pd.Series:
     """High level spark wrapper for the superluminous classifier on ztf data
 
@@ -41,10 +47,14 @@ def superluminous_score(
         Is the source likely a transient.
     objectId: Spark DataFrame Column
         Unique source ZTF name
-    jd: Spark DataFrame Column
-        Current time of the alert
     jdstarthist: Spark DataFrame Column
         Time of first alert of this source.
+    cjd: Spark DataFrame Column
+        JD times (vectors of floats)
+    cfid: Spark DataFrame Column
+        Filter IDs (vectors of str)
+    cmagpsf, csigmapsf: Spark DataFrame Columns
+        Magnitude and magnitude error from photometry (vectors of floats)
 
     Returns
     -------
@@ -68,8 +78,23 @@ def superluminous_score(
     ... "faint", "positivesubtraction", "real", "pointunderneath",
     ... "brightstar", "variablesource", "stationary", "roid"))
 
+    # Required alert columns
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...     sdf = concat_col(sdf, colname, prefix=prefix)
+
     # Perform the fit + classification (default model)
-    >>> args = ['is_transient', 'objectId', 'candidate.jd', 'candidate.jdstarthist']
+    >>> args = ['is_transient', 'objectId', 'candidate.jdstarthist']
+
+    # Perform the fit + classification (default model)
+    >>> args += [F.col(i) for i in what_prefix]
+
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
     >>> pdf = sdf.toPandas()
     >>> sum(pdf['proba']==-1)
@@ -80,9 +105,14 @@ def superluminous_score(
     pdf = pd.DataFrame({
         "is_transient": is_transient,
         "objectId": objectId,
-        "jd": jd,
         "jdstarthist": jdstarthist,
+        "cjd": cjd,
+        "cmagpsf": cmagpsf,
+        "csigmapsf": csigmapsf,
+        "cfid": cfid,
     })
+
+    pdf["jd"] = pdf["cjd"].apply(np.max)
 
     # If no alert pass the transient filter,
     # directly return invalid value for everyone.
@@ -97,11 +127,41 @@ def superluminous_score(
         mask_valid = transient_mask & old_enough_mask
 
         # select only transient alerts
-        pdf_valid = pdf[mask_valid]
+        pdf_valid = pdf[mask_valid].copy().reset_index()
+
         valid_ids = list(pdf_valid["objectId"])
 
-        # Use Fink API to get the full light curves
+        # Use Fink API to get the full light curves history
         lcs = get_and_format(valid_ids)
+
+        # Compute the current night alerts (anything more recent tham the last history)
+        pdf_valid["last_alerts_cjd"] = lcs["cjd"].apply(lambda x: np.nanmax(x))
+        pdf_valid["is_new"] = pdf_valid[["cjd", "last_alerts_cjd"]].apply(
+            lambda x: x["cjd"] > x["last_alerts_cjd"], axis=1
+        )
+
+        current_night = pd.DataFrame(
+            data={
+                "cjd": pdf_valid[["cjd", "is_new"]].apply(
+                    lambda x: x["cjd"][x["is_new"]], axis=1
+                ),
+                "cmagpsf": pdf_valid[["cmagpsf", "is_new"]].apply(
+                    lambda x: x["cmagpsf"][x["is_new"]], axis=1
+                ),
+                "csigmapsf": pdf_valid[["csigmapsf", "is_new"]].apply(
+                    lambda x: x["csigmapsf"][x["is_new"]], axis=1
+                ),
+                "cfid": pdf_valid[["cfid", "is_new"]].apply(
+                    lambda x: x["cfid"][x["is_new"]], axis=1
+                ),
+            }
+        )
+
+        # Add it to the history alerts
+        for field in ["cjd", "cmagpsf", "csigmapsf", "cfid"]:
+            lcs[field] = np.array(
+                lcs[field].apply(list) + current_night[field].apply(list)
+            )
 
         if lcs is not None:
             # Assign default -1 proba for every valid alert
@@ -167,24 +227,36 @@ def get_and_format(ZTF_name):
     if len(ZTF_name) == 0:
         return None
 
-    r = requests.post(
-        "https://api.fink-portal.org/api/v1/objects",
-        json={
-            "objectId": ",".join(ZTF_name),
-            "columns": "i:objectId,i:jd,i:magpsf,i:sigmapsf,i:fid,i:jd,i:distnr,d:tag",
-            "output-format": "json",
-            "withupperlim": "True",
-        },
-    )
+    # Initialize an empty list to hold each DataFrame
+    dataframes = []
 
-    # Format output in a DataFrame
-    pdf = pd.read_json(io.BytesIO(r.content))
+    for _id, name in enumerate(ZTF_name):
+        r = requests.post(
+            "https://api.fink-portal.org/api/v1/objects",
+            json={
+                "objectId": name,
+                "columns": "i:objectId,i:jd,i:magpsf,i:sigmapsf,i:fid,i:jd,i:distnr,d:tag",
+                "output-format": "json",
+                "withupperlim": "True",
+            },
+        )
 
-    if len(pdf) != 0:
-        pdf = pdf.sort_values("i:jd")
-        valid = (pdf["d:tag"] == "valid") | (pdf["d:tag"] == "badquality")
-        pdf = pdf[valid]
-        pdfs = [group for _, group in pdf.groupby("i:objectId")]
+        # Format output in a DataFrame
+        pdf = pd.read_json(io.BytesIO(r.content))
+
+        if len(pdf) != 0:
+            pdf["id"] = _id
+            pdf = pdf.sort_values("i:jd")
+            valid = (pdf["d:tag"] == "valid") | (pdf["d:tag"] == "badquality")
+            pdf = pdf[valid]
+
+            if not pdf.empty:
+                # Append valid DataFrame to the list
+                dataframes.append(pdf)
+
+    if dataframes:
+        combined_pdf = pd.concat(dataframes)
+        pdfs = [group for _, group in combined_pdf.groupby("id")]
         lcs = pd.DataFrame(
             data={
                 "objectId": [lc["i:objectId"].iloc[0] for lc in pdfs],
