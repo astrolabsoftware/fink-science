@@ -93,7 +93,7 @@ def superluminous_score(
         # Initialise all probas to -1
         probas_total = np.zeros(len(pdf), dtype=float) - 1
         transient_mask = pdf["is_transient"]
-        old_enough_mask = pdf["jd"] - pdf["jdstarthist"] < 30
+        old_enough_mask = pdf["jd"] - pdf["jdstarthist"] >= 30
         mask_valid = transient_mask & old_enough_mask
 
         # select only transient alerts
@@ -153,7 +153,7 @@ def get_and_format(ZTF_name):
     Traceback (most recent call last):
     ...
     TypeError: ZTF_name should be a list of str
-    >>> data = get_and_format(["ZTF21abfmbix"])
+    >>> data = get_and_format(["ZTF21abfmbix", "ZTF21abfmbix"])
     >>> (data["distnr"].iloc[0] > 3.0) & (data["distnr"].iloc[0] < 3.5)
     True
     >>> list(data.columns) == ['objectId', 'cjd', 'cmagpsf', 'csigmapsf', 'cfid', 'distnr']
@@ -187,16 +187,16 @@ def get_and_format(ZTF_name):
         pdfs = [group for _, group in pdf.groupby("i:objectId")]
         lcs = pd.DataFrame(
             data={
-                "objectId": ZTF_name,
-                "cjd": [np.array(pdf["i:jd"].values, dtype=float) for pdf in pdfs],
+                "objectId": [lc["i:objectId"].iloc[0] for lc in pdfs],
+                "cjd": [np.array(lc["i:jd"].values, dtype=float) for lc in pdfs],
                 "cmagpsf": [
-                    np.array(pdf["i:magpsf"].values, dtype=float) for pdf in pdfs
+                    np.array(lc["i:magpsf"].values, dtype=float) for lc in pdfs
                 ],
                 "csigmapsf": [
-                    np.array(pdf["i:sigmapsf"].values, dtype=float) for pdf in pdfs
+                    np.array(lc["i:sigmapsf"].values, dtype=float) for lc in pdfs
                 ],
-                "cfid": [np.array(pdf["i:fid"].values, dtype=int) for pdf in pdfs],
-                "distnr": [np.mean(pdf["i:distnr"]) for pdf in pdfs],
+                "cfid": [np.array(lc["i:fid"].values, dtype=int) for lc in pdfs],
+                "distnr": [np.mean(lc["i:distnr"]) for lc in pdfs],
             }
         )
         return lcs
