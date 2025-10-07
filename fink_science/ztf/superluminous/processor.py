@@ -117,14 +117,17 @@ def superluminous_score(
     # If no alert pass the transient filter,
     # directly return invalid value for everyone.
     if sum(pdf["is_transient"]) == 0:
-        return pd.Series([-1.0] * len(pdf))
+        return pd.Series([-1.0] * len(objectId))
 
     else:
         # Initialise all probas to -1
-        probas_total = np.zeros(len(pdf), dtype=float) - 1
+        probas_total = np.zeros(len(objectId), dtype=float) - 1
         transient_mask = pdf["is_transient"]
         old_enough_mask = pdf["jd"] - pdf["jdstarthist"] >= 30
         mask_valid = transient_mask & old_enough_mask
+
+        if sum(mask_valid) == 0:
+            return pd.Series([-1.0] * len(objectId))
 
         # select only transient alerts
         pdf_valid = pdf[mask_valid].copy().reset_index()
@@ -133,6 +136,9 @@ def superluminous_score(
 
         # Use Fink API to get the full light curves history
         lcs = get_and_format(valid_ids)
+
+        if lcs is None:
+            return pd.Series([-1.0] * len(objectId))
 
         # Compute the current night alerts (anything more recent tham the last history)
         pdf_valid["last_alerts_cjd"] = lcs["cjd"].apply(lambda x: np.nanmax(x))
@@ -163,6 +169,7 @@ def superluminous_score(
                 lcs[field].apply(list) + current_night[field].apply(list)
             )
 
+        # FIXME: why lcs would be None here?
         if lcs is not None:
             # Assign default -1 proba for every valid alert
             probas = np.zeros(len(pdf_valid), dtype=float) - 1
@@ -186,7 +193,7 @@ def superluminous_score(
             return pd.Series(probas_total)
 
         else:
-            return pd.Series([-1.0] * len(pdf))
+            return pd.Series([-1.0] * len(objectId))
 
 
 def get_and_format(ZTF_name):
@@ -240,6 +247,10 @@ def get_and_format(ZTF_name):
                 "withupperlim": "True",
             },
         )
+
+        if r.status_code != 200:
+            # FIXME: log the message
+            return None
 
         # Format output in a DataFrame
         pdf = pd.read_json(io.BytesIO(r.content))
