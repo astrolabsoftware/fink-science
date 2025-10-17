@@ -20,6 +20,7 @@ from pyspark.sql.types import DoubleType
 
 import pandas as pd
 import numpy as np
+import numpy.ma as ma
 
 import onnxruntime as rt
 
@@ -62,10 +63,48 @@ class TwoBandModel:
         self.forest_r = forest_r
         self.forest_g = forest_g
 
-    def anomaly_score(self, data_r, data_g):
-        scores_g = self.forest_g.run(None, {"X": data_g.to_numpy().astype(np.float32)})
-        scores_r = self.forest_r.run(None, {"X": data_r.to_numpy().astype(np.float32)})
-        return (scores_g[-1] + scores_r[-1]) / 2
+    def anomaly_score(self, data_r, data_g, mask_r, mask_g):
+        """
+        Calculates anomaly score based on data from two filters (bands).
+
+        The logic is as follows:
+        - If data is valid for both bands, return the minimum of the two scores.
+        - If data is valid for only one band, return the score for that band.
+        - If data is invalid for both bands, return 0.0.
+
+        Parameters
+        ----------
+        data_r: pd.DataFrame
+            Features for the r-band.
+        data_g: pd.DataFrame
+            Features for the g-band.
+        mask_r: pd.Series (bool)
+            Mask indicating if the original r-band data was invalid (True) or not (False).
+        mask_g: pd.Series (bool)
+            Mask indicating if the original g-band data was invalid (True) or not (False).
+
+        Returns
+        -------
+        np.ndarray
+            A 1D array of anomaly scores.
+        """
+        scores_g_raw = self.forest_g.run(
+            None, {"X": data_g.to_numpy().astype(np.float32)}
+        )
+        scores_r_raw = self.forest_r.run(
+            None, {"X": data_r.to_numpy().astype(np.float32)}
+        )
+        scores_g = np.transpose(scores_g_raw[-1])[0]
+        scores_r = np.transpose(scores_r_raw[-1])[0]
+        masked_scores_g = ma.array(scores_g, mask=mask_g.to_numpy())
+        masked_scores_r = ma.array(scores_r, mask=mask_r.to_numpy())
+        final_scores = (
+            ma.column_stack([masked_scores_g, masked_scores_r])
+            .min(axis=1)
+            .filled(np.nan)
+        )
+
+        return final_scores
 
 
 @pandas_udf(DoubleType())
@@ -90,6 +129,7 @@ def anomaly_score(lc_features, model=None):
     --------
     >>> from fink_utils.spark.utils import concat_col
     >>> from pyspark.sql import functions as F
+    >>> from pyspark.sql.functions import isnan, col
     >>> from fink_science.ztf.ad_features.processor import extract_features_ad
 
     >>> df = spark.read.load(ztf_alert_sample)
@@ -109,9 +149,9 @@ def anomaly_score(lc_features, model=None):
     ...     df = df.withColumn(f'anomaly_score{model}', anomaly_score("lc_features", F.lit(model)))
 
     >>> df.filter(df["anomaly_score"] < -0.013).count()
-    43
+    320
 
-    >>> df.filter(df["anomaly_score"] == 0).count() < 200
+    >>> df.filter(isnan(col("anomaly_score"))).count() < 200
     True
 
     # Check the robustness of the code when i-band is present
@@ -133,20 +173,12 @@ def anomaly_score(lc_features, model=None):
     """
 
     def get_key(x: dict, band: int):
-        if (
-            len(x) != 2
-            or x is None
-            or any(
-                map(  # noqa: W503, C417
-                    lambda fs: (fs is None or len(fs) == 0), x.values()
-                )
-            )
-        ):
+        if x is None or not isinstance(x, dict):
             return pd.Series({k: np.nan for k in MODEL_COLUMNS}, dtype=np.float64)
-        elif band in x:
+        if band in x and x[band] is not None and len(x[band]) > 0:
             return pd.Series(x[band])
         else:
-            raise IndexError("band {} not found in {}".format(band, x))
+            return pd.Series({k: np.nan for k in MODEL_COLUMNS}, dtype=np.float64)
 
     path = os.path.dirname(os.path.abspath(__file__))
     model_path = f"{path}/data/models/anomaly_detection"
@@ -162,7 +194,7 @@ def anomaly_score(lc_features, model=None):
 
     mask_r = data_r.isna().all(1)
     mask_g = data_g.isna().all(1)
-    mask = mask_r.to_numpy() * mask_g.to_numpy()
+
     if model is not None:
         model = model.to_numpy()[0]
     else:
@@ -191,19 +223,8 @@ def anomaly_score(lc_features, model=None):
     forest_r_AAD = rt.InferenceSession(r_model_path_AAD)
     forest_g_AAD = rt.InferenceSession(g_model_path_AAD)
 
-    # load the mean values used to replace Nan values from the features extraction
-    r_means = pd.read_csv(
-        f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True
-    )
-    g_means = pd.read_csv(
-        f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True
-    )
-
     model_AAD = TwoBandModel(forest_g_AAD, forest_r_AAD)
-
-    score = model_AAD.anomaly_score(data_r, data_g)
-    score_ = np.transpose(score)[0]
-    score_[mask] = 0.0
+    score_ = model_AAD.anomaly_score(data_r, data_g, mask_r, mask_g)
     return pd.Series(score_)
 
 
