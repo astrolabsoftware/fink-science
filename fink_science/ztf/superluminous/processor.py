@@ -26,6 +26,9 @@ import joblib
 import os
 import requests
 import io
+import logging
+
+_LOG = logging.getLogger(__name__)
 
 
 @pandas_udf(DoubleType())
@@ -165,9 +168,16 @@ def superluminous_score(
 
         # Add it to the history alerts
         for field in ["cjd", "cmagpsf", "csigmapsf", "cfid"]:
-            lcs[field] = np.array(
-                lcs[field].apply(list) + current_night[field].apply(list)
-            )
+            combined_values = lcs[field].apply(list) + current_night[field].apply(list)
+            if len(combined_values) != len(lcs):
+                _LOG.warning(
+                    f"Length mismatch: combined length {len(combined_values)}, lcs length {len(lcs)}"
+                )
+                _LOG.warning("{}".format(lcs["objectId"].to_numpy()))
+                # exit
+                return pd.Series([-1.0] * len(objectId))
+            else:
+                lcs[field] = np.array(combined_values)
 
         # FIXME: why lcs would be None here?
         if lcs is not None:
