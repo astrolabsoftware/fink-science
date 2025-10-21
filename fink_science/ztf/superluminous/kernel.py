@@ -24,4 +24,4 @@ temperature = "sigmoid"
 bolometric = "bazin"
 min_points_total = 7
 min_points_perband = 3
-min_duration = 30
+min_duration = 20
