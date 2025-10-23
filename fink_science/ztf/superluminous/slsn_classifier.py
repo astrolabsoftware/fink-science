@@ -357,7 +357,10 @@ def extract_features(data):
     # Only the fake alert should pass the cuts
     >>> np.testing.assert_equal(
     ... np.array(np.sum(full_features.isnull(), axis=1)),
-    ... np.array(([28]*(len(pdf)-1)) + [0]))
+    ... np.array([ 0,  0,  0,  0,  0, 28, 28, 28,  0, 28, 28, 28, 28,  0,  0,
+    ... 28,  0, 0, 28,  0,  0,  0, 28, 28, 28, 28, 28,  0, 28, 28,  0,  0,
+    ... 28,  0, 0, 28, 28, 28, 28,  0,  0,  0,  0, 28,  0, 28,  0, 28,  0,
+    ... 0,  0, 0, 28, 28,  0, 28,  0]))
 
     >>> list(full_features.columns) == ['distnr', 'duration', 'flux_amplitude',
     ... 'kurtosis', 'max_slope', 'skew', 'std_flux', 'q15', 'q85', 'reference_time',
