@@ -224,7 +224,7 @@ def statistical_features(lc):
     -------
     list
         List of statistical features
-        [amplitude, kurtosis, max_slope, skew]
+        [amplitude, kurtosis, max_slope, skew, std_flux, q15_time, q85_time]
     """
     amplitude = lcpckg.Amplitude()
     kurtosis = lcpckg.Kurtosis()
@@ -242,7 +242,13 @@ def statistical_features(lc):
         sorted=True,
         check=True,
     )
-    return list(result)
+
+    normed_flux = lc["cflux"] / np.max(lc["cflux"])
+    shifted_time = lc["cjd"] - np.min(lc["cjd"])
+    std = np.std(normed_flux)
+    q15 = np.quantile(shifted_time, 0.15)
+    q85 = np.quantile(shifted_time, 0.85)
+    return list(result) + [std, q15, q85]
 
 
 def quiet_model():
@@ -333,12 +339,13 @@ def extract_features(data):
 
     # Check their values
     >>> np.testing.assert_allclose(stat_features,
-    ... [1.724827e+03, 1.082316e+00, 3.898716e+04, -5.994491e-01],rtol=1e-3)
+    ... [1.724827e+03, 1.082316e+00, 3.898716e+04, -5.994491e-01,
+    ... 2.340475e-02,   3.076712e+00,   2.009067e+01], rtol=1e-3)
     >>> np.testing.assert_allclose(salt_features,[2.750825e-01,
     ... 1.232026e+01,   4.719657e-02,   5.983153e+00,
     ... -4.167890e-02, 6.210453e+01],rtol=5e-2)
-    >>> np.testing.assert_allclose(rainbow_features,[  1.695213e+01,   6.116788e+04,
-    ... 7.864212e+01,   4.913569e+01,
+    >>> np.testing.assert_allclose(rainbow_features,[  1.695213e+01,
+    ... 6.116788e+04,   7.864212e+01,   4.913569e+01,
     ... 8.569830e+03,   9.043603e+03,   6.207734e+00,   6.221343e-01,
     ... 2.553051e+01,   1.212390e+00,   9.019693e-01,   9.229657e+00,
     ... 1.846910e+01,   5.537009e-01,   9.581437e-02], rtol=5e-2)
@@ -350,12 +357,16 @@ def extract_features(data):
     # Only the fake alert should pass the cuts
     >>> np.testing.assert_equal(
     ... np.array(np.sum(full_features.isnull(), axis=1)),
-    ... np.array(([25]*(len(pdf)-1)) + [0]))
+    ... np.array([ 0,  0,  0,  0,  0, 28, 28, 28,  0, 28, 28, 28, 28,  0,  0,
+    ... 28,  0, 0, 28,  0,  0,  0, 28, 28, 28, 28, 28,  0, 28, 28,  0,  0,
+    ... 28,  0, 0, 28, 28, 28, 28,  0,  0,  0,  0, 28,  0, 28,  0, 28,  0,
+    ... 0,  0, 0, 28, 28,  0, 28,  0]))
 
-    >>> list(full_features.columns) == ['distnr', 'duration', 'flux_amplitude', 'kurtosis', 'max_slope', 'skew',
-    ... 'reference_time', 'amplitude', 'rise_time', 'fall_time', 'Tmin', 'Tmax',
-    ... 't_color', 'snr_reference_time', 'snr_amplitude', 'snr_rise_time',
-    ... 'snr_fall_time', 'snr_Tmin', 'snr_Tmax', 'snr_t_color', 'chi2_rainbow',
+    >>> list(full_features.columns) == ['distnr', 'duration', 'flux_amplitude',
+    ... 'kurtosis', 'max_slope', 'skew', 'std_flux', 'q15', 'q85', 'reference_time',
+    ... 'amplitude', 'rise_time', 'fall_time', 'Tmin', 'Tmax', 't_color',
+    ... 'snr_reference_time', 'snr_amplitude', 'snr_rise_time', 'snr_fall_time',
+    ... 'snr_Tmin', 'snr_Tmax', 'snr_t_color', 'chi2_rainbow',
     ... 'z', 't0', 'x0', 'x1', 'c', 'chi2_salt']
     True
     """
@@ -379,6 +390,9 @@ def extract_features(data):
             "kurtosis",
             "max_slope",
             "skew",
+            "std_flux",
+            "q15",
+            "q85",
         ]
         + rainbow_pnames
         + ["snr_" + k for k in rainbow_pnames]
