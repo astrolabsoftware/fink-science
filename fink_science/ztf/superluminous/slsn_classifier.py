@@ -216,7 +216,7 @@ def statistical_features(lc):
     Parameters
     ----------
     lc: pd.Series
-        Include at least cjd, cfid, cflux, csigflux columns.
+        Include at least cjd, cfid, cmagpsf, cflux, csigflux columns.
     salt_model: Model
         Salt model to fit to the light curve.
 
@@ -224,7 +224,7 @@ def statistical_features(lc):
     -------
     list
         List of statistical features
-        [amplitude, kurtosis, max_slope, skew, std_flux, q15_time, q85_time]
+        [amplitude, kurtosis, max_slope, skew, peak_magn, std_flux, q15_time, q85_time]
     """
     amplitude = lcpckg.Amplitude()
     kurtosis = lcpckg.Kurtosis()
@@ -245,10 +245,11 @@ def statistical_features(lc):
 
     normed_flux = lc["cflux"] / np.max(lc["cflux"])
     shifted_time = lc["cjd"] - np.min(lc["cjd"])
+    peak_mag = np.min(lc["cmagpsf"])
     std = np.std(normed_flux)
     q15 = np.quantile(shifted_time, 0.15)
     q85 = np.quantile(shifted_time, 0.85)
-    return list(result) + [std, q15, q85]
+    return list(result) + [peak_mag, std, q15, q85]
 
 
 def quiet_model():
@@ -311,10 +312,10 @@ def extract_features(data):
     >>> pdf = sdf.toPandas()
 
     # Create a fake light curve that would pass the cuts
-    >>> faketime, fakeflux = np.linspace(0, 50, 10), np.linspace(18, 15, 10)
-    >>> fakesig, fakefid = [0.01] * len(fakeflux), [1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
+    >>> faketime, fakemag = np.linspace(0, 50, 10), np.linspace(18, 15, 10)
+    >>> fakesig, fakefid = [0.01] * len(fakemag), [1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
     >>> pdf.loc[[pdf.index[-1]], 'cjd'] = pd.Series([np.array(faketime)], index=pdf.index[[-1]])
-    >>> pdf.loc[[pdf.index[-1]], 'cmagpsf'] = pd.Series([np.array(fakeflux)], index=pdf.index[[-1]])
+    >>> pdf.loc[[pdf.index[-1]], 'cmagpsf'] = pd.Series([np.array(fakemag)], index=pdf.index[[-1]])
     >>> pdf.loc[[pdf.index[-1]], 'csigmapsf'] = pd.Series([np.array(fakesig)], index=pdf.index[[-1]])
     >>> pdf.loc[[pdf.index[-1]], 'cfid'] = pd.Series([np.array(fakefid)], index=pdf.index[[-1]])
 
@@ -338,8 +339,8 @@ def extract_features(data):
     >>> salt_features = quiet_fit_salt(lc, salt_model)
 
     # Check their values
-    >>> np.testing.assert_allclose(stat_features,
-    ... [1.724827e+03, 1.082316e+00, 3.898716e+04, -5.994491e-01,
+    >>> np.testing.assert_allclose(stat_features, [1.724827e+03,
+    ... 1.082316e+00,   3.898716e+04,  -5.994491e-01, 1.614310e+01,
     ... 2.340475e-02,   3.076712e+00,   2.009067e+01], rtol=1e-3)
     >>> np.testing.assert_allclose(salt_features,[2.750825e-01,
     ... 1.232026e+01,   4.719657e-02,   5.983153e+00,
@@ -357,16 +358,16 @@ def extract_features(data):
     # Only the fake alert should pass the cuts
     >>> np.testing.assert_equal(
     ... np.array(np.sum(full_features.isnull(), axis=1)),
-    ... np.array([ 0,  0,  0,  0,  0, 28, 28, 28,  0, 28, 28, 28, 28,  0,  0,
-    ... 28,  0, 0, 28,  0,  0,  0, 28, 28, 28, 28, 28,  0, 28, 28,  0,  0,
-    ... 28,  0, 0, 28, 28, 28, 28,  0,  0,  0,  0, 28,  0, 28,  0, 28,  0,
-    ... 0,  0, 0, 28, 28,  0, 28,  0]))
+    ... np.array([ 0,  0,  0,  0,  0, 29, 29, 29,  0, 29, 29, 29, 29,  0,  0,
+    ... 29,  0, 0, 29,  0,  0,  0, 29, 29, 29, 29, 29,  0, 29, 29,  0,  0,
+    ... 29,  0, 0, 29, 29, 29, 29,  0,  0,  0,  0, 29,  0, 29,  0, 29,  0,
+    ... 0,  0, 0, 29, 29,  0, 29,  0]))
 
     >>> list(full_features.columns) == ['distnr', 'duration', 'flux_amplitude',
-    ... 'kurtosis', 'max_slope', 'skew', 'std_flux', 'q15', 'q85', 'reference_time',
-    ... 'amplitude', 'rise_time', 'fall_time', 'Tmin', 'Tmax', 't_color',
-    ... 'snr_reference_time', 'snr_amplitude', 'snr_rise_time', 'snr_fall_time',
-    ... 'snr_Tmin', 'snr_Tmax', 'snr_t_color', 'chi2_rainbow',
+    ... 'kurtosis', 'max_slope', 'skew', 'peak_mag', 'std_flux', 'q15', 'q85',
+    ... 'reference_time', 'amplitude', 'rise_time', 'fall_time', 'Tmin', 'Tmax', 
+    ... 't_color', 'snr_reference_time', 'snr_amplitude', 'snr_rise_time', 
+    ... 'snr_fall_time', 'snr_Tmin', 'snr_Tmax', 'snr_t_color', 'chi2_rainbow',
     ... 'z', 't0', 'x0', 'x1', 'c', 'chi2_salt']
     True
     """
@@ -390,6 +391,7 @@ def extract_features(data):
             "kurtosis",
             "max_slope",
             "skew",
+            "peak_mag",
             "std_flux",
             "q15",
             "q85",
