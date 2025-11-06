@@ -700,6 +700,7 @@ def build_the_ssoft(
     df = (
         df.withColumn("ephemmeasurements", F.size(df["Phase"]))
         .filter(F.col("ephemmeasurements") >= nmin)
+        .filter(F.size("cmagpsf") == F.size("Phase"))
         .repartition(nparts)
         .cache()
     )
