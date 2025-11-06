@@ -320,6 +320,8 @@ def extract_features(data):
     >>> pdf.loc[[pdf.index[-1]], 'cfid'] = pd.Series([np.array(fakefid)], index=pdf.index[[-1]])
 
     >>> pdf['distnr'] = pdf['candidate'].apply(lambda x: x[22])
+    >>> pdf['ra'] = pdf['candidate'].apply(lambda x: x[15])
+    >>> pdf['dec'] = pdf['candidate'].apply(lambda x: x[16])
     >>> pdf = compute_flux(pdf)
     >>> pdf = remove_nan(pdf)
 
@@ -358,15 +360,15 @@ def extract_features(data):
     # Only the fake alert should pass the cuts
     >>> np.testing.assert_equal(
     ... np.array(np.sum(full_features.isnull(), axis=1)),
-    ... np.array([ 0,  0,  0,  0,  0, 29, 29, 29,  0, 29, 29, 29, 29,  0,  0,
-    ... 29,  0, 0, 29,  0,  0,  0, 29, 29, 29, 29, 29,  0, 29, 29,  0,  0,
-    ... 29,  0, 0, 29, 29, 29, 29,  0,  0,  0,  0, 29,  0, 29,  0, 29,  0,
-    ... 0,  0, 0, 29, 29,  0, 29,  0]))
+    ... np.array([ 0,  0,  0,  0,  0, 29, 29, 29,  0, 29, 29, 29, 29,  0,  0, 29,  0,
+    ... 0, 29,  0,  0,  0, 29, 29, 29, 29, 29,  0, 29, 29,  0,  0, 29,  0,
+    ... 0, 29, 29, 29, 29,  0,  0,  0,  0, 29,  0, 29,  0, 29,  0,  0,  0,
+    ... 0, 29, 29,  0, 29,  0]))
 
-    >>> list(full_features.columns) == ['distnr', 'duration', 'flux_amplitude',
+    >>> list(full_features.columns) == ['distnr', 'ra', 'dec', 'duration', 'flux_amplitude',
     ... 'kurtosis', 'max_slope', 'skew', 'peak_mag', 'std_flux', 'q15', 'q85',
-    ... 'reference_time', 'amplitude', 'rise_time', 'fall_time', 'Tmin', 'Tmax', 
-    ... 't_color', 'snr_reference_time', 'snr_amplitude', 'snr_rise_time', 
+    ... 'reference_time', 'amplitude', 'rise_time', 'fall_time', 'Tmin', 'Tmax',
+    ... 't_color', 'snr_reference_time', 'snr_amplitude', 'snr_rise_time',
     ... 'snr_fall_time', 'snr_Tmin', 'snr_Tmax', 'snr_t_color', 'chi2_rainbow',
     ... 'z', 't0', 'x0', 'x1', 'c', 'chi2_salt']
     True
@@ -386,6 +388,8 @@ def extract_features(data):
     pdf = pd.DataFrame(
         columns=[
             "distnr",
+            "ra",
+            "dec",
             "duration",
             "flux_amplitude",
             "kurtosis",
@@ -414,17 +418,26 @@ def extract_features(data):
         duration = np.ptp(lc["cjd"])
         enough_duration = duration > kern.min_duration
         distnr = lc["distnr"]
+        ra = lc["ra"]
+        dec = lc["dec"]
 
         if all_valid_bands & enough_total_points & enough_duration:
             rainbow_features = fit_rainbow(lc, rainbow_model)
             salt_features = fit_salt(lc, salt_model)
             stat_features = statistical_features(lc)
 
-            row = [distnr, duration] + stat_features + rainbow_features + salt_features
+            row = (
+                [distnr, ra, dec, duration]
+                + stat_features
+                + rainbow_features
+                + salt_features
+            )
             pdf.loc[pdf_idx] = row
 
         else:
-            pdf.loc[pdf_idx] = [distnr, duration] + [np.nan] * (np.shape(pdf)[1] - 2)
+            pdf.loc[pdf_idx] = [distnr, ra, dec, duration] + [np.nan] * (
+                np.shape(pdf)[1] - 4
+            )
 
     return pdf
 
