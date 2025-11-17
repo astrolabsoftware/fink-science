@@ -49,6 +49,8 @@ def cross_match_astropy(pdf, catalog_ztf, catalog_other, radius_arcsec=None):
     # set separation length
     if radius_arcsec is None:
         radius_arcsec = 1.5
+    elif isinstance(radius_arcsec, pd.Series) and len(radius_arcsec) == len(d2d):
+        pass
     else:
         radius_arcsec = float(radius_arcsec.to_numpy()[0])
 
