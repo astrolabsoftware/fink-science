@@ -221,8 +221,12 @@ def run_powerspectrum_analysis(
         number of iterations for powerspectrum analysis shuffling
 
     """
-    science_data = create_noise_filled_mask(science_image, science_mask, image_size)
-    template_data = create_noise_filled_mask(template_image, template_mask, image_size)
+    science_data = create_noise_filled_mask(
+        science_image, science_mask, list(science_mask.shape)
+    )
+    template_data = create_noise_filled_mask(
+        template_image, template_mask, list(template_mask.shape)
+    )
     _, kstest_results_dict, _, _ = ps.detect_host_with_powerspectrum(
         science_data,
         template_data,
