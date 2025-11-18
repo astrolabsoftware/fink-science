@@ -219,7 +219,6 @@ def add_all_photoz(pdf):
     >>> pdf["photozerr"].values
     array([ nan,  nan])
     """
-
     if len(pdf) > 0:
         unique_objs = pdf.drop_duplicates(subset="objectId")[["objectId", "ra", "dec"]]
         unique_objs[["photoz", "photozerr"]] = unique_objs.apply(
@@ -256,7 +255,6 @@ def get_ebv(ra, dec):
     >>> get_ebv(np.array([90, 90, 90]), np.array([90, 70, 110]))
     array([ 0.25480431,  0.10597386, -1.        ])
     """
-
     result = -np.ones(len(dec))
     valid_mask = np.abs(dec) <= 90
     sfd = SFDQuery()
@@ -286,7 +284,6 @@ def add_all_ebv(pdf):
     >>> pdf["ebv"].values
     array([ 0.10597386,  0.25480431,  0.10597386])
     """
-
     unique_objs = pdf.drop_duplicates(subset="objectId")[["objectId", "ra", "dec"]]
     unique_objs["ebv"] = get_ebv(unique_objs["ra"].values, unique_objs["dec"].values)
     pdf = pdf.merge(unique_objs[["objectId", "ebv"]], on="objectId", how="left")
@@ -592,7 +589,6 @@ def extract_features(data):
     ... "z", "t0", "x0", "x1", "c", "chi2_salt"]
     True
     """
-
     data = add_all_ebv(data)
 
     rainbow_model = RainbowFit.from_angstrom(

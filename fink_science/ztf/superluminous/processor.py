@@ -216,7 +216,7 @@ def superluminous_score(
             )
 
             # Sources clearly not SL are masked
-            mask_not_SL = upper_M > kern.not_SL_M_threshold
+            mask_not_SL = upper_M > kern.not_sl_threshold
             zero_proba_idx = SLSN_features[mask_not_SL].index
 
             # And have their probabilities put to 0.
@@ -229,8 +229,7 @@ def superluminous_score(
 
 
 def protected_mean(arr):
-    """Returns the mean value of an array.
-    But protected in case is only made of Nans/Nones
+    """Returns the mean protected in case of only Nans.
 
     Parameters
     ----------
@@ -251,7 +250,6 @@ def protected_mean(arr):
     >>> protected_mean(np.array([None, None]))
     0.0
     """
-
     # Keep only numerical values
     mask = [type(element) is not type(None) for element in arr]
     new_arr = arr[mask]
