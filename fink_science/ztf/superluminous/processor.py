@@ -21,7 +21,7 @@ from fink_science.tester import spark_unit_tests
 import numpy as np
 import pandas as pd
 import fink_science.ztf.superluminous.slsn_classifier as slsn
-from fink_science.ztf.superluminous.kernel import classifier_path
+import fink_science.ztf.superluminous.kernel as kern
 import joblib
 import os
 import requests
@@ -92,12 +92,10 @@ def superluminous_score(
     >>> for colname in what:
     ...     sdf = concat_col(sdf, colname, prefix=prefix)
 
-    # Perform the fit + classification (default model)
     >>> args = ['is_transient', 'objectId', 'candidate.jdstarthist']
-
-    # Perform the fit + classification (default model)
     >>> args += [F.col(i) for i in what_prefix]
 
+    # Perform the fit + classification
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
     >>> pdf = sdf.toPandas()
     >>> sum(pdf['proba']==-1)
@@ -179,31 +177,89 @@ def superluminous_score(
             else:
                 lcs[field] = np.array(combined_values)
 
-        # FIXME: why lcs would be None here?
-        if lcs is not None:
-            # Assign default -1 proba for every valid alert
-            probas = np.zeros(len(pdf_valid), dtype=float) - 1
+        # Assign default -1 proba for every valid alert
+        probas = np.zeros(len(pdf_valid), dtype=float) - 1
 
-            lcs = slsn.compute_flux(lcs)
-            lcs = slsn.remove_nan(lcs)
+        lcs = slsn.compute_flux(lcs)
+        lcs = slsn.remove_nan(lcs)
 
-            # Perform feature extraction
-            features = slsn.extract_features(lcs)
+        # Perform feature extraction
+        features = slsn.extract_features(lcs)
 
-            # Load classifier
-            clf = joblib.load(classifier_path)
+        # Load classifier
+        clf = joblib.load(kern.classifier_path)
 
-            # Modify proba for alerts that were feature extracted
-            extracted = np.sum(features.isna(), axis=1) == 0
-            probas[extracted] = clf.predict_proba(
-                features.loc[extracted, clf.feature_names_in_]
-            )[:, 1]
+        # Compute proba for alerts that were feature extracted
+        extracted = np.sum(features.isna(), axis=1) == 0
+        probas[extracted] = clf.predict_proba(
+            features.loc[extracted, clf.feature_names_in_]
+        )[:, 1]
 
-            probas_total[mask_valid] = probas
-            return pd.Series(probas_total)
+        # Mask only alerts classified as SLSN
+        mask_is_SLSN = probas > clf.optimal_threshold
 
-        else:
-            return pd.Series([-1.0] * len(objectId))
+        # Check the SDSS photo-z for these alerts
+        SLSN_features = features[mask_is_SLSN].copy()
+
+        if len(SLSN_features) > 0:
+            SLSN_features["objectId"] = lcs.loc[mask_is_SLSN, "objectId"]
+            SLSN_features = slsn.add_all_photoz(SLSN_features)
+
+            # Compute upper bound for abs magnitude
+            upper_M = np.array(
+                SLSN_features.apply(
+                    lambda x: slsn.abs_peak(
+                        x["peak_mag"], x["photoz"], x["photozerr"], x["ebv"]
+                    )[2],
+                    axis=1,
+                )
+            )
+
+            # Sources clearly not SL are masked
+            mask_not_SL = upper_M > kern.not_SL_M_threshold
+            zero_proba_idx = SLSN_features[mask_not_SL].index
+
+            # And have their probabilities put to 0.
+            probas[zero_proba_idx] = 0
+
+        # Apply the proba computed for valid sources
+        probas_total[mask_valid] = probas
+
+        return pd.Series(probas_total)
+
+
+def protected_mean(arr):
+    """Returns the mean value of an array.
+    But protected in case is only made of Nans/Nones
+
+    Parameters
+    ----------
+    arr: np.array
+
+    Returns
+    -------
+    float
+        Mean of the list. Or 0 if the list is made
+        of Nans/Nones only.
+
+    Example
+    -------
+    >>> protected_mean(np.array([10., 20]))
+    15.0
+    >>> protected_mean(np.array([10, 20., None]))
+    15.0
+    >>> protected_mean(np.array([None, None]))
+    0.0
+    """
+
+    # Keep only numerical values
+    mask = [type(element) is not type(None) for element in arr]
+    new_arr = arr[mask]
+
+    if len(new_arr) > 0:
+        return np.nanmean(new_arr)
+
+    return 0.0
 
 
 def get_and_format(ZTF_name):
@@ -233,7 +289,7 @@ def get_and_format(ZTF_name):
     >>> data = get_and_format(["ZTF21abfmbix", "ZTF21abfmbix"])
     >>> (data["distnr"].iloc[0] > 3.0) & (data["distnr"].iloc[0] < 3.5)
     True
-    >>> list(data.columns) == ['objectId', 'cjd', 'cmagpsf', 'csigmapsf', 'cfid', 'distnr']
+    >>> list(data.columns) == ['objectId', 'ra', 'dec', 'cjd', 'cmagpsf', 'csigmapsf', 'cfid', 'distnr']
     True
     >>> len(data['cjd'].iloc[0]) >= 14
     True
@@ -252,7 +308,7 @@ def get_and_format(ZTF_name):
             "https://api.fink-portal.org/api/v1/objects",
             json={
                 "objectId": name,
-                "columns": "i:objectId,i:jd,i:magpsf,i:sigmapsf,i:fid,i:jd,i:distnr,d:tag",
+                "columns": "i:objectId,i:jd,i:magpsf,i:sigmapsf,i:fid,i:jd,i:distnr,d:tag,i:ra,i:dec",
                 "output-format": "json",
                 "withupperlim": "True",
             },
@@ -281,6 +337,8 @@ def get_and_format(ZTF_name):
         lcs = pd.DataFrame(
             data={
                 "objectId": [lc["i:objectId"].iloc[0] for lc in pdfs],
+                "ra": [protected_mean(lc["i:ra"]) for lc in pdfs],
+                "dec": [protected_mean(lc["i:dec"]) for lc in pdfs],
                 "cjd": [np.array(lc["i:jd"].values, dtype=float) for lc in pdfs],
                 "cmagpsf": [
                     np.array(lc["i:magpsf"].values, dtype=float) for lc in pdfs
