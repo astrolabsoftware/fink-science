@@ -99,7 +99,7 @@ def abs_peak(app_peak, z, zerr, ebv):
     Examples
     --------
     >>> abs_peak(19, 0.2, 0.05, 0.1)
-    array([-20.48163613, -21.1251084 , -21.62604614])
+    array([-20.49163613, -21.1351084 , -21.63604614])
     >>> abs_peak(19, 0.2, 0.05, -1)
     array([-20.18163613, -20.8251084 , -21.32604614])
     >>> abs_peak(19, 0.2, np.nan, 0.1)
@@ -112,6 +112,7 @@ def abs_peak(app_peak, z, zerr, ebv):
 
     if (z == z) and (zerr == zerr):
         cosmo = LambdaCDM(H0=67.8, Om0=0.308, Ode0=0.692)
+        Rv = 3.1
 
         Ms = []
         for k in [-1, 0, 1]:
@@ -121,7 +122,7 @@ def abs_peak(app_peak, z, zerr, ebv):
                 app_peak
                 - 5 * np.log10(D_L / 10)
                 + 2.5 * np.log10(1 + effective_z)
-                - 3 * ebv
+                - Rv * ebv
             )
             Ms.append(M)
 
