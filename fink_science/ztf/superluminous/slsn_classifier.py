@@ -551,6 +551,8 @@ def extract_features(data):
     >>> rainbow_model = RainbowFit.from_angstrom(kern.band_wave_aa, with_baseline=False,
     ... temperature=kern.temperature, bolometric=kern.bolometric)
     >>> rainbow_features = fit_rainbow(lc, rainbow_model)
+    >>> lc['candid']
+    3229390645815015015
 
     # Statistical
     >>> stat_features = statistical_features(lc)
