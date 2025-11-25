@@ -304,7 +304,7 @@ def remove_nan(pdf):
     Returns
     -------
     pd.DataFrame
-        Original DataFrame with nan/None removed
+        Original DataFrame with nan/None removed.
 
     Examples
     --------
