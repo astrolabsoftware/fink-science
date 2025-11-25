@@ -40,8 +40,10 @@ scikit-image
 onnxruntime==1.20.1
 
 #Superluminous SN
+light-curve==0.10.4
 sncosmo==2.12.1
 xgboost==2.1.4
+dustmaps==1.0.14
 
 #for ELAsTiCC
 light-curve[full]

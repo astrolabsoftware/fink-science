@@ -25,3 +25,4 @@ bolometric = "bazin"
 min_points_total = 7
 min_points_perband = 3
 min_duration = 20
+not_sl_threshold = -19.75
