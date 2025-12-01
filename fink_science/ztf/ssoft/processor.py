@@ -698,7 +698,7 @@ def build_the_ssoft(
     >>> assert col_ssoft_shg1g2 == expected_cols, (col_ssoft_shg1g2, expected_cols)
 
     >>> ssoft_socca = build_the_ssoft(
-    ...     aggregated_filename=aggregated_filename,
+    ...     aggregated_filename=aggregated_filename_socca,
     ...     nparts=1,
     ...     nmin=50,
     ...     frac=None,
@@ -819,6 +819,11 @@ if __name__ == "__main__":
 
     aggregated_filename = (
         "file://{}/data/alerts/sso_ztf_lc_aggregated_202504_three_obj.parquet".format(
+            path
+        )
+    )
+    aggregated_filename_socca = (
+        "file://{}/data/alerts/test_SOCCA.parquet".format(
             path
         )
     )
