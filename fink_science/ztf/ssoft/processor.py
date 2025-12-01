@@ -172,7 +172,7 @@ COLUMNS = {
     "version": {"type": "str", "description": "Version of the SSOFT YYYY.MM"},
 }
 
-COLUMNS_SSHG1G2 = {
+COLUMNS_SOCCA = {
     "G1_1": {
         "type": "double",
         "description": "G1 phase parameter for the ZTF filter band g",
@@ -414,7 +414,7 @@ COLUMNS_HG = {
 def estimate_period():
     """TBD
 
-    Should be done only for SSHG1G2
+    Should be done only for SOCCA
 
     sb_method: str
         Specify the single-band lomb scargle implementation to use.
@@ -430,9 +430,9 @@ def extract_ssoft_parameters_sshg1g2():
 
     Notes
     -----
-    For the SSHG1G2 model, the strategy is the following:
+    For the SOCCA model, the strategy is the following:
     1. Compute parameters as if it was SHG2G1 model (incl. period estimation)
-    2. Using previously computed parameters, compute parameters from SSHG1G2
+    2. Using previously computed parameters, compute parameters from SOCCA
     """
     pass
 
@@ -460,7 +460,7 @@ def extract_ssoft_parameters(
     Notes
     -----
     Only works for HG, HG1G2, and SHG1G2. Rotation period
-    is not estimated here. For SSHG1G2, see <TBD>
+    is not estimated here. For SOCCA, see <TBD>
 
     Parameters
     ----------
@@ -735,6 +735,7 @@ def build_the_ssoft(
     <BLANKLINE>
     >>> assert len(ssoft_socca) == 2, ssoft_socca
     >>> assert "period" in ssoft_shg1g2.columns
+    >>> assert ssoft_socca == {}, ssoft_socca
     """
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
