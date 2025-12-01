@@ -822,11 +822,7 @@ if __name__ == "__main__":
             path
         )
     )
-    aggregated_filename_socca = (
-        "file://{}/data/alerts/test_SOCCA.parquet".format(
-            path
-        )
-    )
+    aggregated_filename_socca = "file://{}/data/alerts/test_SOCCA.parquet".format(path)
     globs["aggregated_filename"] = aggregated_filename
 
     # Run the test suite
