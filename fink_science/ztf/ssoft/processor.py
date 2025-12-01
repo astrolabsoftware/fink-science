@@ -411,32 +411,6 @@ COLUMNS_HG = {
 }
 
 
-def estimate_period():
-    """TBD
-
-    Should be done only for SOCCA
-
-    sb_method: str
-        Specify the single-band lomb scargle implementation to use.
-        See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
-        If nifty-ls is installed, one can also specify fastnifty. Although
-        in this case it does not work yet for Nterms_* higher than 1.
-    """
-    pass
-
-
-def extract_ssoft_parameters_sshg1g2():
-    """TBD
-
-    Notes
-    -----
-    For the SOCCA model, the strategy is the following:
-    1. Compute parameters as if it was SHG2G1 model (incl. period estimation)
-    2. Using previously computed parameters, compute parameters from SOCCA
-    """
-    pass
-
-
 @pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
 @profile
 def extract_ssoft_parameters(
