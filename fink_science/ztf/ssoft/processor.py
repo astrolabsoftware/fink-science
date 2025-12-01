@@ -529,8 +529,6 @@ def extract_ssoft_parameters(
             * extract_array_from_series(dhelio, index, float)
         )
         if model_name == "SOCCA":
-            # FIXME: correct jd for light travel
-            # FIXME: create pdf for SOCCA
             jd_lt = compute_light_travel_correction(
                 extract_array_from_series(jd, index, float),
                 extract_array_from_series(dobs, index, float),
@@ -545,12 +543,18 @@ def extract_ssoft_parameters(
                 "cjd": jd_lt,
             })
             pdf = pdf.sort_values("cjd")
+
+            # Wrap columns inplace
+            pdf = pd.DataFrame({
+                colname: [pdf[colname].to_numpy()] for colname in pdf.columns
+            })
+
+            # parameter estimation
             outdic = modelfit.get_fit_params(
                 pdf,
-                flavor="SSHG1G2",
+                flavor=model_name,
                 shg1g2_constrained=True,
                 blind_scan=True,
-                p0=MODELS[model_name]["p0"],
                 alt_spin=False,
                 period_in=None,
                 terminator=False,
