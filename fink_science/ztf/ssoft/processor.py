@@ -541,23 +541,35 @@ def extract_ssoft_parameters(
                 "ra": extract_array_from_series(raobs, index, float),
                 "dec": extract_array_from_series(decobs, index, float),
                 "cjd": jd_lt,
+                "i:raephem": extract_array_from_series(raephem, index, float),
+                "i:decephem": extract_array_from_series(decephem, index, float),
             })
             pdf = pdf.sort_values("cjd")
 
             # Wrap columns inplace
-            pdf = pd.DataFrame({
+            pdf_transposed = pd.DataFrame({
                 colname: [pdf[colname].to_numpy()] for colname in pdf.columns
             })
 
             # parameter estimation
             outdic = modelfit.get_fit_params(
-                pdf,
+                pdf_transposed,
                 flavor=model_name,
                 shg1g2_constrained=True,
                 blind_scan=True,
                 alt_spin=False,
                 period_in=None,
                 terminator=False,
+            )
+
+            # replace names inplace for the remaning computation
+            pdf = pdf.rename(
+                columns={
+                    "ra": "i:ra",
+                    "dec": "i:dec",
+                    "cfid": "i:fid",
+                    "cjd": "i:jd",  # FIXME: this is lighttime corrected
+                }
             )
         else:
             pdf = pd.DataFrame({
