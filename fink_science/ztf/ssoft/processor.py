@@ -1,4 +1,4 @@
-# Copyright 2023-2024 AstroLab Software
+# Copyright 2023-2025 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@ from pyspark.sql.types import MapType, FloatType, StringType
 from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.spins import extract_obliquity
 from fink_utils.sso.utils import rockify, extract_array_from_series
+from fink_utils.sso.utils import compute_light_travel_correction
 
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
@@ -38,6 +39,8 @@ import pandas as pd
 from scipy.stats import skew, kurtosis
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+
+from asteroid_spinprops.ssolib import modelfit
 
 import logging
 
@@ -169,7 +172,7 @@ COLUMNS = {
     "version": {"type": "str", "description": "Version of the SSOFT YYYY.MM"},
 }
 
-COLUMNS_SSHG1G2 = {
+COLUMNS_SOCCA = {
     "G1_1": {
         "type": "double",
         "description": "G1 phase parameter for the ZTF filter band g",
@@ -408,32 +411,6 @@ COLUMNS_HG = {
 }
 
 
-def estimate_period():
-    """TBD
-
-    Should be done only for SSHG1G2
-
-    sb_method: str
-        Specify the single-band lomb scargle implementation to use.
-        See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
-        If nifty-ls is installed, one can also specify fastnifty. Although
-        in this case it does not work yet for Nterms_* higher than 1.
-    """
-    pass
-
-
-def extract_ssoft_parameters_sshg1g2():
-    """TBD
-
-    Notes
-    -----
-    For the SSHG1G2 model, the strategy is the following:
-    1. Compute parameters as if it was SHG2G1 model (incl. period estimation)
-    2. Using previously computed parameters, compute parameters from SSHG1G2
-    """
-    pass
-
-
 @pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
 @profile
 def extract_ssoft_parameters(
@@ -457,7 +434,7 @@ def extract_ssoft_parameters(
     Notes
     -----
     Only works for HG, HG1G2, and SHG1G2. Rotation period
-    is not estimated here. For SSHG1G2, see <TBD>
+    is not estimated here. For SOCCA, see <TBD>
 
     Parameters
     ----------
@@ -483,7 +460,7 @@ def extract_ssoft_parameters(
         Use only the former on the Spark Cluster (local installation of ephemcc),
         otherwise use `rest` to call the ssodnet web service.
     model: str
-        Model name. Available: HG, HG1G2, SHG1G2
+        Model name. Available: HG, HG1G2, SHG1G2, SOCCA
 
 
     Returns
@@ -502,7 +479,7 @@ def extract_ssoft_parameters(
                 [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
             ),
         },
-        "SSHG1G2": {
+        "SOCCA": {
             "p0": [15.0, 0.15, 0.15, np.pi, 0.0, 5.0, 1.05, 1.05, 0.0],
             "bounds": (
                 [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
@@ -525,35 +502,81 @@ def extract_ssoft_parameters(
             extract_array_from_series(dobs, index, float)
             * extract_array_from_series(dhelio, index, float)
         )
-        pdf = pd.DataFrame({
-            "i:ssnamenr": [ssname] * len(raobs.to_numpy()[index]),
-            "i:magpsf": extract_array_from_series(magpsf, index, float),
-            "i:sigmapsf": extract_array_from_series(sigmapsf, index, float),
-            "i:jd": extract_array_from_series(jd, index, float),
-            "i:fid": extract_array_from_series(fid, index, int),
-            "i:ra": extract_array_from_series(raobs, index, float),
-            "i:dec": extract_array_from_series(decobs, index, float),
-            "i:raephem": extract_array_from_series(raephem, index, float),
-            "i:decephem": extract_array_from_series(decephem, index, float),
-            "i:magpsf_red": magpsf_red,
-            "Phase": extract_array_from_series(phase, index, float),
-            "Dobs": extract_array_from_series(dobs, index, float),
-        })
-        pdf = pdf.sort_values("i:jd")
+        if model_name == "SOCCA":
+            jd_lt = compute_light_travel_correction(
+                extract_array_from_series(jd, index, float),
+                extract_array_from_series(dobs, index, float),
+            )
+            pdf = pd.DataFrame({
+                "cmred": magpsf_red,
+                "csigmapsf": extract_array_from_series(sigmapsf, index, float),
+                "Phase": extract_array_from_series(phase, index, float),
+                "cfid": extract_array_from_series(fid, index, int),
+                "ra": extract_array_from_series(raobs, index, float),
+                "dec": extract_array_from_series(decobs, index, float),
+                "cjd": jd_lt,
+                "i:raephem": extract_array_from_series(raephem, index, float),
+                "i:decephem": extract_array_from_series(decephem, index, float),
+            })
+            pdf = pdf.sort_values("cjd")
 
-        outdic = estimate_sso_params(
-            pdf["i:magpsf_red"].to_numpy(),
-            pdf["i:sigmapsf"].to_numpy(),
-            np.deg2rad(pdf["Phase"].to_numpy()),
-            pdf["i:fid"].to_numpy(),
-            np.deg2rad(pdf["i:ra"].to_numpy()),
-            np.deg2rad(pdf["i:dec"].to_numpy()),
-            jd=pdf["i:jd"].to_numpy(),
-            p0=MODELS[model_name]["p0"],
-            bounds=MODELS[model_name]["bounds"],
-            model=model_name,
-            normalise_to_V=False,
-        )
+            # Wrap columns inplace
+            pdf_transposed = pd.DataFrame({
+                colname: [pdf[colname].to_numpy()] for colname in pdf.columns
+            })
+
+            # parameter estimation
+            outdic = modelfit.get_fit_params(
+                pdf_transposed,
+                flavor=model_name,
+                shg1g2_constrained=True,
+                period_blind=True,
+                pole_blind=True,
+                alt_spin=False,
+                period_in=None,
+                terminator=False,
+            )
+
+            # replace names inplace for the remaning computation
+            pdf = pdf.rename(
+                columns={
+                    "ra": "i:ra",
+                    "dec": "i:dec",
+                    "cfid": "i:fid",
+                    "cjd": "i:jd",  # FIXME: this is lighttime corrected
+                }
+            )
+        else:
+            pdf = pd.DataFrame({
+                "i:ssnamenr": [ssname] * len(raobs.to_numpy()[index]),
+                "i:magpsf": extract_array_from_series(magpsf, index, float),
+                "i:sigmapsf": extract_array_from_series(sigmapsf, index, float),
+                "i:jd": extract_array_from_series(jd, index, float),
+                "i:fid": extract_array_from_series(fid, index, int),
+                "i:ra": extract_array_from_series(raobs, index, float),
+                "i:dec": extract_array_from_series(decobs, index, float),
+                "i:raephem": extract_array_from_series(raephem, index, float),
+                "i:decephem": extract_array_from_series(decephem, index, float),
+                "i:magpsf_red": magpsf_red,
+                "Phase": extract_array_from_series(phase, index, float),
+                "Dobs": extract_array_from_series(dobs, index, float),
+            })
+
+            pdf = pdf.sort_values("i:jd")
+
+            outdic = estimate_sso_params(
+                pdf["i:magpsf_red"].to_numpy(),
+                pdf["i:sigmapsf"].to_numpy(),
+                np.deg2rad(pdf["Phase"].to_numpy()),
+                pdf["i:fid"].to_numpy(),
+                np.deg2rad(pdf["i:ra"].to_numpy()),
+                np.deg2rad(pdf["i:dec"].to_numpy()),
+                jd=pdf["i:jd"].to_numpy(),
+                p0=MODELS[model_name]["p0"],
+                bounds=MODELS[model_name]["bounds"],
+                model=model_name,
+                normalise_to_V=False,
+            )
 
         # Add astrometry
         fink_coord = SkyCoord(
@@ -674,6 +697,19 @@ def build_the_ssoft(
     >>> col_ssoft_shg1g2 = sorted(ssoft_shg1g2.columns)
     >>> expected_cols = sorted({**COLUMNS, **COLUMNS_SHG1G2}.keys())
     >>> assert col_ssoft_shg1g2 == expected_cols, (col_ssoft_shg1g2, expected_cols)
+
+    >>> ssoft_socca = build_the_ssoft(
+    ...     aggregated_filename=aggregated_filename,
+    ...     nparts=1,
+    ...     nmin=50,
+    ...     frac=None,
+    ...     model='SOCCA',
+    ...     version=None,
+    ...     ephem_method="rest",
+    ...     sb_method="fastnifty")
+    <BLANKLINE>
+    >>> assert len(ssoft_socca) == 2, ssoft_socca
+    >>> assert "period" in ssoft_socca.columns, ssoft_socca.columns
     """
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
