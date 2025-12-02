@@ -1,4 +1,4 @@
-# Copyright 2023-2024 AstroLab Software
+# Copyright 2023-2025 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -530,7 +530,8 @@ def extract_ssoft_parameters(
                 pdf_transposed,
                 flavor=model_name,
                 shg1g2_constrained=True,
-                blind_scan=True,
+                period_blind=True,
+                pole_blind=True,
                 alt_spin=False,
                 period_in=None,
                 terminator=False,
@@ -698,7 +699,7 @@ def build_the_ssoft(
     >>> assert col_ssoft_shg1g2 == expected_cols, (col_ssoft_shg1g2, expected_cols)
 
     >>> ssoft_socca = build_the_ssoft(
-    ...     aggregated_filename=aggregated_filename_socca,
+    ...     aggregated_filename=aggregated_filename,
     ...     nparts=1,
     ...     nmin=50,
     ...     frac=None,
@@ -708,8 +709,7 @@ def build_the_ssoft(
     ...     sb_method="fastnifty")
     <BLANKLINE>
     >>> assert len(ssoft_socca) == 2, ssoft_socca
-    >>> assert "period" in ssoft_shg1g2.columns
-    >>> assert ssoft_socca == {}, ssoft_socca
+    >>> assert "period" in ssoft_socca.columns, ssoft_socca.columns
     """
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
@@ -822,7 +822,6 @@ if __name__ == "__main__":
             path
         )
     )
-    aggregated_filename_socca = "file://{}/data/alerts/test_SOCCA.parquet".format(path)
     globs["aggregated_filename"] = aggregated_filename
 
     # Run the test suite

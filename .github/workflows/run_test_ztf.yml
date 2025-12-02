@@ -46,5 +46,5 @@ jobs:
         pip install onnxruntime==1.16.3
         pip install asteroid_spinprops --no-deps
         rm -f /tmp/forest_*.onnx
-        ./run_tests.sh -s ztf --single_module fink_science/ztf/ssoft/processor.py
+        ./run_tests.sh -s ztf
         curl -s https://codecov.io/bash | bash
