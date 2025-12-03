@@ -40,6 +40,7 @@ from scipy.stats import skew, kurtosis
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
+from asteroid_spinprops.ssolib import dataprep
 from asteroid_spinprops.ssolib import modelfit
 
 import logging
@@ -525,9 +526,15 @@ def extract_ssoft_parameters(
                 colname: [pdf[colname].to_numpy()] for colname in pdf.columns
             })
 
+            clean_data, _ = dataprep.errorbar_filtering(
+                data=pdf_transposed, mlimit=0.7928
+            )
+            clean_data, _ = dataprep.projection_filtering(data=clean_data)
+            clean_data, _ = dataprep.iterative_filtering(data=clean_data)
+
             # parameter estimation
             outdic = modelfit.get_fit_params(
-                pdf_transposed,
+                clean_data,
                 flavor=model_name,
                 shg1g2_constrained=True,
                 period_blind=True,
@@ -535,6 +542,7 @@ def extract_ssoft_parameters(
                 alt_spin=False,
                 period_in=None,
                 terminator=False,
+                period_quality_flag=True,
             )
 
             # replace names inplace for the remaning computation
