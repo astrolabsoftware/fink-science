@@ -252,15 +252,15 @@ COLUMNS_SOCCA = {
     },
     "max_cos_lambda": {
         "type": "double",
-        "description": "Maximum of the absolute value of the cosine for the aspect angle",
+        "description": "Maximum of the cosine for the aspect angle",
     },
     "mean_cos_lambda": {
         "type": "double",
-        "description": "Mean of the absolute value of the cosine for the aspect angle",
+        "description": "Mean of the cosine for the aspect angle",
     },
     "min_cos_lambda": {
         "type": "double",
-        "description": "Minimum of the absolute value of the cosine for the aspect angle",
+        "description": "Minimum of the cosine for the aspect angle",
     },
     "period": {
         "type": "double",
@@ -345,15 +345,15 @@ COLUMNS_SHG1G2 = {
     },
     "max_cos_lambda": {
         "type": "double",
-        "description": "Maximum of the absolute value of the cosine for the aspect angle",
+        "description": "Maximum of the cosine for the aspect angle",
     },
     "mean_cos_lambda": {
         "type": "double",
-        "description": "Mean of the absolute value of the cosine for the aspect angle",
+        "description": "Mean of the cosine for the aspect angle",
     },
     "min_cos_lambda": {
         "type": "double",
-        "description": "Minimum of the absolute value of the cosine for the aspect angle",
+        "description": "Minimum of the cosine for the aspect angle",
     },
 }
 
@@ -481,7 +481,7 @@ def extract_ssoft_parameters(
             ),
         },
         "SOCCA": {
-            "p0": [15.0, 0.15, 0.15, np.pi, 0.0, 5.0, 1.05, 1.05, 0.0],
+            "p0": [15.0, 0.15, 0.15, np.pi, 0.0, 5.0, 1.05, 1.15, 0.0],
             "bounds": (
                 [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
                 [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
@@ -538,11 +538,12 @@ def extract_ssoft_parameters(
                 flavor=model_name,
                 shg1g2_constrained=True,
                 period_blind=True,
-                pole_blind=True,
+                pole_blind=False,
                 alt_spin=False,
                 period_in=None,
                 terminator=False,
                 period_quality_flag=True,
+                time_in=True,
             )
 
             # replace names inplace for the remaning computation
