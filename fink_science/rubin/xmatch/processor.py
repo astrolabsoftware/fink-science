@@ -216,6 +216,7 @@ def cdsxmatch(
 def xmatch_cds(
     df,
     catalogname="simbad",
+    prefix_col_out=None,
     distmaxarcsec=1.0,
     cols_in=None,
     cols_out=None,
@@ -235,6 +236,12 @@ def xmatch_cds(
     catalogname: str
         Name of the catalog in Vizier, or directly simbad (default).
         Default is simbad.
+    prefix_col_out: str
+        Output DataFrame columns will be named
+        <prefix_col_out>_<col>. If None,
+        `prefix_col_out`=`catalogname`, but set it if there are
+        illegal characters in the catalogname.
+
     distmaxarcsec: float
         Cross-match radius in arcsecond. Default is 1.0 arcsecond.
     cols_in: list of str
@@ -267,9 +274,10 @@ def xmatch_cds(
     ...     df,
     ...     distmaxarcsec=1,
     ...     catalogname='vizier:I/355/gaiadr3',
+    ...     prefix_col_out="gaiadr3",
     ...     cols_out=['DR3Name', 'Plx', 'e_Plx'],
     ...     types=['string', 'float', 'float'])
-    >>> 'vizier:I/355/gaiadr3_Plx' in df_gaia.columns
+    >>> 'gaiadr3_Plx' in df_gaia.columns
     True
 
     # VSX
@@ -299,6 +307,9 @@ def xmatch_cds(
     if types is None:
         types = ["string"]
 
+    if prefix_col_out is None:
+        prefix_col_out = catalogname
+
     df_out = df.withColumn(
         "xmatch",
         cdsxmatch(
@@ -313,7 +324,7 @@ def xmatch_cds(
 
     for index, col_, type_ in zip(range(len(cols_out)), cols_out, types):
         df_out = df_out.withColumn(
-            "{}_{}".format(catalogname, col_),
+            "{}_{}".format(prefix_col_out, col_),
             F.split("xmatch", ",").getItem(index).astype(type_),
         )
 
