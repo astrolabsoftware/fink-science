@@ -49,6 +49,13 @@ MODEL_COLUMNS = [
     "median_buffer_range_percentage_10",
     "skew",
     "stetson_K",
+    "percent_amplitude",
+    "linear_fit_reduced_chi2",
+    "inter_percentile_range_10",
+    "linear_trend",
+    "standard_deviation",
+    "weighted_mean",
+    "mean",
 ]
 
 ANOMALY_MODELS = ["_beta", "_anais", "_emille", "_julien", "_maria", "_emille_30days"]  # noqa
@@ -183,12 +190,6 @@ def anomaly_score(lc_features, model=None):
     path = os.path.dirname(os.path.abspath(__file__))
     model_path = f"{path}/data/models/anomaly_detection"
 
-    r_means = pd.read_csv(
-        f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True
-    )
-    g_means = pd.read_csv(
-        f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True
-    )
     data_r = lc_features.apply(lambda x: get_key(x, 1))[MODEL_COLUMNS]
     data_g = lc_features.apply(lambda x: get_key(x, 2))[MODEL_COLUMNS]
 
@@ -199,12 +200,6 @@ def anomaly_score(lc_features, model=None):
         model = model.to_numpy()[0]
     else:
         model = ""
-
-    for col in data_r.columns[data_r.isna().any()]:
-        data_r[col].fillna(r_means[col], inplace=True)  # noqa: PD002
-
-    for col in data_g.columns[data_g.isna().any()]:
-        data_g[col].fillna(g_means[col], inplace=True)  # noqa: PD002
 
     g_model_path_AAD = f"{model_path}/forest_g_AAD{model}.onnx"
     r_model_path_AAD = f"{model_path}/forest_r_AAD{model}.onnx"
