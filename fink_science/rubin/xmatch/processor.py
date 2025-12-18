@@ -191,10 +191,12 @@ def cdsxmatch(
                 col_list = [i.strip() for i in col_list]
                 pdf_out = pdf_out[col_list]
                 pdf_out["concat_cols"] = pdf_out.apply(
-                    lambda row: None
-                    if all(row[col] is None for col in col_list)
-                    else ",".join(
-                        str(row[col]) for col in col_list if row[col] is not None
+                    lambda row: (
+                        None
+                        if all(row[col] is None for col in col_list)
+                        else ",".join(
+                            str(row[col]) for col in col_list if row[col] is not None
+                        )
                     ),
                     axis=1,
                 )
@@ -448,9 +450,11 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         # Here we take the first match
         # What if there are many? AT & SN?
         to_return = diaSourceId.apply(
-            lambda x: None
-            if x not in sub_pdf["diaSourceId"].to_numpy()
-            else sub_pdf["TNS"][sub_pdf["diaSourceId"] == x].to_numpy()[0]
+            lambda x: (
+                None
+                if x not in sub_pdf["diaSourceId"].to_numpy()
+                else sub_pdf["TNS"][sub_pdf["diaSourceId"] == x].to_numpy()[0]
+            )
         )
 
         return to_return

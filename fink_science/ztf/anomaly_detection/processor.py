@@ -106,7 +106,8 @@ class TwoBandModel:
         masked_scores_g = ma.array(scores_g, mask=mask_g.to_numpy())
         masked_scores_r = ma.array(scores_r, mask=mask_r.to_numpy())
         final_scores = (
-            ma.column_stack([masked_scores_g, masked_scores_r])
+            ma
+            .column_stack([masked_scores_g, masked_scores_r])
             .min(axis=1)
             .filled(np.nan)
         )

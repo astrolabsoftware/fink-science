@@ -734,7 +734,8 @@ def build_the_ssoft(
     # Note: we compute the size of Phase
     # because Phase can be null due to no ephemerides
     df = (
-        df.withColumn("ephemmeasurements", F.size(df["Phase"]))
+        df
+        .withColumn("ephemmeasurements", F.size(df["Phase"]))
         .filter(F.col("ephemmeasurements") >= nmin)
         .filter(F.size("cmagpsf") == F.size("Phase"))
         .repartition(nparts)
@@ -761,7 +762,8 @@ def build_the_ssoft(
     cols = ["ssnamenr", "params"]
     t0 = time.time()
     pdf = (
-        df.withColumn(
+        df
+        .withColumn(
             "params",
             extract_ssoft_parameters(
                 F.col("ssnamenr").astype("string"),
