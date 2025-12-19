@@ -104,7 +104,8 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
     for k, v in confdic.items():
         conf.set(key=k, value=v)
     spark = (
-        SparkSession.builder.appName("fink_science_test")
+        SparkSession.builder
+        .appName("fink_science_test")
         .config(conf=conf)
         .getOrCreate()
     )
