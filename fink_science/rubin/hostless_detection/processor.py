@@ -18,7 +18,7 @@ import os
 
 import pandas as pd
 import pyspark.sql.functions as F
-from pyspark.sql.types import ArrayType, FloatType
+from pyspark.sql.types import FloatType, MapType, StringType
 
 from fink_science.rubin.hostless_detection.run_pipeline import (
     HostLessExtragalacticRubin,
@@ -31,10 +31,10 @@ CONFIGS = load_json("fink_science/ztf/hostless_detection/config.json")
 CONFIGS.update(CONFIGS_BASE)
 
 
-@F.pandas_udf(ArrayType(FloatType()))
+@F.pandas_udf(MapType(StringType(), FloatType()))
 @profile
 def run_potential_hostless(
-    cutoutScience: pd.Series, cutoutTemplate: pd.Series
+    cutoutScience: pd.Series, cutoutTemplate: pd.Series, ssObjectId: pd.Series
 ) -> pd.Series:
     """Runs potential hostless candidate detection for Rubin without any filtering
 
@@ -60,28 +60,37 @@ def run_potential_hostless(
     --------
     >>> df = spark.read.format('parquet').load(rubin_alert_sample)
     >>> df.count()
-    50
+    25
 
     # Add a new column
-    >>> df = df.withColumn('kstest_static',
+    >>> df = df.withColumn('elephant_kstest',
     ...     run_potential_hostless(
     ...         df["cutoutScience"],
-    ...         df["cutoutTemplate"]))
-    >>> df.filter(df.kstest_static[0] >= 0).count()
-    3
+    ...         df["cutoutTemplate"],
+    ...         df["ssSource.ssObjectId"]))
+    >>> df.filter(df.elephant_kstest.kstest_science >= 0).count()
+    0
+    >>> df.filter(df.elephant_kstest.kstest_science <= 0).count()
+    25
     """
+    default_result = {"kstest_science": -99, "kstest_template": -99}
     kstest_results = []
     hostless_science_class = HostLessExtragalacticRubin(CONFIGS_BASE)
-
     for index in range(cutoutScience.shape[0]):
-        science_stamp = cutoutScience[index]
-        template_stamp = cutoutTemplate[index]
-        kstest_science, kstest_template = (
-            hostless_science_class.process_candidate_fink_rubin(
-                science_stamp, template_stamp
+        if ssObjectId[index] is None:
+            science_stamp = cutoutScience[index]
+            template_stamp = cutoutTemplate[index]
+            kstest_science, kstest_template = (
+                hostless_science_class.process_candidate_fink_rubin(
+                    science_stamp, template_stamp
+                )
             )
-        )
-        kstest_results.append([kstest_science, kstest_template])
+            kstest_results.append({
+                "kstest_science": kstest_science,
+                "kstest_template": kstest_template,
+            })
+        else:
+            kstest_results.append(default_result)
     return pd.Series(kstest_results)
 
 
@@ -89,6 +98,8 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = "./fink_science/data/alerts/or4_lsst7.1"
+    rubin_alert_sample = (
+        "./fink_science/data/alerts/hostless_detection/rubin_sample_data_10_0.parquet"
+    )
     globs["rubin_alert_sample"] = rubin_alert_sample
     spark_unit_tests(globs)
