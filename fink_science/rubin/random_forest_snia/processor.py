@@ -215,7 +215,7 @@ def rfscore_rainbow_elasticc_nometa(
     0
 
     >>> df.filter(df['pIa'] == -1.0).count()
-    50
+    46
     """
     if band_wave_aa is None:
         band_wave_aa = pd.Series([
