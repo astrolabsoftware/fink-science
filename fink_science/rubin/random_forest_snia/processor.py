@@ -127,6 +127,13 @@ def extract_features_rainbow(
     if len(midpointMjdTai) < min_data_points:
         return np.zeros(len(RAINBOW_FEATURES_NAMES), dtype=float)
 
+    # get unique bands in this light curve
+    unique_bands = np.unique(band)
+
+    # if 2 filters exist, all should rising
+    # if 3 or more filters exist, minum 3 should be rising
+    nrising_filters = max(2,min(3, unique_bands.shape[0]))
+
     features = fit_rainbow(
         midpointMjdTai,
         band,
@@ -136,6 +143,7 @@ def extract_features_rainbow(
         with_baseline=with_baseline,
         min_data_points=min_data_points,
         list_filters=band_wave_aa.keys(),
+        nrising_filters=nrising_filters,
         low_bound=low_bound,
     )
 
