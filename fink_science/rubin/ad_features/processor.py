@@ -1,3 +1,18 @@
+# Copyright 2019-2026 AstroLab Software
+# Author: Timofei Pshenichnyy, Matwey V. Kornilov, Julien Peloton
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import os
 from line_profiler import profile
 
 import logging
@@ -5,8 +20,11 @@ import pandas as pd
 import numpy as np
 import light_curve as lc
 
-from pyspark.sql.functions import udf
+import pyspark.sql.functions as F
 from pyspark.sql.types import DoubleType, IntegerType, MapType, StructType, StructField
+
+from fink_science.tester import spark_unit_tests
+from fink_science import __file__
 
 
 logger = logging.getLogger(__name__)
@@ -64,7 +82,7 @@ FEATURES_COLS = create_extractor().names
 
 @profile
 def extract_features_ad_rubin_raw(
-    midpointMjdTai, psfFlux, psfFluxErr, band, objectId
+    midpointMjdTai, psfFlux, psfFluxErr, band, diaObjectId
 ) -> pd.Series:
     """Returns features extracted from measurements using light_curve package for LSST alerts.
 
@@ -78,7 +96,7 @@ def extract_features_ad_rubin_raw(
         PSF Flux error in nJy (vectors of floats)
     band: Spark DataFrame Column
         Filter bands (vectors of strings: 'u', 'g', 'r', 'i', 'z', 'y')
-    objectId: Spark DataFrame Column
+    diaObjectId: Spark DataFrame Column
         Object IDs (vectors of str or int)
 
     Returns
@@ -87,6 +105,29 @@ def extract_features_ad_rubin_raw(
         Returns dict of dict.
         Outer keys: filters (int mapped from chars),
         Inner keys: names of features.
+
+    Examples
+    --------
+    >>> from fink_utils.spark.utils import concat_col
+    >>> from pyspark.sql import functions as F
+
+    >>> df = spark.read.load(rubin_alert_sample)
+
+    # Required alert columns, concatenated with historical data
+    >>> what = ['midpointMjdTai', 'psfFlux', 'psfFluxErr', 'band']
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+    >>> for colname in what:
+    ...    df = concat_col(df, colname, prefix=prefix, current='diaSource', history='prvDiaSources')
+
+    >>> cols = [F.col(i) for i in ['cmidpointMjdTai', 'cpsfFlux', 'cpsfFluxErr', 'cband', 'diaObject.diaObjectId']]
+    >>> df = df.withColumn('lc_features', extract_features_ad_rubin(*cols))
+
+    >>> for row in df.take(10):
+    ...    assert len(row['lc_features']) == len(np.unique(row['cband'])), len(np.unique(row['cband']))
+    ...    for band_name in np.unique(row['cband']):
+    ...        band_id = LSST_FILTER_MAP[band_name]
+    ...        assert len(row['lc_features'][band_id]) == 26, len(row['lc_features'][band_id])
     """
     midpointMjdTai = np.asarray(midpointMjdTai, dtype=np.float64)
     psfFlux = np.asarray(psfFlux, dtype=np.float64)
@@ -103,7 +144,7 @@ def extract_features_ad_rubin_raw(
             "band": band,
         })
     except ValueError:
-        logger.error(f"Array length mismatch for object {objectId}")
+        logger.error(f"Array length mismatch for object {diaObjectId}")
         return {}
 
     # Remove NaNs
@@ -147,11 +188,11 @@ def extract_features_ad_rubin_raw(
                 fill_value=np.nan,
             )
         except ValueError as err:
-            logger.error(f"Value Error for {objectId} in band {filter_name}: {err}")
+            logger.error(f"Value Error for {diaObjectId} in band {filter_name}: {err}")
             continue
         except Exception as e:
             logger.exception(
-                f"Unknown exception for {objectId} in band {filter_name}: {e}"
+                f"Unknown exception for {diaObjectId} in band {filter_name}: {e}"
             )
             continue
 
@@ -164,7 +205,7 @@ def extract_features_ad_rubin_raw(
 
 
 # Register the UDF
-extract_features_ad_rubin = udf(
+extract_features_ad_rubin = F.udf(
     f=extract_features_ad_rubin_raw,
     returnType=MapType(
         IntegerType(),  # passband_id
@@ -177,33 +218,11 @@ extract_features_ad_rubin = udf(
 if __name__ == "__main__":
     """ Execute the test suite """
     globs = globals()
+    path = os.path.dirname(__file__)
 
-    # We need a normal test here, but I don't know how to do it yet
-    np.random.seed(42)
-    N = 100
-    mjds = np.sort(np.random.uniform(59000, 60000, N))
-    flux = np.random.normal(1000, 100, N)  # fake nJy
-    fluxerr = np.random.uniform(5, 20, N)
-    # Randomly assign bands g and r
-    bands = np.random.choice(["g", "r"], N)
+    # from fink-alerts-schemas (see CI configuration)
+    rubin_alert_sample = "file://{}/datasim/rubin_test_data_10_0.parquet".format(path)
+    globs["rubin_alert_sample"] = rubin_alert_sample
 
-    # Test raw function
-    features = extract_features_ad_rubin_raw(mjds, flux, fluxerr, bands, "TestObject1")
-
-    # Basic assertions
-    assert len(features) == 2, "Should have features for 2 bands (g=1, r=2)"
-    assert 1 in features, "Band g (mapped to 1) missing"
-    assert 2 in features, "Band r (mapped to 2) missing"
-    assert len(features[1]) == len(FEATURES_COLS), (
-        "Incorrect number of features extracted"
-    )
-
-    print("Test passed: Features extracted successfully.")
-    print(f"Example feature (Amplitude band g): {features[1]['amplitude']}")
-
-    # Setup for Spark unit tests (if data files are available)
-    # path = os.path.dirname(__file__)
-    # rubin_alert_sample = "file://{}/data/alerts/rubin_sample.parquet".format(path)
-    # globs["rubin_alert_sample"] = rubin_alert_sample
-
-    # spark_unit_tests(globs)
+    # Run the test suite
+    spark_unit_tests(globs)
