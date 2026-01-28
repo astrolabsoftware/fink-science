@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        container: ["julienpeloton/fink-ci-rubin:latest"]
+        container: ["gitlab-registry.in2p3.fr/astrolabsoftware/fink/fink-deps-sentinel-rubin:latest"]
 
     container:
       image: ${{ matrix.container }}
@@ -41,7 +41,14 @@ jobs:
         echo "JAVA_HOME: $JAVA_HOME"
         echo `python -V`
 
-    - name: Run test suites for ZTF
+    - name: Download test data
+      run: |
+        git clone --depth 1 https://github.com/astrolabsoftware/fink-alert-schemas.git
+
+        # for the test suite
+        cp -r fink-alert-schemas/datasim fink_science/
+
+    - name: Run test suites for Rubin
       run: |
         rm -f /tmp/forest_*.onnx
         ./run_tests.sh -s rubin
