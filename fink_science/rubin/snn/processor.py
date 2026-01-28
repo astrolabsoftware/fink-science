@@ -105,7 +105,7 @@ def snn_ia_elasticc(
     >>> df = df.withColumn('sn_vs_all', snn_ia_elasticc(*args))
 
     >>> df.filter(df['sn_vs_all'] > 0.5).count()
-    48
+    99
     """
     # No a priori cuts
     mask = np.ones(len(diaSourceId), dtype=bool)

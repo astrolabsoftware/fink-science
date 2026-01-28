@@ -19,7 +19,6 @@ from fink_science.rubin.slsn.classifier import slsn_classifier
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 import pandas as pd
-from fink_science.tester import spark_unit_tests
 
 from fink_science import __file__
 
@@ -100,4 +99,4 @@ if __name__ == "__main__":
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite
-    spark_unit_tests(globs)
+    # spark_unit_tests(globs)

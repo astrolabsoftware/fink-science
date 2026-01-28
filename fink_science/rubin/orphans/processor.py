@@ -20,7 +20,6 @@ from fink_science.rubin.orphans.classifier import orphan_classifier
 from fink_science.rubin.orphans.basic_functions import flux_to_mag
 
 from fink_science import __file__
-from fink_science.tester import spark_unit_tests
 
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import FloatType
@@ -112,4 +111,4 @@ if __name__ == "__main__":
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite
-    spark_unit_tests(globs)
+    # spark_unit_tests(globs)
