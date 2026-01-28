@@ -5,7 +5,7 @@
 
 # Fink Science
 
-This repository contains science modules used to generate added values to alert collected by the [Fink broker](https://github.com/astrolabsoftware/fink-broker). More information on the [documentation](https://fink-broker.readthedocs.io/en/latest/broker/science_modules/).
+This repository contains science modules used to generate added values to alert collected by the [Fink broker](https://github.com/astrolabsoftware/fink-broker). More information on the [documentation](https://doc.ztf.fink-broker.org/en/latest/broker/science_modules/).
 
 ## Installation
 
