@@ -106,6 +106,8 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = "file://{}/data/alerts/hostless_detection/rubin_sample_data_10_0.parquet".format(path)
+    rubin_alert_sample = "file://{}/data/alerts/hostless_detection/rubin_sample_data_10_0.parquet".format(
+        path
+    )
     globs["rubin_alert_sample"] = rubin_alert_sample
     spark_unit_tests(globs)
