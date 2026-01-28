@@ -26,8 +26,16 @@ from fink_science.rubin.hostless_detection.run_pipeline import (
 from fink_science.ztf.hostless_detection.pipeline_utils import load_json
 from fink_science.tester import spark_unit_tests
 
-CONFIGS_BASE = load_json("fink_science/ztf/hostless_detection/config_base.json")
-CONFIGS = load_json("fink_science/ztf/hostless_detection/config.json")
+from fink_science import __file__
+
+
+# Share configuration with ZTF
+CONFIGS_BASE = load_json(
+    "{}/ztf/hostless_detection/config_base.json".format(os.path.dirname(__file__))
+)
+CONFIGS = load_json(
+    "{}/ztf/hostless_detection/config.json".format(os.path.dirname(__file__))
+)
 CONFIGS.update(CONFIGS_BASE)
 
 
@@ -98,8 +106,6 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = (
-        "./fink_science/data/alerts/hostless_detection/rubin_sample_data_10_0.parquet"
-    )
+    rubin_alert_sample = "file://{}/data/alerts/hostless_detection/rubin_sample_data_10_0.parquet".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
     spark_unit_tests(globs)
