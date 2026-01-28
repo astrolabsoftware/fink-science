@@ -120,7 +120,7 @@ def extract_features_ad_rubin_raw(
     >>> for colname in what:
     ...    df = concat_col(df, colname, prefix=prefix, current='diaSource', history='prvDiaSources')
 
-    >>> cols = [F.col(i) for i in ['cmidpointMjdTai', 'cpsfFlux', 'cpsfFluxErr', 'cband', 'diaObject.diaObjectId']]
+    >>> cols = [F.col(i) for i in what_prefix + ['diaObject.diaObjectId']]
     >>> df = df.withColumn('lc_features', extract_features_ad_rubin(*cols))
 
     >>> for row in df.take(10):
