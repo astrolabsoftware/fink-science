@@ -411,9 +411,11 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         # Here we take the first match
         # What if there are many? AT & SN?
         to_return = objectid.apply(
-            lambda x: ""
-            if x not in sub_pdf["objectId"].to_numpy()
-            else sub_pdf["TNS"][sub_pdf["objectId"] == x].to_numpy()[0]
+            lambda x: (
+                ""
+                if x not in sub_pdf["objectId"].to_numpy()
+                else sub_pdf["TNS"][sub_pdf["objectId"] == x].to_numpy()[0]
+            )
         )
 
         return to_return

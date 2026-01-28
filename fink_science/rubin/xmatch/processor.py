@@ -191,10 +191,12 @@ def cdsxmatch(
                 col_list = [i.strip() for i in col_list]
                 pdf_out = pdf_out[col_list]
                 pdf_out["concat_cols"] = pdf_out.apply(
-                    lambda row: None
-                    if all(row[col] is None for col in col_list)
-                    else ",".join(
-                        str(row[col]) for col in col_list if row[col] is not None
+                    lambda row: (
+                        None
+                        if all(row[col] is None for col in col_list)
+                        else ",".join(
+                            str(row[col]) for col in col_list if row[col] is not None
+                        )
                     ),
                     axis=1,
                 )
@@ -216,6 +218,7 @@ def cdsxmatch(
 def xmatch_cds(
     df,
     catalogname="simbad",
+    prefix_col_out=None,
     distmaxarcsec=1.0,
     cols_in=None,
     cols_out=None,
@@ -235,6 +238,12 @@ def xmatch_cds(
     catalogname: str
         Name of the catalog in Vizier, or directly simbad (default).
         Default is simbad.
+    prefix_col_out: str
+        Output DataFrame columns will be named
+        <prefix_col_out>_<col>. If None,
+        `prefix_col_out`=`catalogname`, but set it if there are
+        illegal characters in the catalogname.
+
     distmaxarcsec: float
         Cross-match radius in arcsecond. Default is 1.0 arcsecond.
     cols_in: list of str
@@ -267,9 +276,10 @@ def xmatch_cds(
     ...     df,
     ...     distmaxarcsec=1,
     ...     catalogname='vizier:I/355/gaiadr3',
+    ...     prefix_col_out="gaiadr3",
     ...     cols_out=['DR3Name', 'Plx', 'e_Plx'],
     ...     types=['string', 'float', 'float'])
-    >>> 'vizier:I/355/gaiadr3_Plx' in df_gaia.columns
+    >>> 'gaiadr3_Plx' in df_gaia.columns
     True
 
     # VSX
@@ -299,6 +309,9 @@ def xmatch_cds(
     if types is None:
         types = ["string"]
 
+    if prefix_col_out is None:
+        prefix_col_out = catalogname
+
     df_out = df.withColumn(
         "xmatch",
         cdsxmatch(
@@ -313,7 +326,7 @@ def xmatch_cds(
 
     for index, col_, type_ in zip(range(len(cols_out)), cols_out, types):
         df_out = df_out.withColumn(
-            "{}_{}".format(catalogname, col_),
+            "{}_{}".format(prefix_col_out, col_),
             F.split("xmatch", ",").getItem(index).astype(type_),
         )
 
@@ -437,9 +450,11 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         # Here we take the first match
         # What if there are many? AT & SN?
         to_return = diaSourceId.apply(
-            lambda x: None
-            if x not in sub_pdf["diaSourceId"].to_numpy()
-            else sub_pdf["TNS"][sub_pdf["diaSourceId"] == x].to_numpy()[0]
+            lambda x: (
+                None
+                if x not in sub_pdf["diaSourceId"].to_numpy()
+                else sub_pdf["TNS"][sub_pdf["diaSourceId"] == x].to_numpy()[0]
+            )
         )
 
         return to_return
