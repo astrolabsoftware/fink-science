@@ -32,9 +32,9 @@ bands = np.random.choice(["g", "r"], N)
 features = extract_features_ad_rubin_raw(mjds, flux, fluxerr, bands, "TestObject1")
 
 # Basic assertions
-assert len(features) == 2, "Should have features for 2 bands (g=1, r=2)"
-assert "g" in features, "Band g (mapped to 1) missing"
-assert "r" in features, "Band r (mapped to 2) missing"
+assert len(features) == 2, "Should have features for 2 bands (g, r)"
+assert "g" in features, "Band g missing"
+assert "r" in features, "Band r missing"
 assert len(features["g"]) == len(FEATURES_COLS), (
     "Incorrect number of features extracted"
 )
