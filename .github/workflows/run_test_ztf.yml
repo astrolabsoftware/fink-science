@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        container: ["julienpeloton/fink-ci-ztf:latest"]
+        container: ["gitlab-registry.in2p3.fr/astrolabsoftware/fink/fink-deps-sentinel-ztf:latest"]
 
     container:
       image: ${{ matrix.container }}
