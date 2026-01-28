@@ -369,7 +369,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     True
 
     >>> df_tns.filter(df_tns["tns_type"].isNull()).count()
-    50
+    100
 
     """
     if tns_raw_output == "":
@@ -670,12 +670,16 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     >>> df.withColumn(
     ...     'mangrove',
     ...     crossmatch_mangrove(df['id'], df['ra'], df['dec'], lit(60.0))
-    ... ).toPandas() # doctest: +NORMALIZE_WHITESPACE
-      id          ra        dec                                           mangrove
-    0  1  198.955536  42.029289  {'HyperLEDA_name': 'NGC5055', '2MASS_name': '1...
-    1  2  101.352054  24.542187  {'HyperLEDA_name': None, '2MASS_name': None, '...
-    2  3    0.312600  47.685900  {'HyperLEDA_name': None, '2MASS_name': None, '...
-    3  4    0.318208  29.592778  {'HyperLEDA_name': None, '2MASS_name': None, '...
+    ... ).select("mangrove.HyperLEDA_name").show()
+    +--------------+
+    |HyperLEDA_name|
+    +--------------+
+    |       NGC5055|
+    |          null|
+    |          null|
+    |          null|
+    +--------------+
+    <BLANKLINE>
     """
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
@@ -715,7 +719,8 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
+    # from fink-alerts-schemas (see CI configuration)
+    rubin_alert_sample = "file://{}/datasim/rubin_test_data_10_0.parquet".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite

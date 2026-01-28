@@ -125,8 +125,8 @@ def get_probabilities(df_features, valid):
 
     # load classifier
     curdir = os.path.dirname(os.path.abspath(__file__))
-    model_path = curdir + "/../data/models/"
-    clf = joblib.load(model_path + "ml_model_orphans.pkl")
+    model_path = curdir + "/../../data/models/"
+    clf = joblib.load(model_path + "model_orphans.pkl")
 
     if len(df_features["duration"]) > 0:
         # clean non-valid data
