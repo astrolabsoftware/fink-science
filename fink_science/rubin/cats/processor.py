@@ -1,4 +1,4 @@
-# Copyright 2020-2025 AstroLab Software
+# Copyright 2020-2026 AstroLab Software
 # Author: Andre Santos, Bernardo Fraga, Clecio de Bom
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,10 +82,11 @@ def predict_nn(
     >>> what_prefix = [prefix + i for i in what]
 
     # Append temp columns with historical + current measurements
+    # FIXME: switch to ForcedSources when it will be available
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaForcedSources')
+    ...         current='diaSource', history='prvDiaSources')
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
@@ -153,7 +154,8 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
+    # from fink-alerts-schemas (see CI configuration)
+    rubin_alert_sample = "file://{}/datasim/rubin_test_data_10_0.parquet".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite

@@ -67,7 +67,7 @@ def slsn_rubin(diaObjectId, cmidpointMjdTai, cpsfFlux, cpsfFluxErr, cband, ra, d
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaForcedSources')
+    ...         current='diaSource', history='prvDiaSources')
 
     # Perform the fit + classification (default model)
     >>> args = ["diaObject.diaObjectId"]
@@ -95,7 +95,8 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
+    # from fink-alerts-schemas (see CI configuration)
+    rubin_alert_sample = "file://{}/datasim/rubin_test_data_10_0.parquet".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite
