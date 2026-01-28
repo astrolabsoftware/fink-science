@@ -95,6 +95,10 @@ def predict_nn(
     >>> df.filter(df['argmax'] == 0).count()
     8
     """
+    import os
+
+    os.environ["TF_USE_LEGACY_KERAS"] = "1"
+
     import tensorflow as tf
     from tensorflow import keras
 
