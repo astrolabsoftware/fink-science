@@ -132,7 +132,7 @@ def extract_features_rainbow(
 
     # if 2 filters exist, all should rising
     # if 3 or more filters exist, minum 3 should be rising
-    nrising_filters = max(2,min(3, unique_bands.shape[0]))
+    nrising_filters = max(2, min(3, unique_bands.shape[0]))
 
     features = fit_rainbow(
         midpointMjdTai,
