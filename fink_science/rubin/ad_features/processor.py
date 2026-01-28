@@ -21,7 +21,7 @@ import numpy as np
 import light_curve as lc
 
 import pyspark.sql.functions as F
-from pyspark.sql.types import DoubleType, IntegerType, MapType, StructType, StructField
+from pyspark.sql.types import DoubleType, StringType, MapType, StructType, StructField
 
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
@@ -29,9 +29,7 @@ from fink_science import __file__
 
 logger = logging.getLogger(__name__)
 
-# Mapping LSST filter bands to integers for consistency with ZTF structure
-# ZTF used 1:g, 2:r (3:i ??).
-LSST_FILTER_MAP = {"u": 0, "g": 1, "r": 2, "i": 3, "z": 4, "y": 5}
+LSST_FILTER_LIST = ["u", "g", "r", "i", "z", "y"]
 
 
 def create_extractor():
@@ -103,7 +101,7 @@ def extract_features_ad_rubin_raw(
     -------
     out: dict
         Returns dict of dict.
-        Outer keys: filters (int mapped from chars),
+        Outer keys: filters (band name as single char),
         Inner keys: names of features.
 
     Examples
@@ -126,8 +124,7 @@ def extract_features_ad_rubin_raw(
     >>> for row in df.take(10):
     ...    assert len(row['lc_features']) == len(np.unique(row['cband'])), len(np.unique(row['cband']))
     ...    for band_name in np.unique(row['cband']):
-    ...        band_id = LSST_FILTER_MAP[band_name]
-    ...        assert len(row['lc_features'][band_id]) == 26, len(row['lc_features'][band_id])
+    ...        assert len(row['lc_features'][band_name]) == 26, len(row['lc_features'][band_name])
     """
     midpointMjdTai = np.asarray(midpointMjdTai, dtype=np.float64)
     psfFlux = np.asarray(psfFlux, dtype=np.float64)
@@ -168,10 +165,8 @@ def extract_features_ad_rubin_raw(
 
     for filter_name in unique_bands:
         # Map string band to integer ID
-        if filter_name not in LSST_FILTER_MAP:
+        if filter_name not in LSST_FILTER_LIST:
             continue
-
-        filter_id = LSST_FILTER_MAP[filter_name]
 
         # Extract subset for this band
         sub = df[df["band"] == filter_name]
@@ -197,9 +192,7 @@ def extract_features_ad_rubin_raw(
             continue
 
         # Pack into dictionary
-        full_result[int(filter_id)] = dict(
-            zip(FEATURES_COLS, [float(v) for v in result])
-        )
+        full_result[filter_name] = dict(zip(FEATURES_COLS, [float(v) for v in result]))
 
     return full_result
 
@@ -208,7 +201,7 @@ def extract_features_ad_rubin_raw(
 extract_features_ad_rubin = F.udf(
     f=extract_features_ad_rubin_raw,
     returnType=MapType(
-        IntegerType(),  # passband_id
+        StringType(),  # passband
         StructType([  # features name -> value
             StructField(name, DoubleType(), True) for name in FEATURES_COLS
         ]),
