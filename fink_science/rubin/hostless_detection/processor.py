@@ -76,12 +76,12 @@ def run_potential_hostless(
     ...         df["cutoutScience"],
     ...         df["cutoutTemplate"],
     ...         df["ssSource.ssObjectId"]))
-    >>> df.filter(df.elephant_kstest.kstest_science >= 0).count()
+    >>> df.filter(df.elephant_kstest.kstest_science.isNotNull()).count()
     0
-    >>> df.filter(df.elephant_kstest.kstest_science <= 0).count()
+    >>> df.filter(df.elephant_kstest.kstest_science.isNull()).count()
     25
     """
-    default_result = {"kstest_science": -99, "kstest_template": -99}
+    default_result = {"kstest_science": None, "kstest_template": None}
     kstest_results = []
     hostless_science_class = HostLessExtragalacticRubin(CONFIGS_BASE)
     for index in range(cutoutScience.shape[0]):
