@@ -634,7 +634,7 @@ def extract_features(data):
 
         all_valid_bands = all(
             kern.min_points_perband
-            <= np.array([sum(lc["cfid"] == band) for band in np.unique(lc["cfid"])])
+            <= np.array([sum(lc["cfid"] == band) for band in list(kern.band_wave_aa)])
         )
         enough_total_points = len(lc["cjd"]) > kern.min_points_total
         duration = np.ptp(lc["cjd"])
