@@ -26,7 +26,7 @@ import astropy.units as u
 from fink_science.tester import regular_unit_tests
 
 MANGROVE_COLS = ["HyperLEDA_name", "2MASS_name", "lum_dist", "ang_dist"]
-MAGROVE_TYPES = ["string", "string", "float", "float"]
+MANGROVE_TYPES = ["string", "string", "float", "float"]
 
 
 @profile
