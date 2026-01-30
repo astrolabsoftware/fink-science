@@ -85,7 +85,7 @@ def run_potential_hostless(
     kstest_results = []
     hostless_science_class = HostLessExtragalacticRubin(CONFIGS_BASE)
     for index in range(cutoutScience.shape[0]):
-        if (ssObjectId[index] is None) or pd.isnull(ssObjectId[index]):
+        if (ssObjectId[index] is None) or pd.isna(ssObjectId[index]):
             science_stamp = cutoutScience[index]
             template_stamp = cutoutTemplate[index]
             kstest_science, kstest_template = (
