@@ -34,7 +34,8 @@ from fink_science.tester import spark_unit_tests
 def extract_intermediate_cols(df):
     """Add intermediate columns"""
     df = (
-        df.withColumn("m_now", col("candidate.magpsf"))
+        df
+        .withColumn("m_now", col("candidate.magpsf"))
         .withColumn("t_now", col("candidate.jd"))
         .withColumn("m_app", col("candidate.magap"))
         .withColumn("fid_now", col("candidate.fid"))

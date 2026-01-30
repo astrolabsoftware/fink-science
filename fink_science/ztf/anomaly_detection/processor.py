@@ -49,6 +49,13 @@ MODEL_COLUMNS = [
     "median_buffer_range_percentage_10",
     "skew",
     "stetson_K",
+    "percent_amplitude",
+    "linear_fit_reduced_chi2",
+    "inter_percentile_range_10",
+    "linear_trend",
+    "standard_deviation",
+    "weighted_mean",
+    "mean",
 ]
 
 ANOMALY_MODELS = ["_beta", "_anais", "_emille", "_julien", "_maria", "_emille_30days"]  # noqa
@@ -99,7 +106,8 @@ class TwoBandModel:
         masked_scores_g = ma.array(scores_g, mask=mask_g.to_numpy())
         masked_scores_r = ma.array(scores_r, mask=mask_r.to_numpy())
         final_scores = (
-            ma.column_stack([masked_scores_g, masked_scores_r])
+            ma
+            .column_stack([masked_scores_g, masked_scores_r])
             .min(axis=1)
             .filled(np.nan)
         )
@@ -149,7 +157,7 @@ def anomaly_score(lc_features, model=None):
     ...     df = df.withColumn(f'anomaly_score{model}', anomaly_score("lc_features", F.lit(model)))
 
     >>> df.filter(df["anomaly_score"] < -0.013).count()
-    320
+    229
 
     >>> df.filter(isnan(col("anomaly_score"))).count() < 200
     True
@@ -169,7 +177,7 @@ def anomaly_score(lc_features, model=None):
     >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
 
     >>> df.filter(df["anomaly_score"] < 0).count()
-    121
+    118
     """
 
     def get_key(x: dict, band: int):
@@ -183,28 +191,16 @@ def anomaly_score(lc_features, model=None):
     path = os.path.dirname(os.path.abspath(__file__))
     model_path = f"{path}/data/models/anomaly_detection"
 
-    r_means = pd.read_csv(
-        f"{model_path}/r_means.csv", header=None, index_col=0, squeeze=True
-    )
-    g_means = pd.read_csv(
-        f"{model_path}/g_means.csv", header=None, index_col=0, squeeze=True
-    )
     data_r = lc_features.apply(lambda x: get_key(x, 1))[MODEL_COLUMNS]
     data_g = lc_features.apply(lambda x: get_key(x, 2))[MODEL_COLUMNS]
 
-    mask_r = data_r.isna().all(1)
-    mask_g = data_g.isna().all(1)
+    mask_r = data_r.isna().any(1)
+    mask_g = data_g.isna().any(1)
 
     if model is not None:
         model = model.to_numpy()[0]
     else:
         model = ""
-
-    for col in data_r.columns[data_r.isna().any()]:
-        data_r[col].fillna(r_means[col], inplace=True)  # noqa: PD002
-
-    for col in data_g.columns[data_g.isna().any()]:
-        data_g[col].fillna(g_means[col], inplace=True)  # noqa: PD002
 
     g_model_path_AAD = f"{model_path}/forest_g_AAD{model}.onnx"
     r_model_path_AAD = f"{model_path}/forest_r_AAD{model}.onnx"
