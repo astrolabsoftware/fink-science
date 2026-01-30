@@ -133,15 +133,20 @@ def predict_nn(
     lc = np.concatenate(
         [mjd[..., None], flux[..., None], error[..., None], band[..., None]], axis=-1
     )
+    if len(lc) == 1:
+        return pd.Series([0.0, 0.0, 0.0, 0.0, 0.0])
 
     if model is None:
         # Load pre-trained model
         curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + "/data/models/cats_models/cats_small_nometa_serial.keras"
+        model_path = curdir + "/data/models/cats_models/cats_small_nometa_serial_219_savedmodel"
     else:
         model_path = model.to_numpy()[0]
-
-    NN = tf.keras.models.load_model(model_path)
+    dummy_layer = tf.keras.layers.TFSMLayer(model_path, call_endpoint='serving_default')
+    inp = tf.keras.layers.Input(shape=(395,4), dtype=tf.float32)
+    out = dummy_layer(inp)
+    
+    NN = tf.keras.Model(inp, out)
 
     preds = NN.predict([lc])
 
