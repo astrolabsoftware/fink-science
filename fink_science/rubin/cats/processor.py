@@ -145,7 +145,7 @@ def predict_nn(
     dummy_layer = tf.keras.layers.TFSMLayer(model_path, call_endpoint='serving_default')
     inp = tf.keras.layers.Input(shape=(395,4), dtype=tf.float32)
     out = dummy_layer(inp)
-    
+
     NN = tf.keras.Model(inp, out)
 
     preds = NN.predict([lc])
