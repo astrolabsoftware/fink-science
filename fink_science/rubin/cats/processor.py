@@ -17,6 +17,7 @@ from line_profiler import profile
 import os
 import numpy as np
 import pandas as pd
+import logging
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import ArrayType, FloatType
@@ -28,7 +29,10 @@ from fink_science.tester import spark_unit_tests
 import tensorflow as tf
 from tensorflow import keras
 
+logger = logging.getLogger(__name__)
+
 # Pretty slow -- do it once
+logger.info("Loading CATS model")
 curdir = os.path.dirname(os.path.abspath(__file__))
 model_path = curdir + "/data/models/cats_models/cats_small_nometa_serial_219_savedmodel"
 dummy_layer = tf.keras.layers.TFSMLayer(model_path, call_endpoint="serving_default")
@@ -98,7 +102,7 @@ def predict_nn(
     >>> df = df.withColumn('preds', predict_nn(*args))
 
     # Remove 0 predictions
-    >>> df = df.filter(F.expr('AGGREGATE(preds, 0.0, (acc, x) -> acc + x)') > 0.0)
+    >>> df = df.filter(F.array_max("preds") > 0.0)
 
     # Extract the max position
     >>> df = df.withColumn('argmax', F.expr('array_position(preds, array_max(preds)) - 1'))
