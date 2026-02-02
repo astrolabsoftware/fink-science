@@ -77,15 +77,15 @@ def run_potential_hostless(
     ...         df["cutoutTemplate"],
     ...         df["ssSource.ssObjectId"]))
     >>> df.filter(df.elephant_kstest.kstest_science.isNotNull()).count()
-    0
+    22
     >>> df.filter(df.elephant_kstest.kstest_science.isNull()).count()
-    25
+    3
     """
     default_result = {"kstest_science": None, "kstest_template": None}
     kstest_results = []
     hostless_science_class = HostLessExtragalacticRubin(CONFIGS_BASE)
     for index in range(cutoutScience.shape[0]):
-        if ssObjectId[index] is None:
+        if (ssObjectId[index] is None) or pd.isna(ssObjectId[index]):
             science_stamp = cutoutScience[index]
             template_stamp = cutoutTemplate[index]
             kstest_science, kstest_template = (
