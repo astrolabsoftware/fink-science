@@ -197,15 +197,17 @@ def extract_features_ad_rubin_raw(
     return full_result
 
 
+RETURN_TYPE = MapType(
+    StringType(),  # passband
+    StructType([  # features name -> value
+        StructField(name, DoubleType(), True) for name in FEATURES_COLS
+    ]),
+)
+
 # Register the UDF
 extract_features_ad_rubin = F.udf(
     f=extract_features_ad_rubin_raw,
-    returnType=MapType(
-        StringType(),  # passband
-        StructType([  # features name -> value
-            StructField(name, DoubleType(), True) for name in FEATURES_COLS
-        ]),
-    ),
+    returnType=RETURN_TYPE,
 )
 
 if __name__ == "__main__":
