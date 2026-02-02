@@ -14,6 +14,14 @@
 # limitations under the License.
 import numpy as np
 
+CATS_CLASS_DICT = {
+    0: "SN-like",
+    1: "Fast",
+    2: "Long",
+    3: "Periodic",
+    4: "non-Periodic (AGN)",
+}
+
 
 def extract_max_prob(arr: list) -> list:
     """Extract main class and associated probability from a vector of probabilities"""
