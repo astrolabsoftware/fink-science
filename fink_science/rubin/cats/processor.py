@@ -111,8 +111,14 @@ def predict_nn(
 
     # check size of output
     """
+    preds = pd.Series([
+        [0.0] * len(CATS_CLASS_DICT) for i in range(len(midpointMjdTai))
+    ])
     # at least 2 points.
     mask = midpointMjdTai.apply(lambda x: len(x) > 1)
+
+    if mask.sum() == 0:
+        return preds
 
     filter_dict = {"u": 1, "g": 2, "r": 3, "i": 4, "z": 5, "y": 6}
 
@@ -156,14 +162,11 @@ def predict_nn(
 
     NN = tf.keras.Model(inp, out)
 
-    preds = NN.predict([lc])
+    valid_preds = NN.predict([lc], verbose=0)
 
-    all_preds = pd.Series([
-        [0.0] * len(CATS_CLASS_DICT) for i in range(len(midpointMjdTai))
-    ])
-    all_preds.loc[mask] = [list(i) for i in preds["dense_24"]]
+    preds.loc[mask] = [list(i) for i in valid_preds["dense_24"]]
 
-    return all_preds
+    return preds
 
 
 if __name__ == "__main__":
