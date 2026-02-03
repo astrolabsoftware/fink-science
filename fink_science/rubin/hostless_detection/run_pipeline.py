@@ -50,7 +50,7 @@ class HostLessExtragalacticRubin(HostLessExtragalactic):
         template_stamp = read_cutout_stamp(template_stamp)
 
         if science_stamp.shape != template_stamp.shape:
-            return -99, -99
+            return None, None
 
         science_stamp_clipped, template_stamp_clipped = self._run_sigma_clipping(
             science_stamp, template_stamp
@@ -69,4 +69,4 @@ class HostLessExtragalacticRubin(HostLessExtragalactic):
             return power_spectrum_results[
                 "kstest_SCIENCE_15_statistic"
             ], power_spectrum_results["kstest_TEMPLATE_15_statistic"]
-        return -99, -99
+        return None, None

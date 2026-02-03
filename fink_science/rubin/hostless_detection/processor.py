@@ -77,9 +77,9 @@ def run_potential_hostless(
     ...         df["cutoutTemplate"],
     ...         df["ssSource.ssObjectId"]))
     >>> df.filter(df.elephant_kstest.kstest_science.isNotNull()).count()
-    22
+    1
     >>> df.filter(df.elephant_kstest.kstest_science.isNull()).count()
-    3
+    24
     """
     default_result = {"kstest_science": None, "kstest_template": None}
     kstest_results = []
