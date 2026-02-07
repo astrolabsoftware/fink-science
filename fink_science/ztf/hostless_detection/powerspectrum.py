@@ -14,17 +14,19 @@
 # limitations under the License.
 """Implementation of the paper: ELEPHANT: ExtragaLactic alErt Pipeline for Hostless AstroNomical Transients https://arxiv.org/abs/2404.18165"""
 
-from line_profiler import profile
-from typing import Dict, Tuple
-import numpy as np
+from typing import Tuple, Dict
+
 import astropy.table as at
+from line_profiler import profile
+import numpy as np
 from scipy.stats import binned_statistic, kstest
 
-np.random.seed(1337)
 
-
-def searchsorted_2d(a, v, side="right", sorter=None):
-    """Vectorized numpye searchsorted method from here:https://stackoverflow.com/a/52825077
+def searchsorted_rowwise(
+    a: np.ndarray, v: np.ndarray, side: str = "right"
+) -> np.ndarray:
+    """
+    Vectorized numpy search sorted
 
     Parameters
     ----------
@@ -35,40 +37,23 @@ def searchsorted_2d(a, v, side="right", sorter=None):
     side
         if left, index of the first suitable location would be selected
         if right index of the last suitable location would be selected
-    sorter
-        sorted method
 
     Returns
     -------
     results
         pairwise wasserstein distance
     """
-    a = np.asarray(a)
-    v = np.asarray(v)
-
-    # Augment a with row id
-    ai = np.empty(a.shape, dtype=[("row", int), ("value", a.dtype)])
-    ai["row"] = np.arange(a.shape[0]).reshape(-1, 1)
-    ai["value"] = a
-
-    # Augment v with row id
-    vi = np.empty(v.shape, dtype=[("row", int), ("value", v.dtype)])
-    vi["row"] = np.arange(v.shape[0]).reshape(-1, 1)
-    vi["value"] = v
-    # Perform searchsorted on augmented array.
-    # The row information is embedded in the values, so only the equivalent rows
-    # between a and v are considered.
-    result = np.searchsorted(ai.flatten(), vi.flatten(), side=side, sorter=sorter)
-    # Restore the original shape, decode the searchsorted indices so
-    # they apply to the original data.
-    result = result.reshape(vi.shape) - vi["row"] * a.shape[1]
-    return result
+    if side == "right":
+        return np.sum(v[..., None] >= a[:, None, :], axis=-1)
+    else:
+        return np.sum(v[..., None] > a[:, None, :], axis=-1)
 
 
 def pairwise_wasserstein_distance(
     u_values: np.ndarray, v_values: np.ndarray
 ) -> np.ndarray:
-    """Computes wasserstein distance pairwise.
+    """
+    Computes wasserstein distance pairwise.
 
     Notes
     -----
@@ -86,42 +71,49 @@ def pairwise_wasserstein_distance(
     results
         pairwise wasserstein distance
     """
+    u_values = np.sort(u_values, axis=1)
+    v_values = np.sort(v_values, axis=1)
+
     all_values = np.concatenate((u_values, v_values), axis=1)
-    all_values.sort(kind="mergesort")
-    deltas = np.diff(all_values)
-    u_cdf_indices = searchsorted_2d(np.sort(u_values), all_values[:, :-1])
-    v_cdf_indices = searchsorted_2d(np.sort(v_values), all_values[:, :-1])
-    v_cdf = v_cdf_indices / v_values.shape[1]
-    u_cdf = u_cdf_indices / u_values.shape[1]
-    return np.sum(np.multiply(np.abs(u_cdf - v_cdf), deltas), axis=1)
+    all_values.sort(axis=1)
+
+    deltas = np.diff(all_values, axis=1)
+
+    u_cdf = searchsorted_rowwise(u_values, all_values[:, :-1]) / u_values.shape[1]
+    v_cdf = searchsorted_rowwise(v_values, all_values[:, :-1]) / v_values.shape[1]
+
+    return np.sum(np.abs(u_cdf - v_cdf) * deltas, axis=1)
 
 
-def get_powerspectrum(data: np.ndarray, size: int) -> np.ndarray:
-    """Function to compute power spectrum.
+def prepare_powerspectrum(size: int):
+    """FFT related values for a given cutout size"""
+    # Frequency bins
+    kfreq = np.fft.fftfreq(size) * size
+    kx, ky = np.meshgrid(kfreq, kfreq, indexing="ij")
 
-    Parameters
-    ----------
-    data
-        image data
-    size
-        stamp cutout size
-    """
-    fourier_image = np.fft.fftn(data)  # Compute Fourier transform
-    # Compute Fourier amplitudes
-    fourier_amplitudes = np.abs(fourier_image) ** 2
-    kfreq = np.fft.fftfreq(size) * size  # Frequency bins
-    kfreq2D = np.meshgrid(kfreq, kfreq)
     # Magnitudes of wave vectors
-    knrm = np.sqrt(kfreq2D[0] ** 2 + kfreq2D[1] ** 2)
-    knrm = knrm.flatten()
-    fourier_amplitudes = fourier_amplitudes.flatten()
-    kbins = np.arange(0.5, size // 2 + 1, 1.0)  # Bins for averaging
-    Abins, _, _ = binned_statistic(
-        knrm, fourier_amplitudes, statistic="mean", bins=kbins
-    )  # Binned power spectrum
-    # Scale by area of annulus
-    Abins *= np.pi * (kbins[1:] ** 2 - kbins[:-1] ** 2)
-    return Abins
+    knrm = np.sqrt(kx**2 + ky**2).ravel()
+    kbins = np.arange(0.5, size // 2 + 1, 1.0)
+
+    # Area of annulus
+    bin_areas = np.pi * (kbins[1:] ** 2 - kbins[:-1] ** 2)
+    return knrm, kbins, bin_areas
+
+
+def get_powerspectrum(
+    image: np.ndarray,
+    knrm: np.ndarray,
+    kbins: np.ndarray,
+    bin_areas: np.ndarray,
+) -> np.ndarray:
+    """Function to compute power spectrum."""
+    # Compute Fourier transform
+    fourier_image = np.fft.fftn(image)
+    amplitudes = (np.abs(fourier_image) ** 2).ravel()
+
+    # Binned power spectrum
+    Abins, _, _ = binned_statistic(knrm, amplitudes, statistic="mean", bins=kbins)
+    return Abins * bin_areas
 
 
 @profile
@@ -132,7 +124,8 @@ def detect_host_with_powerspectrum(
     cutout_size: int = 15,
     metric: str = "kstest",
 ) -> Tuple[at.Table, Dict, Dict, Dict]:
-    """Function to detect host with power spectrum analysis.
+    """
+    Function to detect host with power spectrum analysis.
 
     Parameters
     ----------
@@ -152,89 +145,83 @@ def detect_host_with_powerspectrum(
         names=["IMAGE_TYPE", "CUTOUT_SIZE", "STATISTIC", "PVALUE"],
         dtype=["str", "int", "float", "float"],
     )
+
     image_type_dict = {0: "SCIENCE", 1: "TEMPLATE"}
     output_result_dict = {}
 
-    # Check if the chosen metric is valid
-    if np.isin(metric, ["anderson-darling", "kstest"], invert=True):
-        raise Exception(
+    if metric not in {"anderson-darling", "kstest"}:
+        raise ValueError(
             "Input metric has not been integrated into the"
             " pipeline yet. Please choose either 'anderson-darling'"
             " or 'kstest'."
         )
 
-    # Loop through science and template images
-    for i, image in enumerate([sci_image, tpl_image]):
+    real_Abins_dict = {}  # Dictionary to store real Abins
+    shuffled_Abins_dict = {}  # Dictionary to store shuffled Abins
+
+    for idx, image in enumerate([sci_image, tpl_image]):
         if image is None:
             continue
 
-        full_len = len(image)
+        image_type = image_type_dict[idx]
+        full_length = image.shape[0]
 
-        real_Abins_dict = {}  # Dictionary to store real Abins
-        shuffled_Abins_dict = {}  # Dictionary to store shuffled Abins
+        start = (full_length - cutout_size) // 2
+        stop = start + cutout_size
 
-        # Iterate through shuffling process
+        knrm, kbins, bin_areas = prepare_powerspectrum(cutout_size)
+        n_bins = len(bin_areas)
+
+        shuffled_Abins = np.empty((number_of_iterations, n_bins))
+
+        real_cutout = image[start:stop, start:stop]
+        real_Abins = get_powerspectrum(real_cutout, knrm, kbins, bin_areas)
+        real_Abins_dict[cutout_size] = real_Abins
+
+        image_flattened = image.ravel()
         for n in range(number_of_iterations):
-            copy = np.copy(image)
-            copy = copy.reshape(full_len * full_len)
-            np.random.shuffle(copy)
-            copy = copy.reshape((full_len, full_len))
-            start = int((full_len - cutout_size) / 2)
-            stop = int((full_len + cutout_size) / 2)
-            N_bins = len(np.arange(0.5, cutout_size // 2 + 1, 1.0)) - 1
-            if n == 0:
-                shuffled_Abins_dict[cutout_size] = np.zeros((
-                    number_of_iterations,
-                    N_bins,
-                ))
-                image_resized = image[start:stop, start:stop]
-                Abins = get_powerspectrum(image_resized, cutout_size)
-                real_Abins_dict[cutout_size] = Abins
+            shuffled_flattened = image_flattened.copy()
+            np.random.shuffle(shuffled_flattened)
+            shuffled_image = shuffled_flattened.reshape(image.shape)
 
-            copy_resized = copy[start:stop, start:stop]
-            Abins = get_powerspectrum(copy_resized, cutout_size)
-            shuffled_Abins_dict[cutout_size][n] = Abins
+            cutout = shuffled_image[start:stop, start:stop]
+            shuffled_Abins[n] = get_powerspectrum(cutout, knrm, kbins, bin_areas)
 
+        shuffled_Abins_dict[cutout_size] = shuffled_Abins
+
+        real_repeat = np.repeat(real_Abins[None, :], number_of_iterations, axis=0)
         # Calculate distances and perform statistical tests
-        WD_dist_real_to_shuffled = pairwise_wasserstein_distance(
-            shuffled_Abins_dict[cutout_size],
-            np.concatenate(
-                [[real_Abins_dict[cutout_size]]] * number_of_iterations, axis=0
-            ),
-        )
-        indices = [i for i in range(1, number_of_iterations) for k in range(i)]
-        shuffled_Abins_dict_continuous_repeat = shuffled_Abins_dict[cutout_size][
-            indices
-        ]
-        shuffled_Abins_dict_slice_repeat = np.concatenate([
-            shuffled_Abins_dict[cutout_size][0:i] for i in range(number_of_iterations)
-        ])
-        WD_dist_shuffled_to_shuffled = pairwise_wasserstein_distance(
-            shuffled_Abins_dict_continuous_repeat, shuffled_Abins_dict_slice_repeat
+        WD_real_to_shuffled = pairwise_wasserstein_distance(shuffled_Abins, real_repeat)
+
+        i_idx, j_idx = np.triu_indices(number_of_iterations, k=1)
+
+        WD_shuffled_to_shuffled = pairwise_wasserstein_distance(
+            shuffled_Abins[i_idx],
+            shuffled_Abins[j_idx],
         )
 
-        WD_dist_real_to_shuffled = np.array(WD_dist_real_to_shuffled)
-        WD_dist_shuffled_to_shuffled = np.array(WD_dist_shuffled_to_shuffled)
         # Small hack to prevent pipeline failing
         if (
-            np.unique(WD_dist_real_to_shuffled).size < 3
-            or np.unique(WD_dist_shuffled_to_shuffled).size < 3
+            np.unique(WD_real_to_shuffled).size < 3
+            or np.unique(WD_shuffled_to_shuffled).size < 3
         ):
-            new_row = [image_type_dict[i], cutout_size, -1, -1]
+            statistic, pvalue = -1.0, -1.0
         else:
             if metric == "kstest":
-                res = kstest(WD_dist_real_to_shuffled, WD_dist_shuffled_to_shuffled)
-                new_row = [image_type_dict[i], cutout_size, res.statistic, res.pvalue]
+                res = kstest(
+                    WD_real_to_shuffled,
+                    WD_shuffled_to_shuffled,
+                )
+                statistic, pvalue = res.statistic, res.pvalue
 
-        output_table.add_row(new_row)
-        statistic_name = (
-            metric + "_" + image_type_dict[i] + "_" + str(cutout_size) + "_statistic"
-        )
-        pvalue_name = (
-            metric + "_" + image_type_dict[i] + "_" + str(cutout_size) + "_pvalue"
-        )
+        output_table.add_row([image_type, cutout_size, statistic, pvalue])
 
-        output_result_dict[statistic_name] = new_row[2]
-        output_result_dict[pvalue_name] = new_row[3]
+        output_result_dict[f"{metric}_{image_type}_{cutout_size}_statistic"] = statistic
+        output_result_dict[f"{metric}_{image_type}_{cutout_size}_pvalue"] = pvalue
 
-    return (output_table, output_result_dict, real_Abins_dict, shuffled_Abins_dict)
+    return (
+        output_table,
+        output_result_dict,
+        real_Abins_dict,
+        shuffled_Abins_dict,
+    )
