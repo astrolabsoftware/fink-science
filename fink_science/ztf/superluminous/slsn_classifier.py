@@ -580,9 +580,9 @@ def extract_features(data):
 
     # Only the fake alert should pass the cuts
     >>> np.testing.assert_equal(
-    ... np.array(np.sum(full_features.iloc[:30].isnull(), axis=1)),
-    ... np.array([ 0,  0,  0,  0,  0,  0,  0,  29,  0,  0,  0,  0,  0,
-    ... 0,  0,  0,  0,  0,  0,  0,  0,  0, 29, 29, 29,  0, 29, 29, 29, 29]))
+    ... np.array(np.sum(full_features.iloc[-30:].isnull(), axis=1)),
+    ... np.array([ 29, 29, 29,  29, 29, 29,  29, 29, 29,  29, 29, 29,  29,
+    ... 29, 29, 29,  29, 29, 29,  29, 29, 29, 29, 29, 29,  29, 29, 29, 29, 0]))
 
     >>> list(full_features.columns) == ["distnr", "ra", "dec", "ebv", "duration",
     ... "flux_amplitude", "kurtosis", "max_slope", "skew", "peak_mag", "std_flux", "q15",

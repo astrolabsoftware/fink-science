@@ -24,5 +24,5 @@ temperature = "sigmoid"
 bolometric = "bazin"
 min_points_total = 7
 min_points_perband = 3
-min_duration = 20
+min_duration = 30
 not_sl_threshold = -19.75
