@@ -124,7 +124,7 @@ def superluminous_score(
         # Initialise all probas to -1
         probas_total = np.zeros(len(objectId), dtype=float) - 1
         transient_mask = pdf["is_transient"]
-        old_enough_mask = pdf["jd"] - pdf["jdstarthist"] >= 30
+        old_enough_mask = pdf["jd"] - pdf["jdstarthist"] >= kern.min_duration
         mask_valid = transient_mask & old_enough_mask
 
         if sum(mask_valid) == 0:
