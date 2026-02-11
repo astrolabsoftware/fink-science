@@ -17,7 +17,7 @@ from line_profiler import profile
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StringType, MapType
+from pyspark.sql.types import StringType, MapType, StructType, StructField
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -34,6 +34,7 @@ from fink_science.rubin.xmatch.utils import generate_csv
 from fink_science.rubin.xmatch.utils import extract_vsx, extract_gcvs
 from fink_science.rubin.xmatch.utils import extract_3hsp, extract_4lac
 from fink_science.rubin.xmatch.utils import extract_mangrove, MANGROVE_COLS
+from fink_science.rubin.xmatch.utils import extract_tns, TNS_COLS, TNS_SPARK_SCHEMA
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
@@ -338,6 +339,10 @@ def xmatch_cds(
 def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     """Cross-match Fink data from a Spark DataFrame with the latest TNS catalog
 
+    Notes
+    -----
+    From 2026/01, we crossmatch with all entries - not only the confirmed ones.
+
     Parameters
     ----------
     df: Spark DataFrame
@@ -365,8 +370,8 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
     >>> path = curdir + '/data/catalogs'
     >>> df_tns = xmatch_tns(df, tns_raw_output=path)
-    >>> 'tns_type' in df_tns.columns
-    True
+    >>> assert 'tns_type' in df_tns.columns, df_tns.columns
+    >>> assert 'tns_redshift' in df_tns.columns, df_tns.columns
 
     >>> df_tns.filter(df_tns["tns_type"].isNull()).count()
     100
@@ -391,14 +396,14 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     else:
         pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, "tns_raw.parquet"))
 
-    # Filter TNS confirmed data
-    f1 = ~pdf_tns["type"].isna()
-    pdf_tns_filt = pdf_tns[f1]
-
     spark = SparkSession.builder.getOrCreate()
-    pdf_tns_filt_b = spark.sparkContext.broadcast(pdf_tns_filt)
+    pdf_tns_b = spark.sparkContext.broadcast(pdf_tns)
 
-    @pandas_udf(StringType(), PandasUDFType.SCALAR)
+    tns_schema = StructType([
+        StructField(k, v, True) for k, v in TNS_SPARK_SCHEMA.items()
+    ])
+
+    @pandas_udf(tns_schema, PandasUDFType.SCALAR)
     def crossmatch_with_tns(diaSourceId, ra, dec):
         """Spark pandas_udf to crossmatch Rubin alerts with TNS
 
@@ -413,14 +418,19 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
         Returns
         -------
-        to_return: pd.Series of str
-            TNS type for the alert. null if no match.
+        to_return: pd.Series of dict
+            TNS name and type for the alert. null if no match.
         """
-        pdf = pdf_tns_filt_b.value
-        ra2, dec2, type2 = pdf["ra"], pdf["declination"], pdf["type"]
+        pdf_lsst = pd.DataFrame({
+            "diaSourceId": diaSourceId.to_numpy(),
+            "ra": ra.to_numpy(),
+            "dec": dec.to_numpy(),
+        })
+
+        ra2, dec2, payload = extract_tns(pdf_tns_b.value)
 
         # create catalogs
-        catalog_rubin = SkyCoord(
+        catalog_lsst = SkyCoord(
             ra=np.array(ra, dtype=float) * u.degree,
             dec=np.array(dec, dtype=float) * u.degree,
         )
@@ -429,42 +439,32 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
             dec=np.array(dec2, dtype=float) * u.degree,
         )
 
-        # cross-match
-        _, _, _ = catalog_tns.match_to_catalog_sky(catalog_rubin)
-
-        sub_pdf = pd.DataFrame({
-            "diaSourceId": diaSourceId.to_numpy(),
-            "ra": ra.to_numpy(),
-            "dec": dec.to_numpy(),
-        })
-
-        # cross-match
-        idx2, d2d2, _ = catalog_rubin.match_to_catalog_sky(catalog_tns)
-
-        # set separation length
-        sep_constraint2 = d2d2.degree < distmaxarcsec / 3600.0
-
-        sub_pdf["TNS"] = [None] * len(sub_pdf)
-        sub_pdf["TNS"][sep_constraint2] = type2.to_numpy()[idx2[sep_constraint2]]
-
-        # Here we take the first match
-        # What if there are many? AT & SN?
-        to_return = diaSourceId.apply(
-            lambda x: (
-                None
-                if x not in sub_pdf["diaSourceId"].to_numpy()
-                else sub_pdf["TNS"][sub_pdf["diaSourceId"] == x].to_numpy()[0]
-            )
+        pdf_merge, mask, idx2 = cross_match_astropy(
+            pdf_lsst, catalog_lsst, catalog_tns, radius_arcsec=distmaxarcsec
         )
 
-        return to_return
+        default = [None] * len(TNS_SPARK_SCHEMA)
+        pdf_merge["return"] = [default for i in range(len(pdf_merge))]
+        pdf_merge.loc[mask, "return"] = [payload[i] for i in idx2]
+
+        return pd.DataFrame.from_dict(
+            dict(zip(pdf_merge["return"].index, pdf_merge["return"].values))
+        ).T
 
     df = df.withColumn(
-        "tns_type",
+        "tns",
         crossmatch_with_tns(
             df["diaSource.diaSourceId"], df["diaSource.ra"], df["diaSource.dec"]
         ),
     )
+
+    # Explode TNS
+    for col_ in TNS_COLS:
+        df = df.withColumn(
+            "tns_{}".format(col_),
+            df["tns"].getItem(col_),
+        )
+    df = df.drop("tns")
 
     return df
 
