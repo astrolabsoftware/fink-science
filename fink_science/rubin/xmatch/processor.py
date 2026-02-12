@@ -430,7 +430,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
             TNS name and type for the alert. null if no match.
         """
         pdf_lsst = pd.DataFrame({
-            "diaSourceId": diaSourceId.to_numpy(),
+            "diaSourceId": range(len(ra)),
             "ra": ra.to_numpy(),
             "dec": dec.to_numpy(),
         })
@@ -452,12 +452,17 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         )
 
         default = [None] * len(TNS_SPARK_SCHEMA)
-        pdf_merge["return"] = [default for i in range(len(pdf_merge))]
-        pdf_merge.loc[mask, "return"] = [payload[i] for i in idx2]
+        pdf_merge["return"] = pd.Series([default for i in range(len(pdf_merge))])
+        pdf_merge.loc[mask, "return"] = pd.Series([
+            [None if pd.isna(x) else x for x in payload[i].tolist()] for i in idx2
+        ]).values
 
-        return pd.DataFrame.from_dict(
-            dict(zip(pdf_merge["return"].index, pdf_merge["return"].values))
-        ).T
+        out = pd.DataFrame.from_dict(
+            dict(zip(pdf_merge["return"].index, pdf_merge["return"].values)),
+            columns=TNS_COLS,
+            orient="index",
+        )
+        return out
 
     df = df.withColumn(
         "tns",
