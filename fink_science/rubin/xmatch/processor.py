@@ -34,7 +34,12 @@ from fink_science.rubin.xmatch.utils import generate_csv
 from fink_science.rubin.xmatch.utils import extract_vsx, extract_gcvs
 from fink_science.rubin.xmatch.utils import extract_3hsp, extract_4lac
 from fink_science.rubin.xmatch.utils import extract_mangrove, MANGROVE_COLS
-from fink_science.rubin.xmatch.utils import extract_tns, TNS_COLS, TNS_SPARK_SCHEMA
+from fink_science.rubin.xmatch.utils import (
+    extract_tns,
+    TNS_COLS,
+    TNS_TYPES,
+    TNS_SPARK_SCHEMA,
+)
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
@@ -391,8 +396,10 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
             _LOG.warning(
                 "Skipping crossmatch with TNS. Creating columns with null values."
             )
-            for col in TNS_COLS:
-                df = df.withColumn(col, F.lit(None))
+            for col_name, col_type in zip(TNS_COLS, TNS_TYPES):
+                df = df.withColumn(
+                    "tns_{}".format(col_name), F.lit(None).astype(col_type)
+                )
             return df
     else:
         pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, "tns_raw.parquet"))
