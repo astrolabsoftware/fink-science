@@ -455,7 +455,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         pdf_merge["return"] = pd.Series([default for i in range(len(pdf_merge))])
         pdf_merge.loc[mask, "return"] = pd.Series([
             [None if pd.isna(x) else x for x in payload[i].tolist()] for i in idx2
-        ]).values
+        ]).to_numpy()
 
         out = pd.DataFrame.from_dict(
             dict(zip(pdf_merge["return"].index, pdf_merge["return"].values)),
