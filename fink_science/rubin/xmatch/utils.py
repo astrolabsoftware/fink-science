@@ -136,6 +136,8 @@ def extract_tns(pdf):
     out: pd.Series, pd.Series, pd.Series
         (ra, dec, payload) from the catalog
     """
+    if "fullname" not in pdf.columns:
+        pdf["fullname"] = pdf["name_prefix"] + " " + pdf["name"]
     payload = pdf[TNS_COLS].to_numpy()
 
     return pdf["ra"], pdf["declination"], payload
