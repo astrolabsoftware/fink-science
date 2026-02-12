@@ -389,9 +389,10 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
                 "TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master."
             )
             _LOG.warning(
-                "Skipping crossmatch with TNS. Creating a tns_type columns with null values."
+                "Skipping crossmatch with TNS. Creating columns with null values."
             )
-            df = df.withColumn("tns_type", F.lit(None).cast("string"))
+            for col in TNS_COLS:
+                df = df.withColumn(col, F.lit(None))
             return df
     else:
         pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, "tns_raw.parquet"))
