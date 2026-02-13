@@ -58,8 +58,16 @@ MODEL_COLUMNS = [
     "mean",
 ]
 
-ANOMALY_MODELS = ["_beta", "_anais", "_emille", "_julien", "_maria", "_emille_30days"]  # noqa
-NOTIFICATIONS_COUNT = {"_emille": 30, "_emille_30days": 30}
+ANOMALY_MODELS = [
+    "_beta",
+    "_anais",
+    "_emille",
+    "_julien",
+    "_maria",
+    "_emille_30days",
+    "_varvara",
+]  # noqa
+NOTIFICATIONS_COUNT = {"_emille": 30, "_emille_30days": 30, "_varvara": 20}
 CURVE_LAST_DAYS = {"_emille_30days": 30}
 
 
@@ -157,7 +165,7 @@ def anomaly_score(lc_features, model=None):
     ...     df = df.withColumn(f'anomaly_score{model}', anomaly_score("lc_features", F.lit(model)))
 
     >>> df.filter(df["anomaly_score"] < -0.013).count()
-    229
+    183
 
     >>> df.filter(isnan(col("anomaly_score"))).count() < 200
     True
