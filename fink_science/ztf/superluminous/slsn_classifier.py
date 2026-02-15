@@ -378,7 +378,7 @@ def fit_rainbow(lc, rainbow_model):
 
         return list(result[:-1]) + list(result[:-1] / errors) + [result[-1]]
 
-    except RuntimeError:
+    except (TypeError, RuntimeError):
         return [np.nan] * (2 * len(rainbow_model.names) + 1)
 
 
