@@ -105,6 +105,9 @@ def superluminous_score(
 
     # Test with i band
     >>> sdf = spark.read.load(ztf_alert_with_i_band)
+
+    # fake roid
+    >>> sdf = sdf.withColumn("roid", F.lit(0))
     >>> sdf = extract_transient_features(sdf)
     >>> sdf = sdf.withColumn(
     ... "is_transient",
