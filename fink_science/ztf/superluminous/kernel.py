@@ -20,7 +20,7 @@ curdir = os.path.dirname(os.path.abspath(__file__))
 
 classifier_path = curdir + "/data/models/superluminous_classifier.joblib"
 # Declare i-band with dummy value
-band_wave_aa = {1: 4770.0, 2: 6231.0, 3: 0.0}
+band_wave_aa = {1: 4770.0, 2: 6231.0}
 temperature = "sigmoid"
 bolometric = "bazin"
 min_points_total = 7
