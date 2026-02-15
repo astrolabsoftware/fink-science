@@ -124,21 +124,24 @@ def extract_features_rainbow(
     if low_bound is None:
         low_bound = -10
 
-    if len(midpointMjdTai) < min_data_points:
+    # Flux can have NaN
+    mask = ~pd.isna(cpsfFlux)
+
+    if len(midpointMjdTai[mask]) < min_data_points:
         return np.zeros(len(RAINBOW_FEATURES_NAMES), dtype=float)
 
     # get unique bands in this light curve
-    unique_bands = np.unique(band)
+    unique_bands = np.unique(band[mask])
 
     # if 2 filters exist, all should rising
     # if 3 or more filters exist, minum 3 should be rising
     nrising_filters = max(2, min(3, unique_bands.shape[0]))
 
     features = fit_rainbow(
-        midpointMjdTai,
-        band,
-        cpsfFlux,
-        cpsfFluxErr,
+        midpointMjdTai[mask],
+        band[mask],
+        cpsfFlux[mask],
+        cpsfFluxErr[mask],
         band_wave_aa=band_wave_aa,
         with_baseline=with_baseline,
         min_data_points=min_data_points,
