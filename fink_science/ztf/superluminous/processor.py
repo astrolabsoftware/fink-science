@@ -102,6 +102,35 @@ def superluminous_score(
     57
     >>> sum(pdf['is_transient'])
     2
+
+    # Test with i band
+    >>> sdf = spark.read.load(ztf_alert_with_i_band)
+    >>> sdf = extract_transient_features(sdf)
+    >>> sdf = sdf.withColumn(
+    ... "is_transient",
+    ... transient_complete_filter(
+    ... "faint", "positivesubtraction", "real", "pointunderneath",
+    ... "brightstar", "variablesource", "stationary", "roid"))
+
+    # Required alert columns
+    >>> what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+
+    # Use for creating temp name
+    >>> prefix = 'c'
+    >>> what_prefix = [prefix + i for i in what]
+
+    # Append temp columns with historical + current measurements
+    >>> for colname in what:
+    ...     sdf = concat_col(sdf, colname, prefix=prefix)
+
+    >>> args = ['is_transient', 'objectId', 'candidate.jdstarthist']
+    >>> args += [F.col(i) for i in what_prefix]
+
+    # Perform the fit + classification
+    >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
+    >>> pdf = sdf.toPandas()
+    >>> sum(pdf['proba']==-1)
+    57
     """
     pdf = pd.DataFrame({
         "is_transient": is_transient,
@@ -125,7 +154,10 @@ def superluminous_score(
         probas_total = np.zeros(len(objectId), dtype=float) - 1
         transient_mask = pdf["is_transient"]
         old_enough_mask = pdf["jd"] - pdf["jdstarthist"] >= kern.min_duration
-        mask_valid = transient_mask & old_enough_mask
+
+        # FIXME: kernel & model do not handle i-band
+        contains_i_band = pdf["cfid"].apply(lambda bands: 3 in bands)
+        mask_valid = transient_mask & old_enough_mask & ~contains_i_band
 
         if sum(mask_valid) == 0:
             return pd.Series([-1.0] * len(objectId))
@@ -360,6 +392,11 @@ if __name__ == "__main__":
         path
     )
     globs["ztf_alert_sample"] = ztf_alert_sample
+
+    ztf_alert_with_i_band = (
+        "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
+    )
+    globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
     # Run the test suite
     spark_unit_tests(globs)
