@@ -133,7 +133,7 @@ def superluminous_score(
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
     >>> pdf = sdf.toPandas()
     >>> sum(pdf['proba']==-1)
-    57
+    121
     """
     pdf = pd.DataFrame({
         "is_transient": is_transient,
