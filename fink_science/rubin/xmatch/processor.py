@@ -157,6 +157,11 @@ def cdsxmatch(
                 "cols2": cols.to_numpy()[0],
                 "colRA1": "ra_in",
                 "colDec1": "dec_in",
+                "area": "zone",
+                "raMin": ra.min(),
+                "decMin": dec.min(),
+                "raMax": ra.max(),
+                "decMax": dec.max(),
             },
             files={"cat1": table},
         )
@@ -448,7 +453,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
         ra2 = ra2[mask]
         dec2 = dec2[mask]
-        type2 = payload[mask]
+        payload = payload[mask]
 
         # create catalogs
         catalog_lsst = SkyCoord(
