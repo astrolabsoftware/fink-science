@@ -54,6 +54,7 @@ setuptools.setup(
             'data/catalogs/*.parquet',
             'data/catalogs/*.fits',
             'data/catalogs/*.csv',
+            'data/catalogs/vsx/*.parquet',
             'ztf/hostless_detection/config.json',
             'ztf/hostless_detection/config*.json'],
     },
