@@ -453,7 +453,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
         ra2 = ra2[mask]
         dec2 = dec2[mask]
-        payload = payload[mask]
+        payload = payload[mask.to_numpy()]
 
         # create catalogs
         catalog_lsst = SkyCoord(
@@ -762,7 +762,7 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
 
     ra2 = ra2[mask]
     dec2 = dec2[mask]
-    payload = payload[mask]
+    payload = payload[mask.to_numpy()]
 
     # create catalogs
     catalog_rubin = SkyCoord(
