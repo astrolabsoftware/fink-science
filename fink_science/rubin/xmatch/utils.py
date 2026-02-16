@@ -266,11 +266,35 @@ def extract_vsx(filename):
     --------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> catalog = curdir + '/../../data/catalogs/vsx.parquet'
+    >>> catalog = curdir + "/../../data/catalogs/vsx"
     >>> ra, dec, vtype = extract_vsx(catalog)
     """
     pdf_vsx = pd.read_parquet(filename)
-    return pdf_vsx["RAJ2000"], pdf_vsx["DEJ2000"], pdf_vsx["VType"]
+    return pdf_vsx["RAdeg"], pdf_vsx["DEdeg"], pdf_vsx["Type"]
+
+
+def extract_spicy(filename):
+    """Read the SPICY catalog and extract useful columns
+
+    Parameters
+    ----------
+    filename: str
+        Path to the catalog (parquet file)
+
+    Returns
+    -------
+    out: pd.Series, pd.Series, pd.Series
+        ra, dec, class from the catalog
+
+    Examples
+    --------
+    >>> import os
+    >>> curdir = os.path.dirname(os.path.abspath(__file__))
+    >>> catalog = curdir + '/../../data/catalogs/spicy.parquet'
+    >>> ra, dec, vtype = extract_spicy(catalog)
+    """
+    pdf_spicy = pd.read_parquet(filename)
+    return pdf_spicy["RAdeg"], pdf_spicy["DEdeg"], pdf_spicy["class"]
 
 
 @profile
