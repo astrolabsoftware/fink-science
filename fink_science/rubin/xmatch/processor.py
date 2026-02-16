@@ -33,6 +33,7 @@ from fink_science.rubin.xmatch.utils import cross_match_astropy
 from fink_science.rubin.xmatch.utils import generate_csv
 from fink_science.rubin.xmatch.utils import extract_vsx, extract_gcvs
 from fink_science.rubin.xmatch.utils import extract_3hsp, extract_4lac
+from fink_science.rubin.xmatch.utils import extract_spicy
 from fink_science.rubin.xmatch.utils import extract_mangrove, MANGROVE_COLS
 from fink_science.rubin.xmatch.utils import (
     extract_tns,
@@ -492,6 +493,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     - VSX
     - 3HSP
     - 4LAC
+    - SPICY
 
     Parameters
     ----------
@@ -590,6 +592,20 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     |  4| 0.31820833|29.59277778|             null|
     +---+-----------+-----------+-----------------+
     <BLANKLINE>
+
+    >>> df.withColumn(
+    ...     'spicy',
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('spicy'), lit(1.2))
+    ... ).show() # doctest: +NORMALIZE_WHITESPACE
+    +---+-----------+-----------+-----+
+    | id|         ra|        dec|spicy|
+    +---+-----------+-----------+-----+
+    |  1| 26.8566983|-26.9677112| null|
+    |  2|101.3520545| 24.5421872| null|
+    |  3|     0.3126|    47.6859| null|
+    |  4| 0.31820833|29.59277778| null|
+    +---+-----------+-----------+-----+
+    <BLANKLINE>
     """
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
@@ -602,7 +618,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
         catalog = curdir + "/data/catalogs/gcvs.parquet"
         ra2, dec2, type2 = extract_gcvs(catalog)
     elif catalog_name.to_numpy()[0] == "vsx":
-        catalog = curdir + "/data/catalogs/vsx.parquet"
+        catalog = curdir + "/data/catalogs/vsx/"
         ra2, dec2, type2 = extract_vsx(catalog)
     elif catalog_name.to_numpy()[0] == "3hsp":
         catalog = curdir + "/data/catalogs/3hsp.csv"
@@ -611,6 +627,9 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
         catalog_h = curdir + "/data/catalogs/table-4LAC-DR3-h.fits"
         catalog_l = curdir + "/data/catalogs/table-4LAC-DR3-l.fits"
         ra2, dec2, type2 = extract_4lac(catalog_h, catalog_l)
+    elif catalog_name.to_numpy()[0] == "spicy":
+        catalog = curdir + "/data/catalogs/spicy.parquet"
+        ra2, dec2, type2 = extract_spicy(catalog)
 
     # create catalogs
     catalog_rubin = SkyCoord(
