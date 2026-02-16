@@ -438,6 +438,18 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
         ra2, dec2, payload = extract_tns(pdf_tns_b.value)
 
+        # limit the catalog
+        dec_min, dec_max = dec.min(), dec.max()
+        mask = (dec2 >= dec_min) & (dec2 <= dec_max)
+        if mask.sum() == 0:
+            # No error, but no overlap, return None (null values for Spark)
+            out = [None] * len(ra)
+            return pd.Series(out)
+
+        ra2 = ra2[mask]
+        dec2 = dec2[mask]
+        type2 = payload[mask]
+
         # create catalogs
         catalog_lsst = SkyCoord(
             ra=np.array(ra, dtype=float) * u.degree,
@@ -636,8 +648,8 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     mask = (dec2 >= dec_min) & (dec2 <= dec_max)
     if mask.sum() == 0:
         # No error, but no overlap, return None (null values for Spark)
-        names = [None] * len(ra)
-        return pd.Series(names)
+        out = [None] * len(ra)
+        return pd.Series(out)
 
     ra2 = ra2[mask]
     dec2 = dec2[mask]
@@ -740,8 +752,8 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     mask = (dec2 >= dec_min) & (dec2 <= dec_max)
     if mask.sum() == 0:
         # No error, but no overlap, return None (null values for Spark)
-        names = [None] * len(ra)
-        return pd.Series(names)
+        out = [None] * len(ra)
+        return pd.Series(out)
 
     ra2 = ra2[mask]
     dec2 = dec2[mask]
