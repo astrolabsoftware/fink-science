@@ -631,6 +631,18 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
         catalog = curdir + "/data/catalogs/spicy.parquet"
         ra2, dec2, type2 = extract_spicy(catalog)
 
+    # limit the catalog
+    dec_min, dec_max = dec.min(), dec.max()
+    mask = (dec2 >= dec_min) & (dec2 <= dec_max)
+    if mask.sum() == 0:
+        # No error, but no overlap, return None (null values for Spark)
+        names = [None] * len(ra)
+        return pd.Series(names)
+
+    ra2 = ra2[mask]
+    dec2 = dec2[mask]
+    type2 = type2[mask]
+
     # create catalogs
     catalog_rubin = SkyCoord(
         ra=np.array(ra.to_numpy(), dtype=float) * u.degree,
