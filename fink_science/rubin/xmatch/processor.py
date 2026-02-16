@@ -448,8 +448,8 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         mask = (dec2 >= dec_min) & (dec2 <= dec_max)
         if mask.sum() == 0:
             # No error, but no overlap, return None (null values for Spark)
-            out = [None] * len(ra)
-            return pd.Series(out)
+            out = [[None] * len(TNS_SPARK_SCHEMA)] * len(ra)
+            return pd.DataFrame(out)
 
         ra2 = ra2[mask]
         dec2 = dec2[mask]
@@ -757,7 +757,7 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     mask = (dec2 >= dec_min) & (dec2 <= dec_max)
     if mask.sum() == 0:
         # No error, but no overlap, return None (null values for Spark)
-        out = [None] * len(ra)
+        out = [{name: None for name in MANGROVE_COLS}] * len(ra)
         return pd.Series(out)
 
     ra2 = ra2[mask]
