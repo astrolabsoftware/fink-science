@@ -735,6 +735,18 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     catalog = curdir + "/data/catalogs/mangrove_filtered.parquet"
     ra2, dec2, payload = extract_mangrove(catalog)
 
+    # limit the catalog
+    dec_min, dec_max = dec.min(), dec.max()
+    mask = (dec2 >= dec_min) & (dec2 <= dec_max)
+    if mask.sum() == 0:
+        # No error, but no overlap, return None (null values for Spark)
+        names = [None] * len(ra)
+        return pd.Series(names)
+
+    ra2 = ra2[mask]
+    dec2 = dec2[mask]
+    payload = payload[mask]
+
     # create catalogs
     catalog_rubin = SkyCoord(
         ra=np.array(ra.to_numpy(), dtype=float) * u.degree,
