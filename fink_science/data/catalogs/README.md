@@ -16,7 +16,8 @@ data = fits.open("B_vsx_vsx.dat.fits")
 table = data[1].data
 pdf = pd.DataFrame(table)
 pdf = pdf[["RAdeg", "DEdeg",  "Type"]]
-siz = len(pdf)
+pdf["Type"] = pdf["Type"].apply(lambda x: x.strip())
+size = len(pdf)
 !mkdir vsx
 for index, i in enumerate(range(0, size, int(size/10)+1)):
     pdf.loc[i:i+int(size/10)].to_parquet(f"vsx/vsx_{index}.parquet")
