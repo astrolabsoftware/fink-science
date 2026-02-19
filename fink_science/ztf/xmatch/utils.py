@@ -233,11 +233,11 @@ def extract_vsx(filename):
     --------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> catalog = curdir + '/../../data/catalogs/vsx.parquet'
+    >>> catalog = curdir + "/../../data/catalogs/vsx"
     >>> ra, dec, vtype = extract_vsx(catalog)
     """
     pdf_vsx = pd.read_parquet(filename)
-    return pdf_vsx["RAJ2000"], pdf_vsx["DEJ2000"], pdf_vsx["VType"]
+    return pdf_vsx["RAdeg"], pdf_vsx["DEdeg"], pdf_vsx["Type"]
 
 
 @profile
