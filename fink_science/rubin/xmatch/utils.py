@@ -120,7 +120,7 @@ def extract_mangrove(filename):
 
     payload = pdf[MANGROVE_COLS].to_dict(orient="records")
 
-    return pdf["ra"], pdf["dec"], payload
+    return pdf["ra"], pdf["dec"], np.array(payload)
 
 
 def extract_tns(pdf):
