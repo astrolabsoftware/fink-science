@@ -102,9 +102,9 @@ def cdsxmatch(
     Examples
     --------
     Simulate fake data
-    >>> ra = [26.8566983, 26.24497, 1.0]
-    >>> dec = [-26.9677112, -26.7569436, 0.0]
-    >>> id = ["a", "b", "c"]
+    >>> ra = [26.8566983, 26.24497, 1.0, 0.0]
+    >>> dec = [-26.9677112, -26.7569436, 0.0, -90.0]
+    >>> id = ["a", "b", "c", "d"]
 
     Wrap data into a Spark DataFrame
     >>> rdd = spark.sparkContext.parallelize(zip(id, ra, dec))
@@ -116,6 +116,7 @@ def cdsxmatch(
     |  a|26.8566983|-26.9677112|
     |  b|  26.24497|-26.7569436|
     |  c|       1.0|        0.0|
+    |  d|       0.0|      -90.0|
     +---+----------+-----------+
     <BLANKLINE>
 
@@ -132,9 +133,13 @@ def cdsxmatch(
     |  a|26.8566983|-26.9677112|         LP*|
     |  b|  26.24497|-26.7569436|           *|
     |  c|       1.0|        0.0|        null|
+    |  d|       0.0|      -90.0|        null|
     +---+----------+-----------+------------+
     <BLANKLINE>
     """
+    distmaxarcsec_f = distmaxarcsec.to_numpy()[0]
+    pad_deg = 2 * distmaxarcsec_f / 3600
+
     # If nothing
     if len(ra) == 0:
         return pd.Series([])
@@ -150,7 +155,7 @@ def cdsxmatch(
             "http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync",
             data={
                 "request": "xmatch",
-                "distMaxArcsec": distmaxarcsec.to_numpy()[0],
+                "distMaxArcsec": distmaxarcsec_f,
                 "selection": "all",
                 "RESPONSEFORMAT": "csv",
                 "cat2": extcatalog.to_numpy()[0],
@@ -158,10 +163,10 @@ def cdsxmatch(
                 "colRA1": "ra_in",
                 "colDec1": "dec_in",
                 "area": "zone",
-                "raMin": ra.min(),
-                "decMin": dec.min(),
-                "raMax": ra.max(),
-                "decMax": dec.max(),
+                "raMin": ra.min() - pad_deg,
+                "decMin": dec.min() - pad_deg,
+                "raMax": ra.max() + pad_deg,
+                "decMax": dec.max() + pad_deg,
             },
             files={"cat1": table},
         )
@@ -445,7 +450,10 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
         # limit the catalog
         dec_min, dec_max = dec.min(), dec.max()
-        mask = (dec2 >= dec_min) & (dec2 <= dec_max)
+
+        # Extend the box for safety
+        pad = 2 * distmaxarcsec / 3600
+        mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
         if mask.sum() == 0:
             # No error, but no overlap, return None (null values for Spark)
             out = [[None] * len(TNS_SPARK_SCHEMA)] * len(ra)
@@ -624,6 +632,12 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     +---+-----------+-----------+-----+
     <BLANKLINE>
     """
+    # set separation length
+    if radius_arcsec is None:
+        radius_arcsec = 1.5
+    elif isinstance(radius_arcsec, pd.Series):
+        radius_arcsec = float(radius_arcsec.to_numpy()[0])
+
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
         "dec": dec.to_numpy(),
@@ -650,7 +664,10 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
 
     # limit the catalog
     dec_min, dec_max = dec.min(), dec.max()
-    mask = (dec2 >= dec_min) & (dec2 <= dec_max)
+
+    # Extend the box for safety
+    pad = 2 * radius_arcsec / 3600
+    mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
     if mask.sum() == 0:
         # No error, but no overlap, return None (null values for Spark)
         out = [None] * len(ra)
@@ -742,6 +759,12 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     +--------------+
     <BLANKLINE>
     """
+    # set separation length
+    if radius_arcsec is None:
+        radius_arcsec = 1.5
+    elif isinstance(radius_arcsec, pd.Series):
+        radius_arcsec = float(radius_arcsec.to_numpy()[0])
+
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
         "dec": dec.to_numpy(),
@@ -754,7 +777,10 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
 
     # limit the catalog
     dec_min, dec_max = dec.min(), dec.max()
-    mask = (dec2 >= dec_min) & (dec2 <= dec_max)
+
+    # Extend the box for safety
+    pad = 2 * radius_arcsec / 3600
+    mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
     if mask.sum() == 0:
         # No error, but no overlap, return None (null values for Spark)
         out = [{name: None for name in MANGROVE_COLS}] * len(ra)
