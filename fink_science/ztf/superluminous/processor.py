@@ -157,17 +157,13 @@ def superluminous_score(
         probas_total = np.zeros(len(objectId), dtype=float) - 1
         transient_mask = pdf["is_transient"]
         old_enough_mask = pdf["jd"] - pdf["jdstarthist"] >= kern.min_duration
-
-        # FIXME: kernel & model do not handle i-band
-        contains_i_band = pdf["cfid"].apply(lambda bands: 3 in bands)
-        mask_valid = transient_mask & old_enough_mask & ~contains_i_band
+        mask_valid = transient_mask & old_enough_mask
 
         if sum(mask_valid) == 0:
             return pd.Series([-1.0] * len(objectId))
 
         # select only transient alerts
         pdf_valid = pdf[mask_valid].copy().reset_index()
-
         valid_ids = list(pdf_valid["objectId"])
 
         # Use Fink API to get the full light curves history
@@ -218,6 +214,9 @@ def superluminous_score(
         lcs = slsn.compute_flux(lcs)
         lcs = slsn.remove_nan(lcs)
 
+        # keep only g and r band, that were used for training
+        lcs = slsn.remove_bad_bands(lcs)
+
         # Perform feature extraction
         features = slsn.extract_features(lcs)
 
@@ -236,6 +235,7 @@ def superluminous_score(
         # Check the SDSS photo-z for these alerts
         SLSN_features = features[mask_is_SLSN].copy()
 
+        # FIX ME : ABSOLUTE MAGNITUDE CORRECTION
         if len(SLSN_features) > 0:
             SLSN_features["objectId"] = lcs.loc[mask_is_SLSN, "objectId"]
             SLSN_features = slsn.add_all_photoz(SLSN_features)
@@ -244,7 +244,11 @@ def superluminous_score(
             upper_M = np.array(
                 SLSN_features.apply(
                     lambda x: slsn.abs_peak(
-                        x["peak_mag"], x["photoz"], x["photozerr"], x["ebv"]
+                        [x["peak_mag_g"], x["peak_mag_r"]],
+                        [kern.band_wave_aa[1], kern.band_wave_aa[2]],
+                        x["photoz"],
+                        x["photozerr"],
+                        x["ebv"],
                     )[2],
                     axis=1,
                 )
