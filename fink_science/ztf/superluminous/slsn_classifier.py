@@ -134,15 +134,15 @@ def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
     Examples
     --------
     >>> abs_peak(19, 4000, 0.2, 0.05, 0.1)
-    array([-20.62290051, -21.26637279, -21.76731053])
+    array([-20.92638971, -21.66227902, -22.25186059])
     >>> abs_peak(19, 4000, 0.2, 0.05, -1)
-    array([-20.18163613, -20.8251084 , -21.32604614])
+    array([-20.48512533, -21.22101463, -21.81059621])
     >>> abs_peak(19, 4000, 0.2, np.nan, 0.1)
     array([ nan,  nan,  nan])
     >>> abs_peak(19, 4000, np.nan, 0.05, 0.1)
     array([ nan,  nan,  nan])
     >>> abs_peak([18, 18], [4400, 6600], 0.12, 0.01, 0.5)
-    array([-22.52065879, -22.71399318, -22.89208381])
+    array([-22.74727368, -22.96008329, -23.15747603])
     """
     # In case the user gives a single value instead of a list
     app_peak_is_num = (type(app_peak) is float) | (type(app_peak) is int)
@@ -171,7 +171,7 @@ def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
                 M = (
                     app_peak[band]
                     - 5 * np.log10(D_L / 10)
-                    + 2.5 * np.log10(1 + effective_z)
+                    - 2.5 * np.log10(1 + effective_z)
                     - compute_milky_way_extinction(ebv, lambda_angstrom[band])
                 )
                 Ms.append(M)
