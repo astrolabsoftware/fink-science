@@ -23,6 +23,7 @@ import fink_science.ztf.superluminous.kernel as kern
 from fink_science.tester import spark_unit_tests
 from fink_utils.photometry.conversion import mag2fluxcal_snana
 import astropy.units as u
+from dust_extinction.parameter_averages import F99
 from astropy.cosmology import LambdaCDM
 from astropy.coordinates import SkyCoord
 from dustmaps.sfd import SFDQuery
@@ -78,7 +79,38 @@ def compute_flux(pdf):
     return pdf
 
 
-def abs_peak(app_peak, z, zerr, ebv):
+def compute_milky_way_extinction(ebv, lambda_angstrom, Rv=3.1):
+    """Compute the milky way extinction
+
+    Parameters
+    ----------
+    ebv: float
+        E(B-V) extinction.
+    lambda_angstrom: float
+        Effective wavelength of the telescope filter expressed in Angstrom
+    Rv: float
+        Parameter describing the shape of the extinction curve.
+        Rv = 3.1 is a standard value in many cases.
+
+    Examples
+    --------
+    >>> round(compute_milky_way_extinction(0.5, 6000), 2)
+    1.34
+    """
+    # Filter effective wavelength
+    lambda_eff = lambda_angstrom * u.AA
+
+    # Extinction law
+    ext = F99(Rv=Rv)
+
+    # Total extinction
+    R_lambda = ext(lambda_eff) * Rv
+    A_lambda = R_lambda * ebv
+
+    return A_lambda
+
+
+def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
     """Compute the peak absolute magnitude based on redshift, assuming a cosmology
 
     Notes
@@ -87,8 +119,11 @@ def abs_peak(app_peak, z, zerr, ebv):
 
     Parameters
     ----------
-    app_peak: float
-        Apparent peak magnitude.
+    app_peak: list
+        Apparent peak magnitudes in each passband
+    lambda_angstrom: list
+        Effective wavelength associated to the peak apparent magnitudes,
+        expressed in Angstrom.
     z: float
         Redshift
     zerr: float
@@ -98,35 +133,54 @@ def abs_peak(app_peak, z, zerr, ebv):
 
     Examples
     --------
-    >>> abs_peak(19, 0.2, 0.05, 0.1)
-    array([-20.49163613, -21.1351084 , -21.63604614])
-    >>> abs_peak(19, 0.2, 0.05, -1)
-    array([-20.18163613, -20.8251084 , -21.32604614])
-    >>> abs_peak(19, 0.2, np.nan, 0.1)
+    >>> abs_peak(19, 4000, 0.2, 0.05, 0.1)
+    array([-20.92638971, -21.66227902, -22.25186059])
+    >>> abs_peak(19, 4000, 0.2, 0.05, -1)
+    array([-20.48512533, -21.22101463, -21.81059621])
+    >>> abs_peak(19, 4000, 0.2, np.nan, 0.1)
     array([ nan,  nan,  nan])
-    >>> abs_peak(19, np.nan, 0.05, 0.1)
+    >>> abs_peak(19, 4000, np.nan, 0.05, 0.1)
     array([ nan,  nan,  nan])
+    >>> abs_peak([18, 18], [4400, 6600], 0.12, 0.01, 0.5)
+    array([-22.74727368, -22.96008329, -23.15747603])
     """
+    # In case the user gives a single value instead of a list
+    app_peak_is_num = (type(app_peak) is float) | (type(app_peak) is int)
+    lambda_angstrom_is_num = (type(lambda_angstrom) is float) | (
+        type(lambda_angstrom) is int
+    )
+
+    if app_peak_is_num & lambda_angstrom_is_num:
+        app_peak = [app_peak]
+        lambda_angstrom = [lambda_angstrom]
+
+    # In case a negative E(B-V) value is provided
     if ebv < 0:
         ebv = 0
 
     if (z == z) and (zerr == zerr):
         cosmo = LambdaCDM(H0=67.8, Om0=0.308, Ode0=0.692)
-        Rv = 3.1
 
-        Ms = []
-        for k in [-1, 0, 1]:
-            effective_z = max(z + k * zerr, 1e-3)
-            D_L = cosmo.luminosity_distance(effective_z).to("pc").value
-            M = (
-                app_peak
-                - 5 * np.log10(D_L / 10)
-                + 2.5 * np.log10(1 + effective_z)
-                - Rv * ebv
-            )
-            Ms.append(M)
+        Ms_lambda = []
 
-        return np.array(Ms)
+        for band in range(len(app_peak)):
+            Ms = []
+            for k in [-1, 0, 1]:
+                effective_z = max(z + k * zerr, 1e-3)
+                D_L = cosmo.luminosity_distance(effective_z).to("pc").value
+                M = (
+                    app_peak[band]
+                    - 5 * np.log10(D_L / 10)
+                    - 2.5 * np.log10(1 + effective_z)
+                    - compute_milky_way_extinction(ebv, lambda_angstrom[band])
+                )
+                Ms.append(M)
+            Ms_lambda.append(Ms)
+
+        # Find the band with the highest absolute magnitude
+        brightest = np.argmin(np.array(Ms_lambda)[:, 1])
+
+        return np.array(Ms_lambda[brightest])
 
     return np.array([np.nan, np.nan, np.nan])
 
@@ -271,7 +325,7 @@ def add_all_ebv(pdf):
     Parameters
     ----------
     pdf: pd.DataFrame
-        Must at leat include objectId, ra, dec columns
+        Must at least include objectId, ra, dec columns
 
     Returns
     -------
@@ -331,6 +385,45 @@ def remove_nan(pdf):
     return pdf
 
 
+def remove_bad_bands(pdf):
+    """Keep only the g and r bands
+
+    Parameters
+    ----------
+    pdf: pd.DataFrame
+        Must at least include cfid, based
+        on which it will remove unwanted bands from the columns:
+        "cjd","cmagpsf","csigmapsf","cfid","csigflux","cflux"
+
+    Returns
+    -------
+    pd.DataFrame
+        Original DataFrame with nan/None removed.
+
+    Examples
+    --------
+    >>> pdf = pd.DataFrame(data={"cflux":[[10, 20, 30, 40]],"cfid":[[1, 2, 3, 3]]})
+    >>> result = remove_bad_bands(pdf)
+    >>> expected = pd.DataFrame(data={"cflux":[[10, 20]],"cfid":[[1, 2]]})
+    >>> pd.testing.assert_frame_equal(result, expected)
+    """
+    for k in ["cjd", "cmagpsf", "csigmapsf", "csigflux", "cflux", "cfid"]:
+        if k in pdf.columns:
+            pdf.loc[:, k] = pdf.apply(
+                lambda row: np.array([
+                    a
+                    for a, b in zip(
+                        row[k],
+                        (np.isin(row["cfid"], list(kern.band_wave_aa.keys()))),  # noqa: E711
+                    )
+                    if b
+                ]),
+                axis=1,
+            )
+
+    return pdf
+
+
 def fit_rainbow(lc, rainbow_model):
     """Perform a rainbow fit (Russeil et al. 2024) on a light curve.
 
@@ -363,9 +456,6 @@ def fit_rainbow(lc, rainbow_model):
         np.array(lc["csigflux"]),
         np.array(lc["cfid"]),
     )
-
-    # t_scaler = Scaler.from_time(lc["cjd"])
-    # m_scaler = MultiBandScaler.from_flux(lc["cflux"], lc["cfid"], with_baseline=False)
 
     try:
         result, errors = rainbow_model._eval_and_get_errors(
@@ -443,7 +533,7 @@ def statistical_features(lc):
     -------
     list
         List of statistical features
-        [amplitude, kurtosis, max_slope, skew, peak_magn, std_flux, q15_time, q85_time]
+        [amplitude, kurtosis, max_slope, skew, peak_mag_g, peak_mag_r, std_flux, q15_time, q85_time]
     """
     amplitude = lcpckg.Amplitude()
     kurtosis = lcpckg.Kurtosis()
@@ -464,11 +554,14 @@ def statistical_features(lc):
 
     normed_flux = lc["cflux"] / np.max(lc["cflux"])
     shifted_time = lc["cjd"] - np.min(lc["cjd"])
-    peak_mag = np.min(lc["cmagpsf"])
+
+    peak_mag_g = np.min(lc["cmagpsf"][lc["cfid"] == 1], initial=99)
+    peak_mag_r = np.min(lc["cmagpsf"][lc["cfid"] == 2], initial=99)
+
     std = np.std(normed_flux)
     q15 = np.quantile(shifted_time, 0.15)
     q85 = np.quantile(shifted_time, 0.85)
-    return list(result) + [peak_mag, std, q15, q85]
+    return list(result) + [peak_mag_g, peak_mag_r, std, q15, q85]
 
 
 def quiet_model():
@@ -562,17 +655,18 @@ def extract_features(data):
     >>> salt_features = quiet_fit_salt(lc, salt_model)
 
     # Check their values
-    >>> np.testing.assert_allclose(stat_features,[   8.307904e+02,
+    >>> np.testing.assert_allclose(stat_features,[  8.307904e+02,
     ... 4.843807e-02,   7.573933e+03,  -7.161292e-01,
-    ... 1.875300e+01,   1.383518e-01,   9.992026e+00,   2.499306e+01], rtol=1e-3)
+    ... 1.875300e+01,   1.882850e+01,   1.383518e-01,
+    ... 9.992026e+00,   2.499306e+01], rtol=1e-3)
     >>> np.testing.assert_allclose(salt_features,[  1.374512e-01,
     ... -1.201602e+01,   3.522748e-03,   9.219506e+00,
     ... 3.321469e-02,   4.337947e+01], rtol=5e-2)
     >>> np.testing.assert_allclose(rainbow_features,
-    ... [ -2.161259e+00,   4.886508e+03,   2.196836e+01,   2.740976e+01,
-    ... 9.102432e+03,   9.948595e+03,   1.403806e+00,  -5.663001e-01,
-    ... 1.050990e+01,   6.421245e+00,   1.106539e+00,   7.157673e+00,
-    ... 1.364669e+01,   1.184238e+00,   1.194966e-01], rtol=5e-2)
+    ... [ -2.161261e+00,   4.886507e+03,   2.196836e+01,   2.740982e+01,
+    ... 9.102431e+03,   9.948591e+03,   1.403805e+00,  -5.663014e-01,
+    ... 1.050993e+01,   6.421246e+00,   1.106546e+00,   7.157723e+00,
+    ... 1.364673e+01,   1.184242e+00,   1.194966e-01], rtol=5e-2)
 
     # Check full feature extraction function
     >>> pdf_check = pdf.copy()
@@ -581,15 +675,15 @@ def extract_features(data):
     # Only the fake alert should pass the cuts
     >>> np.testing.assert_equal(
     ... np.array(np.sum(full_features.iloc[-30:].isnull(), axis=1)),
-    ... np.array([ 29, 29, 29,  29, 29, 29,  29, 29, 29,  29, 29, 29,  29,
-    ... 29, 29, 29,  29, 29, 29,  29, 29, 29, 29, 29, 29,  29, 29, 29, 29, 0]))
+    ... np.array([ 30, 30, 30,  30, 30, 30,  30, 30, 30,  30, 30, 30,  30,
+    ... 30, 30, 30,  30, 30, 30,  30, 30, 30, 30, 30, 30,  30, 30, 30, 30, 0]))
 
     >>> list(full_features.columns) == ["distnr", "ra", "dec", "ebv", "duration",
-    ... "flux_amplitude", "kurtosis", "max_slope", "skew", "peak_mag", "std_flux", "q15",
-    ... "q85", "reference_time", "amplitude", "rise_time", "fall_time", "Tmin",
-    ... "Tmax", "t_color", "snr_reference_time", "snr_amplitude", "snr_rise_time",
-    ... "snr_fall_time", "snr_Tmin", "snr_Tmax", "snr_t_color", "chi2_rainbow",
-    ... "z", "t0", "x0", "x1", "c", "chi2_salt"]
+    ... "flux_amplitude", "kurtosis", "max_slope", "skew", "peak_mag_g", "peak_mag_r",
+    ... "std_flux", "q15", "q85", "reference_time", "amplitude", "rise_time", "fall_time",
+    ... "Tmin", "Tmax", "t_color", "snr_reference_time", "snr_amplitude", "snr_rise_time",
+    ... "snr_fall_time", "snr_Tmin", "snr_Tmax", "snr_t_color", "chi2_rainbow", "z", "t0",
+    ... "x0", "x1", "c", "chi2_salt"]
     True
     """
     data = add_all_ebv(data)
@@ -617,7 +711,8 @@ def extract_features(data):
             "kurtosis",
             "max_slope",
             "skew",
-            "peak_mag",
+            "peak_mag_g",
+            "peak_mag_r",
             "std_flux",
             "q15",
             "q85",
@@ -636,6 +731,7 @@ def extract_features(data):
             kern.min_points_perband
             <= np.array([sum(lc["cfid"] == band) for band in list(kern.band_wave_aa)])
         )
+
         enough_total_points = len(lc["cjd"]) > kern.min_points_total
         duration = np.ptp(lc["cjd"])
         enough_duration = duration > kern.min_duration
