@@ -548,7 +548,7 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
         catalog = curdir + "/data/catalogs/gcvs.parquet"
         ra2, dec2, type2 = extract_gcvs(catalog)
     elif catalog_name.to_numpy()[0] == "vsx":
-        catalog = curdir + "/data/catalogs/vsx.parquet"
+        catalog = curdir + "/data/catalogs/vsx"
         ra2, dec2, type2 = extract_vsx(catalog)
     elif catalog_name.to_numpy()[0] == "3hsp":
         catalog = curdir + "/data/catalogs/3hsp.csv"
