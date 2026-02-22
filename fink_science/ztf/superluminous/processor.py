@@ -338,7 +338,7 @@ def get_and_format(ZTF_name):
 
     for _id, name in enumerate(ZTF_name):
         r = requests.post(
-            "https://api.fink-portal.org/api/v1/objects",
+            "https://api.ztf.fink-portal.org/api/v1/objects",
             json={
                 "objectId": name,
                 "columns": "i:objectId,i:jd,i:magpsf,i:sigmapsf,i:fid,i:jd,i:distnr,d:tag,i:ra,i:dec",
