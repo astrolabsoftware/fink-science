@@ -150,12 +150,14 @@ def run_hostless_detection_with_clipped_data(
 
     science_clipped = apply_sigma_clipping(science_stamp, sigma_clipping_config)
     template_clipped = apply_sigma_clipping(template_stamp, sigma_clipping_config)
+
     detection_config = configs["hostless_detection_with_clipping"]
     is_hostless_candidate = _check_hostless_conditions(
         science_clipped, template_clipped, detection_config
     )
     if is_hostless_candidate:
         return is_hostless_candidate
+
     science_stamp = crop_center_patch(science_stamp, detection_config["crop_radius"])
     template_stamp = crop_center_patch(template_stamp, detection_config["crop_radius"])
     science_clipped = apply_sigma_clipping(science_stamp, sigma_clipping_config)
@@ -195,8 +197,8 @@ def run_powerspectrum_analysis(
     template_image: np.ndarray,
     science_mask: np.ndarray,
     template_mask: np.ndarray,
-    image_size: List,
     number_of_iterations: int = 200,
+    crop_radius: int = 15,
 ) -> Dict:
     """Runs powerspectrum analysis
 
@@ -232,5 +234,6 @@ def run_powerspectrum_analysis(
         template_data,
         number_of_iterations=number_of_iterations,
         metric="kstest",
+        cutout_size=crop_radius * 2,
     )
     return kstest_results_dict
