@@ -235,7 +235,6 @@ def superluminous_score(
         # Check the SDSS photo-z for these alerts
         SLSN_features = features[mask_is_SLSN].copy()
 
-        # FIX ME : ABSOLUTE MAGNITUDE CORRECTION
         if len(SLSN_features) > 0:
             SLSN_features["objectId"] = lcs.loc[mask_is_SLSN, "objectId"]
             SLSN_features = slsn.add_all_photoz(SLSN_features)
