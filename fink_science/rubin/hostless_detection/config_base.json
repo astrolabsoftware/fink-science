@@ -1,0 +1,12 @@
+{
+  "image_shape": [30, 30],
+  "sigma_clipping_kwargs": {
+    "sigma": 3,
+    "maxiters": 10
+  },
+  "hostless_detection_with_clipping": {
+    "crop_radius": 15,
+    "max_number_of_pixels_clipped": 5,
+    "min_number_of_pixels_clipped": 3
+  }
+}

@@ -165,16 +165,20 @@ def detect_host_with_powerspectrum(
 
         image_type = image_type_dict[idx]
         full_length = image.shape[0]
+        if cutout_size is not None:
+            start = (full_length - cutout_size) // 2
+            stop = start + cutout_size
+            real_cutout = image[start:stop, start:stop]
+            knrm, kbins, bin_areas = prepare_powerspectrum(cutout_size)
 
-        start = (full_length - cutout_size) // 2
-        stop = start + cutout_size
+        else:
+            real_cutout = image.copy()
+            knrm, kbins, bin_areas = prepare_powerspectrum(full_length)
 
-        knrm, kbins, bin_areas = prepare_powerspectrum(cutout_size)
         n_bins = len(bin_areas)
 
         shuffled_Abins = np.empty((number_of_iterations, n_bins))
 
-        real_cutout = image[start:stop, start:stop]
         real_Abins = get_powerspectrum(real_cutout, knrm, kbins, bin_areas)
         real_Abins_dict[cutout_size] = real_Abins
 
@@ -183,8 +187,10 @@ def detect_host_with_powerspectrum(
             shuffled_flattened = image_flattened.copy()
             np.random.shuffle(shuffled_flattened)
             shuffled_image = shuffled_flattened.reshape(image.shape)
-
-            cutout = shuffled_image[start:stop, start:stop]
+            if cutout_size is not None:
+                cutout = shuffled_image[start:stop, start:stop]
+            else:
+                cutout = shuffled_image.copy()
             shuffled_Abins[n] = get_powerspectrum(cutout, knrm, kbins, bin_areas)
 
         shuffled_Abins_dict[cutout_size] = shuffled_Abins
@@ -214,10 +220,10 @@ def detect_host_with_powerspectrum(
                 )
                 statistic, pvalue = res.statistic, res.pvalue
 
-        output_table.add_row([image_type, cutout_size, statistic, pvalue])
+        output_table.add_row([image_type, 0, statistic, pvalue])
 
-        output_result_dict[f"{metric}_{image_type}_{cutout_size}_statistic"] = statistic
-        output_result_dict[f"{metric}_{image_type}_{cutout_size}_pvalue"] = pvalue
+        output_result_dict[f"{metric}_{image_type}_statistic"] = statistic
+        output_result_dict[f"{metric}_{image_type}_pvalue"] = pvalue
 
     return (
         output_table,

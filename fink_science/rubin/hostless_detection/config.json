@@ -1,0 +1,5 @@
+{
+  "minimum_number_of_alerts": 3,
+  "cutout_timeframe": 30,
+  "cutout_magnitude": 20
+}

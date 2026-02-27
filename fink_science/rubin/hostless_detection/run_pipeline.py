@@ -14,14 +14,17 @@
 # limitations under the License.
 """Implementation of the paper: ELEPHANT: ExtragaLactic alErt Pipeline for Hostless AstroNomical Transients https://arxiv.org/abs/2404.18165"""
 
-from typing import Tuple
+from typing import Union, Any
 
 from fink_science.ztf.hostless_detection.pipeline_utils import (
-    run_hostless_detection_with_clipped_data,
     run_powerspectrum_analysis,
+    crop_center_patch,
 )
 from fink_science.ztf.hostless_detection.run_pipeline import HostLessExtragalactic
-from fink_science.rubin.hostless_detection.pipeline_utils import read_cutout_stamp
+from fink_science.rubin.hostless_detection.pipeline_utils import (
+    read_cutout_stamp,
+    run_hostless_detection_with_clipped_data,
+)
 
 
 class HostLessExtragalacticRubin(HostLessExtragalactic):
@@ -34,7 +37,7 @@ class HostLessExtragalacticRubin(HostLessExtragalactic):
 
     def process_candidate_fink_rubin(
         self, science_stamp: bytes, template_stamp: bytes
-    ) -> Tuple[float, float]:
+    ) -> Union[tuple[None, None], tuple[Any, Any]]:
         """
         Processes each candidate
 
@@ -46,27 +49,37 @@ class HostLessExtragalacticRubin(HostLessExtragalactic):
            template stamp data
         """
         science_stamp = read_cutout_stamp(science_stamp)
-
         template_stamp = read_cutout_stamp(template_stamp)
+        crop_radius = self.configs["hostless_detection_with_clipping"]["crop_radius"]
+        science_stamp = crop_center_patch(science_stamp, crop_radius)
+        template_stamp = crop_center_patch(template_stamp, crop_radius)
 
         if science_stamp.shape != template_stamp.shape:
             return None, None
 
-        science_stamp_clipped, template_stamp_clipped = self._run_sigma_clipping(
-            science_stamp, template_stamp
-        )
+        if (science_stamp.shape[0] < self._image_shape[0]) or (
+            template_stamp.shape[0] < self._image_shape[0]
+        ):
+            return None, None
+
+        science_stamp = crop_center_patch(science_stamp, crop_radius)
+        template_stamp = crop_center_patch(template_stamp, crop_radius)
+
         is_hostless_candidate = run_hostless_detection_with_clipped_data(
-            science_stamp_clipped, template_stamp_clipped, self.configs
+            science_stamp, template_stamp, self.configs
         )
         if is_hostless_candidate:
+            science_stamp_clipped, template_stamp_clipped = self._run_sigma_clipping(
+                science_stamp, template_stamp
+            )
             power_spectrum_results = run_powerspectrum_analysis(
                 science_stamp,
                 template_stamp,
                 science_stamp_clipped.mask.astype(int),
                 template_stamp_clipped.mask.astype(int),
-                self._image_shape,
+                crop_radius=crop_radius,
             )
             return power_spectrum_results[
-                "kstest_SCIENCE_15_statistic"
-            ], power_spectrum_results["kstest_TEMPLATE_15_statistic"]
+                "kstest_SCIENCE_statistic"
+            ], power_spectrum_results["kstest_TEMPLATE_statistic"]
         return None, None

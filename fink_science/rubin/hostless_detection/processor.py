@@ -32,10 +32,10 @@ from fink_science import __file__
 
 # Share configuration with ZTF
 CONFIGS_BASE = load_json(
-    "{}/ztf/hostless_detection/config_base.json".format(os.path.dirname(__file__))
+    "{}/rubin/hostless_detection/config_base.json".format(os.path.dirname(__file__))
 )
 CONFIGS = load_json(
-    "{}/ztf/hostless_detection/config.json".format(os.path.dirname(__file__))
+    "{}/rubin/hostless_detection/config.json".format(os.path.dirname(__file__))
 )
 CONFIGS.update(CONFIGS_BASE)
 
@@ -52,10 +52,16 @@ def run_potential_hostless(
     ssObjectId: pd.Series,
     nDiaSources: pd.Series,
     psfFlux: pd.Series,
+    templateFlux: pd.Series,
+    templateFluxErr: pd.Series,
     midpointMjdTai: pd.Series,
     firstDiaSourceMjdTaiFink: pd.Series,
     simbad_otype: pd.Series,
     gaiadr3_DR3Name: pd.Series,
+    mangrove_2MASS_name: pd.Series,
+    mangrove_HyperLEDA_name: pd.Series,
+    legacydr8_zphot: pd.Series,
+    spicy_class: pd.Series,
 ) -> pd.Series:
     """Runs potential hostless candidate detection for Rubin without any filtering
 
@@ -71,6 +77,10 @@ def run_potential_hostless(
         Number of previous detections
     psfFlux: pd.Series
         Flux in the difference image
+    templateFlux: pd.Series,
+        Flux in template image
+    templateFluxErr: pd.Series
+        Flux error in template image
     midpointMjdTai: pd.Series
         Emission date for the alert
     firstDiaSourceMjdTaiFink: pd.Series
@@ -79,6 +89,15 @@ def run_potential_hostless(
         SIMBAD type. NaN if not existing
     gaiadr3_DR3Name: pd.Series
         Name in Gaia DR3. NaN if not existing
+    mangrove_2MASS_name: pd.Series
+        Name in mangrove 2MASS. NaN if not existing
+    mangrove_HyperLEDA_name: pd.Series
+        Name in mangrove HyperLEDA. NaN if not existing
+    legacydr8_zphot: pd.Series
+        Photo-z estimate from Legacy Surveys DR8 South Photometric Redshifts catalog.
+         NaN if not existing
+    spicy_class
+        closest source from SPICY catalog. Nan if not existing
 
     Notes
     -----
@@ -114,12 +133,18 @@ def run_potential_hostless(
     ...         F.lit(None),
     ...         F.lit(3),
     ...         F.lit(100000000),
+    ...         F.lit(100000000),
+    ...         F.lit(100),
     ...         df["diaSource.midpointMjdTai"],
     ...         df["diaSource.midpointMjdTai"],
     ...         F.lit(None),
+    ...         F.lit(None),
+    ...         F.lit(None),
+    ...         F.lit(None),
+    ...         F.lit(None),
     ...         F.lit(None),))
     >>> df.filter(df.elephant_kstest_no_cuts.kstest_science.isNotNull()).count()
-    3
+    0
 
     # SSO cuts
     >>> df = df.withColumn('elephant_kstest_sso_cuts',
@@ -129,12 +154,18 @@ def run_potential_hostless(
     ...         df["ssSource.ssObjectId"],
     ...         F.lit(3),
     ...         F.lit(100000000),
+    ...         F.lit(100000000),
+    ...         F.lit(100),
     ...         df["diaSource.midpointMjdTai"],
     ...         df["diaSource.midpointMjdTai"],
     ...         F.lit(None),
+    ...         F.lit(None),
+    ...         F.lit(None),
+    ...         F.lit(None),
+    ...         F.lit(None),
     ...         F.lit(None),))
     >>> df.filter(df.elephant_kstest_sso_cuts.kstest_science.isNotNull()).count()
-    1
+    0
 
     # All cuts
     >>> df = df.withColumn('elephant_kstest',
@@ -144,27 +175,69 @@ def run_potential_hostless(
     ...         df["ssSource.ssObjectId"],
     ...         df["diaObject.nDiaSources"],
     ...         df["diaSource.psfFlux"],
+    ...         df["diaSource.templateFlux"],
+    ...         df["diaSource.templateFluxErr"],
     ...         df["diaSource.midpointMjdTai"],
     ...         F.array_min("prvDiaSources.midpointMjdTai"),
     ...         F.lit("star"),
-    ...         F.lit("DR3 toto"),))
+    ...         F.lit("DR3 toto"),
+    ...         F.lit("galaxy"),
+    ...         F.lit("galaxy"),
+    ...         F.lit("galaxy"),
+    ...         F.lit("galaxy"),))
     >>> df.filter(df.elephant_kstest.kstest_science.isNotNull()).count()
     0
     """
-    f_min_point = nDiaSources >= 2  # N + 1
+    f_min_point = nDiaSources >= CONFIGS["minimum_number_of_alerts"] - 1  # N + 1
     # FIXME: put the conversion formula in fink-utils
-    f_bright = (-2.5 * np.log10(psfFlux) + ZP_NJY) < 20
+    f_bright = (-2.5 * np.log10(psfFlux) + ZP_NJY) < CONFIGS["cutout_magnitude"]
     f_not_in_simbad = simbad_otype.apply(lambda val: val in BAD_VALUES or pd.isna(val))
     f_not_in_gaia = gaiadr3_DR3Name.apply(lambda val: val in BAD_VALUES or pd.isna(val))
-    f_not_sso = ssObjectId.apply(lambda val: val in BAD_VALUES or pd.isna(val))
-    f_early = (midpointMjdTai - firstDiaSourceMjdTaiFink) < 30
-
-    good_candidate = (
-        f_min_point & f_bright & f_not_in_simbad & f_not_in_gaia & f_not_sso & f_early
+    f_not_in_2mass = mangrove_2MASS_name.apply(
+        lambda val: val in BAD_VALUES or pd.isna(val)
     )
+    f_not_in_hyperlda = mangrove_HyperLEDA_name.apply(
+        lambda val: val in BAD_VALUES or pd.isna(val)
+    )
+    f_not_in_legacydr8 = legacydr8_zphot.apply(
+        lambda val: val in BAD_VALUES or pd.isna(val)
+    )
+    f_not_in_spicy = spicy_class.apply(lambda val: val in BAD_VALUES or pd.isna(val))
 
-    default_result = {"kstest_science": None, "kstest_template": None}
+    f_not_sso = ssObjectId.apply(lambda val: val in BAD_VALUES or pd.isna(val))
+    f_early = (midpointMjdTai - firstDiaSourceMjdTaiFink) < CONFIGS["cutout_timeframe"]
+
+    # Cuts on psfFlux and templateFlux
+    PSF_FLUX_THRESHOLD = 0
+    TEMPLATE_FLUX_THRESHOLD = [300, 2000]
+    psfFlux_cut = psfFlux > PSF_FLUX_THRESHOLD
+    templateFlux_cut = (templateFlux > TEMPLATE_FLUX_THRESHOLD[0]) & (
+        templateFlux < TEMPLATE_FLUX_THRESHOLD[1]
+    )
+    # SNR cut > 5
+    template_snr_cut = (templateFlux / templateFluxErr) > 5
+    good_candidate = (
+        f_min_point
+        & f_bright
+        & f_not_in_simbad
+        & f_not_in_gaia
+        & f_not_sso
+        & f_early
+        & psfFlux_cut
+        & templateFlux_cut
+        & template_snr_cut
+        & f_not_in_2mass
+        & f_not_in_hyperlda
+        & f_not_in_legacydr8
+        & f_not_in_spicy
+    )
+    # Process full image
+    default_result = {
+        "kstest_science": None,
+        "kstest_template": None,
+    }
     kstest_results = []
+
     hostless_science_class = HostLessExtragalacticRubin(CONFIGS_BASE)
     for index in range(cutoutScience.shape[0]):
         if good_candidate[index]:
