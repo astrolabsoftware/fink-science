@@ -56,7 +56,9 @@ setuptools.setup(
             'data/catalogs/*.csv',
             'data/catalogs/vsx/*.parquet',
             'ztf/hostless_detection/config.json',
-            'ztf/hostless_detection/config*.json'],
+            'ztf/hostless_detection/config*.json',
+            'rubin/hostless_detection/config.json',
+            'rubin/hostless_detection/config*.json'],
     },
 
     classifiers=[
