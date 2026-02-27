@@ -137,18 +137,21 @@ def extract_features_rainbow(
     # if 3 or more filters exist, minum 3 should be rising
     nrising_filters = max(2, min(3, unique_bands.shape[0]))
 
-    features = fit_rainbow(
-        midpointMjdTai[mask],
-        band[mask],
-        cpsfFlux[mask],
-        cpsfFluxErr[mask],
-        band_wave_aa=band_wave_aa,
-        with_baseline=with_baseline,
-        min_data_points=min_data_points,
-        list_filters=band_wave_aa.keys(),
-        nrising_filters=nrising_filters,
-        low_bound=low_bound,
-    )
+    try:
+        features = fit_rainbow(
+            midpointMjdTai[mask],
+            band[mask],
+            cpsfFlux[mask],
+            cpsfFluxErr[mask],
+            band_wave_aa=band_wave_aa,
+            with_baseline=with_baseline,
+            min_data_points=min_data_points,
+            list_filters=band_wave_aa.keys(),
+            nrising_filters=nrising_filters,
+            low_bound=low_bound,
+        )
+    except ValueError:
+        return np.zeros(len(RAINBOW_FEATURES_NAMES), dtype=float)
 
     return features[1:]
 
