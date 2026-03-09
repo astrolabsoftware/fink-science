@@ -346,13 +346,19 @@ def extract_features_rf_snia(
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     test_features = []
-    for id in np.unique(pdf["SNID"]):
+
+    # conversion to numpy done once
+    min_rising_points=min_rising_points.to_numpy()[0]
+    min_data_points=min_data_points.to_numpy()[0]
+    rising_criteria=rising_criteria.to_numpy()[0]
+
+    for id,pdf_sub in pdf.groupby("SNID"):
         pdf_sub = pdf[pdf["SNID"] == id]
         features = get_sigmoid_features_dev(
             pdf_sub,
-            min_rising_points=min_rising_points.to_numpy()[0],
-            min_data_points=min_data_points.to_numpy()[0],
-            rising_criteria=rising_criteria.to_numpy()[0],
+            min_rising_points,
+            min_data_points,
+            rising_criteria,
         )
         test_features.append(features)
 
