@@ -228,8 +228,8 @@ def rfscore_sigmoid_full(
     flag = []
 
     # conversion to numpy done once
-    min_rising_points = min_rising_points.to_numpy()[0]
-    min_data_points = min_data_points.to_numpy()[0]
+    min_rising_points = int(min_rising_points.to_numpy()[0])
+    min_data_points = int(min_data_points.to_numpy()[0])
     rising_criteria = rising_criteria.to_numpy()[0]
 
     for _,pdf_sub in pdf.groupby("SNID"):
@@ -353,8 +353,8 @@ def extract_features_rf_snia(
     test_features = []
 
     # conversion to numpy done once
-    min_rising_points = min_rising_points.to_numpy()[0]
-    min_data_points = min_data_points.to_numpy()[0]
+    min_rising_points = int(min_rising_points.to_numpy()[0])
+    min_data_points = int(min_data_points.to_numpy()[0])
     rising_criteria = rising_criteria.to_numpy()[0]
 
     for _, pdf_sub in pdf.groupby("SNID"):
