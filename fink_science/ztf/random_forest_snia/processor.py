@@ -232,7 +232,7 @@ def rfscore_sigmoid_full(
     min_data_points = min_data_points.to_numpy()[0]
     rising_criteria = rising_criteria.to_numpy()[0]
 
-    for pdf_sub in pdf.group_by("SNID"):
+    for _,pdf_sub in pdf.groupby("SNID"):
         features = get_sigmoid_features_dev(
             pdf_sub,
             min_rising_points,
