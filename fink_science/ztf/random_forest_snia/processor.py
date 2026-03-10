@@ -227,12 +227,12 @@ def rfscore_sigmoid_full(
     test_features = []
     flag = []
 
-    # conversion to numpy done once
-    min_rising_points = int(min_rising_points.to_numpy()[0])
-    min_data_points = int(min_data_points.to_numpy()[0])
-    rising_criteria = rising_criteria.to_numpy()[0]
+    # conversion done once
+    min_rising_points = int(pd.Series(min_rising_points).iloc[0])
+    min_data_points = int(pd.Series(min_data_points).iloc[0])
+    rising_criteria = str(pd.Series(rising_criteria).iloc[0])
 
-    for _,pdf_sub in pdf.groupby("SNID"):
+    for _, pdf_sub in pdf.groupby("SNID"):
         features = get_sigmoid_features_dev(
             pdf_sub,
             min_rising_points,
@@ -352,10 +352,10 @@ def extract_features_rf_snia(
 
     test_features = []
 
-    # conversion to numpy done once
-    min_rising_points = int(min_rising_points.to_numpy()[0])
-    min_data_points = int(min_data_points.to_numpy()[0])
-    rising_criteria = rising_criteria.to_numpy()[0]
+    # conversion done once
+    min_rising_points = int(pd.Series(min_rising_points).iloc[0])
+    min_data_points = int(pd.Series(min_data_points).iloc[0])
+    rising_criteria = str(pd.Series(rising_criteria).iloc[0])
 
     for _, pdf_sub in pdf.groupby("SNID"):
         features = get_sigmoid_features_dev(
