@@ -226,13 +226,18 @@ def rfscore_sigmoid_full(
 
     test_features = []
     flag = []
-    for id in np.unique(pdf["SNID"]):
-        pdf_sub = pdf[pdf["SNID"] == id]
+
+    # conversion to numpy done once
+    min_rising_points = min_rising_points.to_numpy()[0]
+    min_data_points = min_data_points.to_numpy()[0]
+    rising_criteria = rising_criteria.to_numpy()[0]
+
+    for pdf_sub in pdf.group_by("SNID"):
         features = get_sigmoid_features_dev(
             pdf_sub,
-            min_rising_points=min_rising_points.to_numpy()[0],
-            min_data_points=min_data_points.to_numpy()[0],
-            rising_criteria=rising_criteria.to_numpy()[0],
+            min_rising_points,
+            min_data_points,
+            rising_criteria
         )
         if (features[0] == 0) or (features[6] == 0):
             flag.append(False)
