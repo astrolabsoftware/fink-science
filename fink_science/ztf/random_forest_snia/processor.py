@@ -237,7 +237,7 @@ def rfscore_sigmoid_full(
             pdf_sub,
             min_rising_points,
             min_data_points,
-            rising_criteria
+            rising_criteria,
         )
         if (features[0] == 0) or (features[6] == 0):
             flag.append(False)
