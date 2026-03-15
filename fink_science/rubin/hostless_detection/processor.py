@@ -21,6 +21,7 @@ import numpy as np
 import pyspark.sql.functions as F
 from pyspark.sql.types import FloatType, MapType, StringType
 
+from fink_science.rubin.hostless_detection.pipeline_utils import maybe_moving_transient
 from fink_science.rubin.hostless_detection.run_pipeline import (
     HostLessExtragalacticRubin,
 )
@@ -62,6 +63,11 @@ def run_potential_hostless(
     mangrove_HyperLEDA_name: pd.Series,
     legacydr8_zphot: pd.Series,
     spicy_class: pd.Series,
+    ra: pd.Series,
+    dec: pd.Series,
+    prvDiaSources_ra: pd.Series,
+    prvDiaSources_dec: pd.Series,
+    prvDiaSources_midpointMjdTai: pd.Series,
 ) -> pd.Series:
     """Runs potential hostless candidate detection for Rubin without any filtering
 
@@ -96,8 +102,18 @@ def run_potential_hostless(
     legacydr8_zphot: pd.Series
         Photo-z estimate from Legacy Surveys DR8 South Photometric Redshifts catalog.
          NaN if not existing
-    spicy_class
+    spicy_class: pd.Series
         closest source from SPICY catalog. Nan if not existing
+    ra: float
+        RA
+    dec: float
+        Dec
+    prvDiaSources_ra: pd.Series
+        previous RAs of the object
+    prvDiaSources_dec: pd.Series
+        previous Decs of the object
+    prvDiaSources_midpointMjdTai: pd.Series
+        previous MJDs of the object
 
     Notes
     -----
@@ -142,7 +158,12 @@ def run_potential_hostless(
     ...         F.lit(None),
     ...         F.lit(None),
     ...         F.lit(None),
-    ...         F.lit(None),))
+    ...         F.lit(None),
+    ...         df["diaSource.ra"],
+    ...         df["diaSource.dec"],
+    ...         df["prvDiaSources.ra"],
+    ...         df["prvDiaSources.dec"],
+    ...         df["prvDiaSources.midpointMjdTai"]))
     >>> df.filter(df.elephant_kstest_no_cuts.kstest_science.isNotNull()).count()
     0
 
@@ -163,7 +184,12 @@ def run_potential_hostless(
     ...         F.lit(None),
     ...         F.lit(None),
     ...         F.lit(None),
-    ...         F.lit(None),))
+    ...         F.lit(None),
+    ...         df["diaSource.ra"],
+    ...         df["diaSource.dec"],
+    ...         df["prvDiaSources.ra"],
+    ...         df["prvDiaSources.dec"],
+    ...         df["prvDiaSources.midpointMjdTai"]))
     >>> df.filter(df.elephant_kstest_sso_cuts.kstest_science.isNotNull()).count()
     0
 
@@ -184,7 +210,12 @@ def run_potential_hostless(
     ...         F.lit("galaxy"),
     ...         F.lit("galaxy"),
     ...         F.lit("galaxy"),
-    ...         F.lit("galaxy"),))
+    ...         F.lit("galaxy"),
+    ...         df["diaSource.ra"],
+    ...         df["diaSource.dec"],
+    ...         df["prvDiaSources.ra"],
+    ...         df["prvDiaSources.dec"],
+    ...         df["prvDiaSources.midpointMjdTai"]))
     >>> df.filter(df.elephant_kstest.kstest_science.isNotNull()).count()
     0
     """
@@ -241,17 +272,28 @@ def run_potential_hostless(
     hostless_science_class = HostLessExtragalacticRubin(CONFIGS_BASE)
     for index in range(cutoutScience.shape[0]):
         if good_candidate[index]:
-            science_stamp = cutoutScience[index]
-            template_stamp = cutoutTemplate[index]
-            kstest_science, kstest_template = (
-                hostless_science_class.process_candidate_fink_rubin(
-                    science_stamp, template_stamp
-                )
+            is_moving = maybe_moving_transient(
+                ra[index],
+                dec[index],
+                midpointMjdTai[index],
+                prvDiaSources_ra[index],
+                prvDiaSources_dec[index],
+                prvDiaSources_midpointMjdTai[index],
             )
-            kstest_results.append({
-                "kstest_science": kstest_science,
-                "kstest_template": kstest_template,
-            })
+            if not is_moving:
+                science_stamp = cutoutScience[index]
+                template_stamp = cutoutTemplate[index]
+                kstest_science, kstest_template = (
+                    hostless_science_class.process_candidate_fink_rubin(
+                        science_stamp, template_stamp
+                    )
+                )
+                kstest_results.append({
+                    "kstest_science": kstest_science,
+                    "kstest_template": kstest_template,
+                })
+            else:
+                kstest_results.append(default_result)
         else:
             kstest_results.append(default_result)
     return pd.Series(kstest_results)
