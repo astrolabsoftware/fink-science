@@ -40,7 +40,6 @@ CONFIGS = load_json(
 )
 CONFIGS.update(CONFIGS_BASE)
 
-ZP_NJY = 31.4
 
 BAD_VALUES = ["Unknown", "Fail", "Fail 504", None, np.nan]
 
@@ -221,7 +220,6 @@ def run_potential_hostless(
     """
     f_min_point = nDiaSources >= CONFIGS["minimum_number_of_alerts"] - 1  # N + 1
     # FIXME: put the conversion formula in fink-utils
-    f_bright = (-2.5 * np.log10(psfFlux) + ZP_NJY) < CONFIGS["cutout_magnitude"]
     f_not_in_simbad = simbad_otype.apply(lambda val: val in BAD_VALUES or pd.isna(val))
     f_not_in_gaia = gaiadr3_DR3Name.apply(lambda val: val in BAD_VALUES or pd.isna(val))
     f_not_in_2mass = mangrove_2MASS_name.apply(
@@ -249,7 +247,6 @@ def run_potential_hostless(
     template_snr_cut = (templateFlux / templateFluxErr) > 5
     good_candidate = (
         f_min_point
-        & f_bright
         & f_not_in_simbad
         & f_not_in_gaia
         & f_not_sso
