@@ -27,7 +27,7 @@ from fink_utils.data.utils import format_data_as_snana
 from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
-from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
+from actsnfink.classifier_sigmoid import get_sigmoid_features_dev_fast
 
 from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
@@ -228,7 +228,7 @@ def rfscore_sigmoid_full(
     flag = []
 
     for _, pdf_sub in pdf.groupby("SNID"):
-        features = get_sigmoid_features_dev(
+        features = get_sigmoid_features_dev_fast(
             pdf_sub,
             min_rising_points=min_rising_points.to_numpy()[0],
             min_data_points=min_data_points.to_numpy()[0],
@@ -348,7 +348,7 @@ def extract_features_rf_snia(
     test_features = []
 
     for _, pdf_sub in pdf.groupby("SNID"):
-        features = get_sigmoid_features_dev(
+        features = get_sigmoid_features_dev_fast(
             pdf_sub,
             min_rising_points=min_rising_points.to_numpy()[0],
             min_data_points=min_data_points.to_numpy()[0],
