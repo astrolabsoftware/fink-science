@@ -25,7 +25,7 @@ from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 import os
 
-CATALOG_TAG = "23.v7_2025"
+CATALOG_TAG = "23.v03_2026"
 
 
 @pandas_udf(MapType(StringType(), ArrayType(DoubleType())))
