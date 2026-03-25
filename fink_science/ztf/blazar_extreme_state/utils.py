@@ -32,7 +32,9 @@ def _instantness_criterion(
         CTAO_blazar: pd.DataFrame,
         state_key: str
     ) -> np.float64:
-    """Returns the standardised flux of the last measurement
+    """Compute instantness criterion for a given state.
+
+    Returns the standardised flux of the last measurement
     over the precomputed threshold ratio.
 
     Parameters
@@ -81,7 +83,9 @@ def _robustness_criterion(
         state_key: str,
         integration_period: float
     ) -> np.float64:
-    """Returns the sliding mean over 30 days of the standardised flux
+    """Compute robustness criterion for a given state.
+
+    Returns the sliding mean over 30 days of the standardised flux
     over the precomputed threshold ratio.
 
     Parameters
@@ -136,7 +140,7 @@ def _robustness_criterion(
         return integral / (mtimestop - mtimestart) / threshold
     else:
         _LOG.warning(
-            f"_robustness_criterion process failed:\
+            "_robustness_criterion process failed:\
 not enough points to compute fluence."
         )
         return -1
@@ -202,13 +206,12 @@ def extreme_state_(
 # ============================
 
 def _post_request_with_retry(
-    url: str,
-    payload: dict,
-    max_retries: int = 3,
-    delay: float = 0.5,
-) -> requests.Response:
-    """
-    Perform a POST request with retry logic.
+        url: str,
+        payload: dict,
+        max_retries: int = 3,
+        delay: float = 0.5,
+    ) -> requests.Response:
+    """Perform a POST request with retry logic.
 
     Parameters
     ----------
@@ -226,24 +229,22 @@ def _post_request_with_retry(
     response : requests.Response
         Successful response object. Else None.
     """
-
     for _ in range(max_retries):
-        try:
-            response = requests.get(url, params=payload, timeout=10)
-            response.raise_for_status()
+        response = requests.get(url, params=payload, timeout=10)
+        if response.status_code == 200:
             return response
-        except requests.RequestException:
+        else:
             time.sleep(delay)
+
     _LOG.warning(f"Failed to connect to {url} after {max_retries} retries.")
     return None
 
-def get_ZTF_DR_data(
-    ra: float,
-    dec: float,
-    radius: float
-) -> pd.DataFrame:
-    """
-    Retrieve ZTF light curves from the latest Data Release via SNAD API.
+def get_ztf_dr_data(
+        ra: float,
+        dec: float,
+        radius: float
+    ) -> pd.DataFrame:
+    """Retrieve ZTF light curves from the latest Data Release via SNAD API.
 
     Parameters
     ----------
@@ -260,7 +261,6 @@ def get_ZTF_DR_data(
         Light curve data including fluxes,
         uncertainties, filters, and metadata.
     """
-
     _LOG.info(f"DR light curve download of ra={ra:6f}, dec={dec:.6f}.")
     DR_APIURL = "https://db.ztf.snad.space"
     response = _post_request_with_retry(
@@ -307,7 +307,7 @@ def get_ZTF_DR_data(
     filter_map = {"zg": 1, "zr": 2, "zi": 3}
     pdf["filtercode"] = pdf["filtercode"].map(filter_map).astype(int)
     pdf = pdf[
-        (pdf['mjd'] >= 58000) & np.isin(pdf["filtercode"], [1,2])
+        (pdf['mjd'] >= 58000) & np.isin(pdf["filtercode"], [1, 2])
     ].copy()
     pdf = pdf.sort_values('mjd', ascending=True, ignore_index=True)
 
@@ -319,7 +319,7 @@ def get_ZTF_DR_data(
 # ===================================
 
 
-def from_mag_to_flux(lc):
+def from_mag_to_flux(lc: pd.DataFrame) -> pd.DataFrame:
     """Compute the flux, in Jansky, of the source from its DC magnitude.
 
     Parameters
@@ -333,19 +333,22 @@ def from_mag_to_flux(lc):
     out : pd.DataFrame
         Pandas DataFrame of the light curve with added computed flux.
     """
-
-    measurements = lc["mag"].values
-    uncertainties = lc["magerr"].values
+    measurements = lc["mag"].to_numpy()
+    uncertainties = lc["magerr"].to_numpy()
 
     lc["flux"] = 3631 * 10 ** (-0.4 * measurements)
-    lc["flux_error"] = lc["flux"].values * 0.4 * np.log(10) * uncertainties
+    lc["flux_error"] = (
+        lc["flux"].to_numpy() * 0.4 * np.log(10) * uncertainties
+    )
 
     return lc
-    
-def standardise_lc(pdf, lc, CTAO_blazar):
+
+def standardise_lc(
+        pdf: pd.DataFrame, lc: pd.DataFrame, CTAO_blazar: pd.DataFrame
+    ) -> pd.DataFrame:
     """Standardise a light curve using previously computed per-band medians.
 
-     Parameters
+    Parameters
     ----------
     pdf : pd.DataFrame
         Pandas DataFrame of the alert history containing at least:
@@ -358,12 +361,12 @@ def standardise_lc(pdf, lc, CTAO_blazar):
     CTAO_blazar : pd.DataFrame
         Pandas DataFrame of the monitored sources containing:
         ``Source_name``, ``ZTF_name``, ``medians``,
-        ``low_threshold``, ``high_threshold``. 
+        ``low_threshold``, ``high_threshold``.
 
     Returns
     -------
     out : pd.DataFrame
-        Pandas DataFrame of the light curve with added standardised flux. 
+        Pandas DataFrame of the light curve with added standardised flux.
     """
     name = pdf["objectId"].to_numpy()[0]
     _LOG.info(f"Standardisation of {name}")
@@ -384,7 +387,9 @@ def standardise_lc(pdf, lc, CTAO_blazar):
 # ==================================
 
 def compute_quantile(lc: pd.DataFrame, measurement: np.float64) -> np.float64:
-    """Compute the quantile on the cumulated distribution function (CDF)
+    """Place the measurement on the CDF.
+
+    Compute the quantile on the cumulated distribution function (CDF)
     of the light curve corresponding to the given measurement.
 
     Parameters
@@ -401,8 +406,8 @@ def compute_quantile(lc: pd.DataFrame, measurement: np.float64) -> np.float64:
         Quantile corresponding to ``measurement``
         on the CDF of the flux of the source.
     """
-    time = lc["mjd"].values
-    measurements = lc["std_flux"].values
+    time = lc["mjd"].to_numpy()
+    measurements = lc["std_flux"].to_numpy()
 
     weights = np.diff(time)
     measurements = measurements[:-1]

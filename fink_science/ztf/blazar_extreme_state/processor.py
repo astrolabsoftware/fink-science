@@ -14,14 +14,13 @@
 # limitations under the License.
 from line_profiler import profile
 
-import numpy as np
 import pandas as pd
 
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import MapType, StringType, FloatType
 from fink_science.ztf.blazar_extreme_state.utils import (
     extreme_state_,
-    get_ZTF_DR_data,
+    get_ztf_dr_data,
     from_mag_to_flux,
     standardise_lc,
     compute_quantile
@@ -56,8 +55,8 @@ INTEGRATION_PERIOD_HIGH = 30
 RADIUS = 2
 
 # Parameters needed for the standardisation of the light curve
-TIME_BINNING = 7 # days
-DT_CONCOMITANCE = 0 + 1 / 24 + 0 / 60 # days, hours, minutes
+TIME_BINNING = 7  # days
+DT_CONCOMITANCE = 0 + 1 / 24 + 0 / 60  # days, hours, minutes
 
 
 # ==========
@@ -74,7 +73,8 @@ def extreme_state(
     cra: pd.Series,
     cdec: pd.Series
 ) -> pd.Series:
-    """Returns an array containing extreme state blazar features.
+    """
+    Returns an array containing extreme state blazar features.
 
     Parameters
     ----------
@@ -197,7 +197,6 @@ def extreme_state(
     >>> (pdf[['instantness_low', 'robustness_low']].sum(axis=1) == -1).sum()
     322
     """
-
     # Load catalog
     path = os.path.dirname(os.path.abspath(__file__))
     CTAO_PATH = os.path.join(path, "data/catalogs")
@@ -237,9 +236,8 @@ def extreme_state(
         })
 
         # Low state verification
-        low_state_dic = {
-            k: v for k, v 
-            in zip(
+        low_state_dic = dict(
+            zip(
                 BLAZAR_LOW_COLS,
                 extreme_state_(
                     sub, CTAO_blazar,
@@ -247,21 +245,20 @@ def extreme_state(
                     INTEGRATION_PERIOD_LOW
                 )
             )
-        }  # noqa: C416?
+          )
 
         # High state verification
         high_state_dic = {k: -1 for k in BLAZAR_HIGH_COLS}
         if low_state_dic[INST_LOW_TAG] > 1 or low_state_dic[ROB_LOW_TAG] > 1:
-            high_state_dic = {
-                k: v for k, v 
-                in zip(
+            high_state_dic = dict(
+                zip(
                     BLAZAR_HIGH_COLS,
                     extreme_state_(
                         sub, CTAO_blazar, "high_threshold",
                         INTEGRATION_PERIOD_HIGH
                     )
                 )
-            }
+            )
 
         # CDF computation
         cdf_dic = {CDF_TAG: -1}
@@ -275,7 +272,7 @@ def extreme_state(
             )
         ):
             measurement = sub["cstd_flux"].iloc[0]
-            lc = get_ZTF_DR_data(
+            lc = get_ztf_dr_data(
                 sub["cra"].mean(), sub["cdec"].mean(), RADIUS
             )
             lc = from_mag_to_flux(lc)
@@ -283,7 +280,7 @@ def extreme_state(
             cdf_dic = {CDF_TAG: compute_quantile(lc, measurement)}
 
 
-        out.append(low_state_dic|high_state_dic|cdf_dic)
+        out.append(low_state_dic | high_state_dic | cdf_dic)
 
     return pd.Series(out)
 

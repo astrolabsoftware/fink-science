@@ -7,10 +7,6 @@ from fink_utils.photometry.conversion import apparent_flux
 def standardized_flux_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> tuple:
     """Returns the standardized flux and its uncertainties for a batch of alerts
 
-    Notes
-    -----
-    Standardized flux means flux over median of each band.
-
     Parameters
     ----------
     pdf: pd.DataFrame
@@ -20,12 +16,16 @@ def standardized_flux_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> tuple:
     CTAO_blazar : pd.DataFrame
         Pandas DataFrame of the monitored sources containing:
         ``Source_name``, ``ZTF_name``, ``medians``,
-        ``low_threshold``, ``high_threshold``. 
+        ``low_threshold``, ``high_threshold``.
 
     Returns
     -------
     Tuple of pandas.Series
         Standardized flux and its uncertainties
+
+    Notes
+    -----
+    Standardized flux means flux over median of each band.
     """
     std_flux = np.full(len(pdf), np.nan)
     sigma_std_flux = np.full(len(pdf), np.nan)
