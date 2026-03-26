@@ -185,18 +185,14 @@ def extreme_state(
     ...     F.col("blazar_stats").getItem("robustness_high").alias("robustness_high"),
     ...     F.col("blazar_stats").getItem("cdf_quantile").alias("cdf_quantile"),
     ... ]).toPandas()
-    # Non tracked sources
     >>> (pdf.sum(axis=1) == -5).sum()
     322
-    # Number of low states
     >>> (
     ...     (np.abs(pdf["instantness_low"]) < 1) & (np.abs(pdf["robustness_low"]) < 1)
     ... ).sum()
     8
-    # Number of high states
     >>> ((pdf["instantness_high"] > 1) & (pdf["robustness_high"] > 1)).sum()
     24
-    # Number of computed CDF
     >>> (pdf["cdf_quantile"] != -1).sum()
     32
     """
