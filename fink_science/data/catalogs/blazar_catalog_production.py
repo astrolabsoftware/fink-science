@@ -33,16 +33,20 @@ logger = logging.getLogger(__name__)
 # Globals
 
 CATALOG_COLUMN_NAMES = [
-    "Source_name", "ZTF_name", "medians", "low_threshold", "high_threshold"
+    "Source_name",
+    "ZTF_name",
+    "medians",
+    "low_threshold",
+    "high_threshold"
 ]
 
-BLAZAR_CLASSES: set = {'BLLac', 'Blazar', 'QSO'}
-CANDIDATE_BLAZAR_CLASSES: set = {'Blazar_Candidate', 'Radio', 'NearIR'}
-UNKNOWN_CLASSES: set = {'Unknown', 'Unknown_Candidate'}
+BLAZAR_CLASSES: set = {"BLLac", "Blazar", "QSO"}
+CANDIDATE_BLAZAR_CLASSES: set = {"Blazar_Candidate", "Radio", "NearIR"}
+UNKNOWN_CLASSES: set = {"Unknown", "Unknown_Candidate"}
 
-FINK_APIURL: str = 'https://api.ztf.fink-portal.org'
-DR_APIURL = "https://db.ztf.snad.space"
-DR_CHECK_URL = "https://www.ztf.caltech.edu/nsf-msip.html"
+FINK_APIURL: str = "https://api.ztf.fink-portal.org"
+DR_APIURL: str = "https://db.ztf.snad.space"
+DR_CHECK_URL: str = "https://www.ztf.caltech.edu/nsf-msip.html"
 
 search_radius = 2
 dt_concomitance = 1 / 24
@@ -56,6 +60,7 @@ LOGDIRFILENAME = "blazar_watchlist.log"
 # ===================================
 # File handling
 # ===================================
+
 
 def read_file_names(path: str, colname: str = None) -> np.ndarray:
     """Read new source file.
@@ -96,6 +101,7 @@ def read_file_names(path: str, colname: str = None) -> np.ndarray:
         return source_table[colname].to_numpy()
     return source_table[source_table.keys()[0]].to_numpy()
 
+
 def _init_catalog() -> pd.DataFrame:
     """Subfunction to initialize an empty catalog.
 
@@ -104,9 +110,8 @@ def _init_catalog() -> pd.DataFrame:
     out : pd.DataFrame
         Empty pandas DataFrame with the catalog schema.
     """
-    return pd.DataFrame(
-        {key: [] for key in CATALOG_COLUMN_NAMES}
-    )
+    return pd.DataFrame({key: [] for key in CATALOG_COLUMN_NAMES})
+
 
 def read_catalog(path: str) -> pd.DataFrame:
     """Read existing catalog, if any.
@@ -133,9 +138,8 @@ def read_catalog(path: str) -> pd.DataFrame:
     logger.warning("No formatted catalog found.")
     return _init_catalog()
 
-def merge_catalog(
-    listnames: np.ndarray, catalog: pd.DataFrame = None
-) -> pd.DataFrame:
+
+def merge_catalog(listnames: np.ndarray, catalog: pd.DataFrame = None) -> pd.DataFrame:
     """Merge catalog and list of names of new sources.
 
     Add new sources to the catalog, returns a new DataFrame catalog.
@@ -160,13 +164,11 @@ def merge_catalog(
         logger.debug("No catalog has been given.")
         catalog = _init_catalog()
 
-    new_sources = pd.DataFrame({
-        "Source_name": np.unique(listnames)
-    })
+    new_sources = pd.DataFrame({"Source_name": np.unique(listnames)})
 
     return pd.concat(
         [catalog[~catalog["Source_name"].isin(listnames)], new_sources],
-        ignore_index=True
+        ignore_index=True,
     )
 
 
@@ -185,6 +187,7 @@ def write_catalog(catalog: pd.DataFrame, path: str) -> None:
         path = Path(f"{path}.parquet")
     catalog.to_parquet(path, index=False)
     return
+
 
 def expand_catalog(catalog: pd.DataFrame) -> pd.DataFrame:
     """Expand catalog for one row per ZTF id.
@@ -217,9 +220,11 @@ def expand_catalog(catalog: pd.DataFrame) -> pd.DataFrame:
 
     return pd.concat(list_to_concat, ignore_index=True)
 
+
 # =========================
 # DR and Fink API handling
 # =========================
+
 
 def check_dr_version() -> int:
     """Scrape the ZTF DR website to get the latest public DR version.
@@ -240,6 +245,7 @@ def check_dr_version() -> int:
     except Exception:
         logger.warning("check_DR_version failed: {e}")
         return -1
+
 
 def _post_fink(
     url: str,
@@ -286,10 +292,9 @@ def _post_fink(
                 f"Failed to connect to {url} after {max_retries} retries."
             )
     except ConnectionError:
-        logger.exception(
-            f"Failed to connect to {url} after {max_retries} retries."
-        )
+        logger.exception(f"Failed to connect to {url} after {max_retries} retries.")
         raise
+
 
 def _get_snad(
     url: str,
@@ -329,7 +334,6 @@ def _get_snad(
             delay *= 2
             logger.warning(f"_post_fink failed (attempt {attempt + 1})")
 
-
     # Error logger handling
     try:
         if response.status_code != 200:
@@ -337,10 +341,9 @@ def _get_snad(
                 f"Failed to connect to {url} after {max_retries} retries."
             )
     except ConnectionError:
-        logger.exception(
-            f"Failed to connect to {url} after {max_retries} retries."
-        )
+        logger.exception(f"Failed to connect to {url} after {max_retries} retries.")
         raise
+
 
 def get_simbad_coordinates(catalog: pd.DataFrame) -> pd.DataFrame:
     """Find SIMBAD coordinates.
@@ -365,9 +368,7 @@ def get_simbad_coordinates(catalog: pd.DataFrame) -> pd.DataFrame:
     NameError
         If no sources has been found in the CDS SIMBAD database.
     """
-    simbad_df = Simbad.query_objects(
-        catalog["Source_name"].to_numpy()
-    ).to_pandas()
+    simbad_df = Simbad.query_objects(catalog["Source_name"].to_numpy()).to_pandas()
 
     try:
         if simbad_df.empty:
@@ -382,9 +383,10 @@ def get_simbad_coordinates(catalog: pd.DataFrame) -> pd.DataFrame:
         simbad_df[["user_specified_id", "ra", "dec"]],
         left_on="Source_name",
         right_on="user_specified_id",
-        how="left"
+        how="left",
     )
     return catalog
+
 
 def _get_fink_data(name: str) -> pd.DataFrame:
     """Get alert packet from Fink.
@@ -437,14 +439,13 @@ def _get_fink_data(name: str) -> pd.DataFrame:
         logger.exception(f'Source "{name}" not found in Fink.')
         raise
 
-    lc['i:mjd'] = lc['i:jd'] - 2400000.5
-    lc['i:fid'] = lc['i:fid'].astype(int)
+    lc["i:mjd"] = lc["i:jd"] - 2400000.5
+    lc["i:fid"] = lc["i:fid"].astype(int)
     lc = lc[lc['d:tag'] == 'valid'].sort_values(
-        'i:mjd',
-        ascending=True,
-        ignore_index=True
+        "i:mjd", ascending=True, ignore_index=True
     )
     return lc
+
 
 def _get_class_ztf_identifier(
     ra: float,
@@ -452,7 +453,7 @@ def _get_class_ztf_identifier(
     radius: float,
     source_classes: set = BLAZAR_CLASSES,
     candidate_source_classes: set = CANDIDATE_BLAZAR_CLASSES,
-    unknown_classes: set = UNKNOWN_CLASSES
+    unknown_classes: set = UNKNOWN_CLASSES,
 ) -> np.ndarray:
     """Retrieve ZTF identifier for a given position.
 
@@ -481,19 +482,12 @@ def _get_class_ztf_identifier(
     """
     r = _post_fink(
         f"{FINK_APIURL}/api/v1/conesearch",
-        payload={
-            'ra': ra,
-            'dec': dec,
-            'radius': radius,
-            'columns': 'i:objectId'
-        },
+        payload={'ra': ra, 'dec': dec, 'radius': radius, 'columns': 'i:objectId'},
     )
 
     lc = pd.read_json(io.BytesIO(r.content))
     if lc.empty:
-        logger.debug(
-            f"No found Fink correspondance for ra={ra:.6f}, dec={dec:.6f}."
-        )
+        logger.debug(f"No found Fink correspondance for ra={ra:.6f}, dec={dec:.6f}.")
         return np.array([])
 
     names = lc['i:objectId'].unique()
@@ -503,30 +497,24 @@ def _get_class_ztf_identifier(
     classifications = [set(lc['v:classification'].unique()) for lc in lcs]
 
     # Step 1: confirmed blazars
-    tags = np.array(
-        [bool(classes & source_classes) for classes in classifications]
-    )
+    tags = np.array([bool(classes & source_classes) for classes in classifications])
     if tags.any():
         logger.debug("Source confirmed as blazar in Fink classification.")
         return names[tags]
 
     # Step 2: candidate classes
     tags = np.array(
-        [
-            bool(classes & candidate_source_classes)
-            for classes in classifications
-        ]
+        [bool(classes & candidate_source_classes)for classes in classifications]
     )
     if tags.any():
         logger.debug("Source candidate blazar in Fink classification.")
         return names[tags]
 
     # Step 3: unknown only if all classifications are unknown
-    tags = np.array(
-        [classes.issubset(unknown_classes) for classes in classifications]
-    )
+    tags = np.array([classes.issubset(unknown_classes) for classes in classifications])
     logger.debug("Source classification not known by Fink.")
     return names[tags]
+
 
 def get_ztf_id(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
     """Retrieve ZTF ids for all catalog.
@@ -551,9 +539,7 @@ def get_ztf_id(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
 
     try:
         if not np.isin(["ra", "dec"], catalog.keys()).all():
-            raise KeyError(
-                "get_ztf_id failed: no 'ra' or 'dec' found in catalog keys."
-            )
+            raise KeyError("get_ztf_id failed: no 'ra' or 'dec' found in catalog keys.")
     except KeyError:
         logger.warning("get_ztf_id failed - no 'ra' or 'ded' found in keys.")
         raise
@@ -564,16 +550,14 @@ def get_ztf_id(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
             f"Retrieving ZTF id for source {name} ({index + 1}/{len(catalog)})"
         )
         ztf_ids.append(
-            _get_class_ztf_identifier(
-                ra=row["ra"],
-                dec=row["dec"],
-                radius=radius
+            _get_class_ztf_identifier(ra=row["ra"], dec=row["dec"], radius=radius
             )
         )
     catalog["ZTF_name"] = ztf_ids
     return catalog
 
 # DR download within 2"-cone search
+
 
 def _get_ztf_dr_data(
     ra: float, dec: float, radius: float
@@ -635,12 +619,11 @@ def _get_ztf_dr_data(
 
     filter_map = {"zg": 1, "zr": 2, "zi": 3}
     lc["filtercode"] = lc["filtercode"].map(filter_map).astype(int)
-    lc = lc[
-        (lc['mjd'] >= START_ZTF) & np.isin(lc["filtercode"], [1, 2])
-    ].copy()
+    lc = lc[(lc['mjd'] >= START_ZTF) & np.isin(lc["filtercode"], [1, 2])].copy()
     lc = lc.sort_values('mjd', ascending=True, ignore_index=True)
 
     return lc
+
 
 def get_ztf_dr_data(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
     """Retrieve DR light curves.
@@ -669,13 +652,7 @@ def get_ztf_dr_data(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
             f"Retrieving ZTF DR light curve \
 for source {name} ({index + 1}/{len(catalog)})"
         )
-        lcs.append(
-            _get_ztf_dr_data(
-                ra=row["ra"],
-                dec=row["dec"],
-                radius=radius
-            )
-        )
+        lcs.append(_get_ztf_dr_data(ra=row["ra"], dec=row["dec"], radius=radius))
     catalog["ZTF_lc"] = lcs
     return catalog
 
@@ -686,6 +663,7 @@ for source {name} ({index + 1}/{len(catalog)})"
 
 
 # Preprocessing
+
 
 def _from_mag_to_flux(lc):
     """Compute the flux, in Jansky, of the source from its DC magnitude.
@@ -714,6 +692,7 @@ def _from_mag_to_flux(lc):
 
 
 # 1 band standardisation
+
 
 def _standardise_lc_1band(lc: pd.DataFrame) -> tuple[pd.DataFrame, float]:
     """Standardise 1-band light curve flux.
@@ -751,7 +730,7 @@ def _standardise_lc_1band(lc: pd.DataFrame) -> tuple[pd.DataFrame, float]:
                 np.quantile(
                 flux[:-1], 0.5,
                 method="inverted_cdf",
-                weights=diff_time / (flux_error[:-1] ** 2)
+                weights=diff_time / (flux_error[:-1] ** 2),
             )
         )
 
@@ -760,6 +739,7 @@ def _standardise_lc_1band(lc: pd.DataFrame) -> tuple[pd.DataFrame, float]:
 
 
 # 2 bands standardisation
+
 
 def _concomitant_weighted(
     t1: np.ndarray, f1: np.ndarray, e1: np.ndarray,
@@ -879,6 +859,7 @@ def _standardise_lc_2bands(
 
 # Full band handling standardisation
 
+
 def medians_for_1band(lc: pd.DataFrame, median: float) -> dict:
     """Subfunction helper to format median dictionary for catalog.
 
@@ -898,6 +879,7 @@ def medians_for_1band(lc: pd.DataFrame, median: float) -> dict:
     medians = {"1": np.nan, "2": np.nan}
     medians[str(lc["filtercode"].iloc[0])] = median
     return medians
+
 
 def standardise_lc(
     lc: pd.DataFrame, dt_concomitance: float
@@ -933,9 +915,8 @@ def standardise_lc(
     else:
         return _standardise_lc_2bands(lc, dt_concomitance)
 
-def standardise_lcs(
-    catalog: pd.DataFrame, dt_concomitance: float
-) -> pd.DataFrame:
+
+def standardise_lcs(catalog: pd.DataFrame, dt_concomitance: float) -> pd.DataFrame:
     """Standardise all light curves from catalog.
 
     Parameters
@@ -956,9 +937,7 @@ def standardise_lcs(
     medians = []
 
     if "ZTF_lc" not in catalog.keys():
-        raise KeyError(
-            "standardise_lcs failed: no 'ZTF_lc' found in catalog keys."
-        )
+        raise KeyError("standardise_lcs failed: no 'ZTF_lc' found in catalog keys.")
 
     for index, row in catalog.iterrows():
         name = row["Source_name"]
@@ -982,7 +961,6 @@ source {name} ({index + 1}/{len(catalog)})"
     return catalog
 
 
-
 # =====================
 # Quantity computation
 # =====================
@@ -990,9 +968,7 @@ source {name} ({index + 1}/{len(catalog)})"
 # Flux quantile computation
 
 def compute_threshold(
-        lc: pd.DataFrame,
-        high_threshold: float,
-        low_threshold: float
+    lc: pd.DataFrame, high_threshold: float, low_threshold: float
 ) -> tuple[np.float64, np.float64]:
     """Compute the flux thresholds for one light curve.
 
@@ -1041,20 +1017,23 @@ def compute_threshold(
     return (
         np.interp(
             high_threshold,
-            cdf, sort_measurements,
-            left=sort_measurements[0], right=sort_measurements[-1]
+            cdf,
+            sort_measurements,
+            left=sort_measurements[0],
+            right=sort_measurements[-1]
         ),
         np.interp(
             low_threshold,
-            cdf, sort_measurements,
-            left=sort_measurements[0], right=sort_measurements[-1]
+            cdf,
+            sort_measurements,
+            left=sort_measurements[0],
+            right=sort_measurements[-1]
         )
     )
 
+
 def compute_quantile_for_catalog(
-    catalog: pd.DataFrame,
-    high_threshold: float = 0.9,
-    low_threshold: float = 0.1
+    catalog: pd.DataFrame, high_threshold: float = 0.9, low_threshold: float = 0.1
 ) -> pd.DataFrame:
     """Compute flux thresholds of all light curves.
 
@@ -1099,9 +1078,7 @@ for source {name} ({index + 1}/{len(catalog)})"
             low_thresholds.append(np.nan)
             high_thresholds.append(np.nan)
         else:
-            high_thres, low_thres = compute_threshold(
-                lc, high_threshold, low_threshold
-            )
+            high_thres, low_thres = compute_threshold(lc, high_threshold, low_threshold)
             low_thresholds.append(low_thres)
             high_thresholds.append(high_thres)
 
@@ -1113,6 +1090,7 @@ for source {name} ({index + 1}/{len(catalog)})"
 # ===========
 # Main + CLI
 # ===========
+
 
 def setup_logging(
     log_filepath: str = LOGDIRFILENAME, level: int = logging.INFO
@@ -1149,11 +1127,7 @@ def setup_logging(
     console_handler.setFormatter(console_format)
 
     # Rotating file handler
-    file_handler = RotatingFileHandler(
-        log_filepath,
-        maxBytes=5_000_000,
-        backupCount=3
-    )
+    file_handler = RotatingFileHandler(log_filepath, maxBytes=5_000_000, backupCount=3)
     file_handler.setLevel(level)
     file_format = logging.Formatter(
         "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
@@ -1164,6 +1138,7 @@ def setup_logging(
     logger.addHandler(file_handler)
 
     return logger
+
 
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments.
@@ -1182,7 +1157,7 @@ def parse_args() -> argparse.Namespace:
         nargs="?",
         const="",
         default="",
-        help="Path for the list of sources from which create the catalog"
+        help="Path for the list of sources from which create the catalog",
     )
 
     parser.add_argument(
@@ -1190,7 +1165,7 @@ def parse_args() -> argparse.Namespace:
         nargs="?",
         const=CATALOG_COLUMN_NAMES[0],
         default=CATALOG_COLUMN_NAMES[0],
-        help="Key for the list of sources"
+        help="Key for the list of sources",
     )
 
     parser.add_argument(
@@ -1198,21 +1173,17 @@ def parse_args() -> argparse.Namespace:
         nargs="?",
         const=None,
         default=None,
-        help="Path where to save the catalog"
+        help="Path where to save the catalog",
     )
 
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug logging"
-    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     parser.add_argument(
         "--search-radius",
         nargs="?",
         const=search_radius,
         default=search_radius,
-        help="Search radius (in arcseconds) for Fink and SNAD API"
+        help="Search radius (in arcseconds) for Fink and SNAD API",
     )
 
     parser.add_argument(
@@ -1220,10 +1191,11 @@ def parse_args() -> argparse.Namespace:
         nargs="?",
         const=dt_concomitance,
         default=dt_concomitance,
-        help="Delta time (in days) to assume concomitance of measurements"
+        help="Delta time (in days) to assume concomitance of measurements",
     )
 
     return parser.parse_args()
+
 
 def log_execution_time(start_time):
     """Compute execution time from the start.
@@ -1242,6 +1214,7 @@ def log_execution_time(start_time):
     h, rem = divmod(elapsed, 3600)
     m, s = divmod(rem, 60)
     return h, m, s
+
 
 def main():
     """main() blazar watchlist production pipeline process."""
@@ -1265,12 +1238,8 @@ def main():
             catalog_filepath += ".parquet"
 
         # Retrieve list of sources
-        list_names = read_file_names(
-            args.source_list, colname=args.source_key
-        )
-        logger.info(
-            f"Number of sources waiting to be added: {len(list_names)}"
-        )
+        list_names = read_file_names(args.source_list, colname=args.source_key)
+        logger.info(f"Number of sources waiting to be added: {len(list_names)}")
 
         # Load catalog, if exists
         logger.info("Browsing to find former catalog")
@@ -1278,9 +1247,7 @@ def main():
 
         # Merge list and catalog
         catalog = merge_catalog(list_names, catalog)
-        logger.info(
-            f"Full shape of the new catalog: {catalog.shape}"
-        )
+        logger.info(f"Full shape of the new catalog: {catalog.shape}")
 
         # Retrieve Simbad coordinates
         logger.info("Retrieving source coordinates in SIMBAD database")
@@ -1304,7 +1271,7 @@ def main():
         # Compute low- and high-threshold values
         logger.info("Computing thresholds for the catalog sources")
         catalog = compute_quantile_for_catalog(
-            catalog, high_threshold=.9, low_threshold=.1
+            catalog, high_threshold=0.9, low_threshold=0.1
         )
         try:
             logger.info("Catalog satisfies expected scheme")
@@ -1323,9 +1290,7 @@ def main():
 
         # Write catalog
         write_catalog(catalog, catalog_filepath)
-        logger.info(
-            f"Catalog written at {catalog_filepath}"
-        )
+        logger.info(f"Catalog written at {catalog_filepath}")
 
         h, m, s = log_execution_time(start_time)
         logger.info(f"Total execution time: {h}h {m}m {s}s")

@@ -23,7 +23,7 @@ from fink_science.ztf.blazar_extreme_state.utils import (
     get_ztf_dr_data,
     from_mag_to_flux,
     standardise_lc,
-    compute_quantile
+    compute_quantile,
 )
 
 from fink_science.tester import spark_unit_tests
@@ -63,6 +63,7 @@ DT_CONCOMITANCE = 0 + 1 / 24 + 0 / 60  # days, hours, minutes
 # Processor
 # ==========
 
+
 @pandas_udf(MapType(StringType(), FloatType()))
 @profile
 def extreme_state(
@@ -71,7 +72,7 @@ def extreme_state(
     cstd_flux: pd.Series,
     cjd: pd.Series,
     cra: pd.Series,
-    cdec: pd.Series
+    cdec: pd.Series,
 ) -> pd.Series:
     """
     Returns an array containing extreme state blazar features.
@@ -134,7 +135,7 @@ def extreme_state(
     ...     'fid',
     ...     'jd',
     ...     'ra',
-    ...     'dec'
+    ...     'dec',
     ... ]
 
     # Concatenation
@@ -210,7 +211,7 @@ def extreme_state(
         "cstd_flux": cstd_flux,
         "cjd": cjd,
         "cra": cra,
-        "cdec": cdec
+        "cdec": cdec,
     })
     out = []
 
@@ -220,9 +221,7 @@ def extreme_state(
 
         # If no standardised flux has been calculated:
         if not len(tmp["cstd_flux"].to_numpy()[0]):
-            out.append(
-                {k: -1. for k in BLAZAR_LOW_COLS + BLAZAR_HIGH_COLS + CDF_COL}
-            )
+            out.append({k: -1. for k in BLAZAR_LOW_COLS + BLAZAR_HIGH_COLS + CDF_COL})
             continue
 
         # Else:
@@ -240,12 +239,10 @@ def extreme_state(
             zip(
                 BLAZAR_LOW_COLS,
                 extreme_state_(
-                    sub, CTAO_blazar,
-                    "low_threshold",
-                    INTEGRATION_PERIOD_LOW
-                )
+                    sub, CTAO_blazar, "low_threshold", INTEGRATION_PERIOD_LOW
+                ),
             )
-          )
+        )
 
         # High state verification
         high_state_dic = {k: -1 for k in BLAZAR_HIGH_COLS}
@@ -254,31 +251,22 @@ def extreme_state(
                 zip(
                     BLAZAR_HIGH_COLS,
                     extreme_state_(
-                        sub, CTAO_blazar, "high_threshold",
-                        INTEGRATION_PERIOD_HIGH
-                    )
+                        sub, CTAO_blazar, "high_threshold", INTEGRATION_PERIOD_HIGH
+                    ),
                 )
             )
 
         # CDF computation
         cdf_dic = {CDF_TAG: -1}
         if (
-            (
-                0 <= low_state_dic[INST_LOW_TAG] <= 1
-                and 0 <= low_state_dic[ROB_LOW_TAG] <= 1
-            ) or (
-                high_state_dic[INST_HIGH_TAG] >= 1
-                and high_state_dic[ROB_HIGH_TAG] >= 1
-            )
-        ):
+            0 <= low_state_dic[INST_LOW_TAG] <= 1
+            and 0 <= low_state_dic[ROB_LOW_TAG] <= 1
+        ) or (high_state_dic[INST_HIGH_TAG] >= 1 and high_state_dic[ROB_HIGH_TAG] >= 1):
             measurement = sub["cstd_flux"].iloc[0]
-            lc = get_ztf_dr_data(
-                sub["cra"].mean(), sub["cdec"].mean(), RADIUS
-            )
+            lc = get_ztf_dr_data(sub["cra"].mean(), sub["cdec"].mean(), RADIUS)
             lc = from_mag_to_flux(lc)
             lc = standardise_lc(sub, lc, CTAO_blazar)
             cdf_dic = {CDF_TAG: compute_quantile(lc, measurement)}
-
 
         out.append(low_state_dic | high_state_dic | cdf_dic)
 

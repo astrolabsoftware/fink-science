@@ -27,11 +27,10 @@ _LOG = logging.getLogger(__name__)
 # Estimation of extreme state
 # ============================
 
+
 def _instantness_criterion(
-        pdf: pd.DataFrame,
-        CTAO_blazar: pd.DataFrame,
-        state_key: str
-    ) -> np.float64:
+    pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame, state_key: str
+) -> np.float64:
     """Compute instantness criterion for a given state.
 
     Returns the standardised flux of the last measurement
@@ -62,9 +61,7 @@ def _instantness_criterion(
 
     try:
         threshold = np.array(
-            CTAO_blazar.loc[
-                CTAO_blazar["ZTF_name"] == name, state_key
-            ].to_numpy()[0]
+            CTAO_blazar.loc[CTAO_blazar["ZTF_name"] == name, state_key].to_numpy()[0]
         )
     except IndexError as e:
         _LOG.warning(f"_instantness_criterion process failed: {e}.")
@@ -78,11 +75,8 @@ def _instantness_criterion(
 
 
 def _robustness_criterion(
-        pdf: pd.DataFrame,
-        CTAO_blazar: pd.DataFrame,
-        state_key: str,
-        integration_period: float
-    ) -> np.float64:
+    pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame, state_key: str, integration_period: float
+) -> np.float64:
     """Compute robustness criterion for a given state.
 
     Returns the sliding mean over 30 days of the standardised flux
@@ -114,9 +108,7 @@ def _robustness_criterion(
 
     try:
         threshold = np.array(
-            CTAO_blazar.loc[
-                CTAO_blazar["ZTF_name"] == name, state_key
-            ].to_numpy()[0]
+            CTAO_blazar.loc[CTAO_blazar["ZTF_name"] == name, state_key].to_numpy()[0]
         )
     except IndexError as e:
         _LOG.warning(f"_robustness_criterion process failed: {e}.")
@@ -147,11 +139,8 @@ not enough points to compute fluence."
 
 
 def extreme_state_(
-        pdf: pd.DataFrame,
-        CTAO_blazar: pd.DataFrame,
-        state_key: str,
-        integration_period: float
-    ) -> np.ndarray:
+    pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame, state_key: str, integration_period: float
+) -> np.ndarray:
     """Returns an array containing blazar features.
 
     Parameters
@@ -191,9 +180,7 @@ def extreme_state_(
 
     if not CTAO_blazar.loc[CTAO_blazar["ZTF_name"] == name].empty:
         return np.array([
-            _robustness_criterion(
-                pdf, CTAO_blazar, state_key, integration_period
-            ),
+            _robustness_criterion(pdf, CTAO_blazar, state_key, integration_period),
             _instantness_criterion(pdf, CTAO_blazar, state_key),
         ])
 
@@ -205,12 +192,13 @@ def extreme_state_(
 # Download of the light curve
 # ============================
 
+
 def _post_request_with_retry(
-        url: str,
-        payload: dict,
-        max_retries: int = 3,
-        delay: float = 0.5,
-    ) -> requests.Response:
+    url: str,
+    payload: dict,
+    max_retries: int = 3,
+    delay: float = 0.5,
+) -> requests.Response:
     """Perform a POST request with retry logic.
 
     Parameters
@@ -239,11 +227,7 @@ def _post_request_with_retry(
     _LOG.warning(f"Failed to connect to {url} after {max_retries} retries.")
     return None
 
-def get_ztf_dr_data(
-        ra: float,
-        dec: float,
-        radius: float
-    ) -> pd.DataFrame:
+def get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
     """Retrieve ZTF light curves from the latest Data Release via SNAD API.
 
     Parameters
@@ -337,15 +321,14 @@ def from_mag_to_flux(lc: pd.DataFrame) -> pd.DataFrame:
     uncertainties = lc["magerr"].to_numpy()
 
     lc["flux"] = 3631 * 10 ** (-0.4 * measurements)
-    lc["flux_error"] = (
-        lc["flux"].to_numpy() * 0.4 * np.log(10) * uncertainties
-    )
+    lc["flux_error"] = lc["flux"].to_numpy() * 0.4 * np.log(10) * uncertainties
 
     return lc
 
+
 def standardise_lc(
-        pdf: pd.DataFrame, lc: pd.DataFrame, CTAO_blazar: pd.DataFrame
-    ) -> pd.DataFrame:
+    pdf: pd.DataFrame, lc: pd.DataFrame, CTAO_blazar: pd.DataFrame
+) -> pd.DataFrame:
     """Standardise a light curve using previously computed per-band medians.
 
     Parameters
@@ -376,15 +359,14 @@ def standardise_lc(
     for filt in lc["filtercode"].unique():
         maskFilt = lc["filtercode"] == filt
         median = sub_catalog["medians"][filt]
-        lc.loc[maskFilt, "std_flux"] = (
-            lc.loc[maskFilt, "flux"] / median
-        )
+        lc.loc[maskFilt, "std_flux"] = lc.loc[maskFilt, "flux"] / median
     return lc
 
 
 # ==================================
 # Determination of the CDF quantile
 # ==================================
+
 
 def compute_quantile(lc: pd.DataFrame, measurement: np.float64) -> np.float64:
     """Place the measurement on the CDF.
