@@ -50,15 +50,6 @@ def standardized_flux_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> tuple:
             median = CTAO_data["medians"].iloc[0][str(filter_)]
             std_flux[maskFilt] = flux_dc[maskFilt] / median
             sigma_std_flux[maskFilt] = sigma_flux_dc[maskFilt] / median
-        print(
-            name,
-            ":",
-            np.nanmin(std_flux),
-            "-",
-            np.nanmedian(std_flux),
-            "-",
-            np.nanmax(std_flux),
-        )
         return pd.Series(std_flux), pd.Series(sigma_std_flux)
 
     else:
