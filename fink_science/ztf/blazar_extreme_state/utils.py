@@ -371,7 +371,7 @@ def standardise_lc(
     for filt in lc["filtercode"].unique():
         print(filt)
         maskFilt = lc["filtercode"] == filt
-        median = sub_catalog["medians"][str(filt)]
+        median = sub_catalog["medians"].iloc[0][str(filt)]
         lc.loc[maskFilt, "std_flux"] = lc.loc[maskFilt, "flux"] / median
     return lc
 
