@@ -126,76 +126,66 @@ def extreme_state(
 
     # Required alert columns
     >>> what = [
-    ...     'distnr',
-    ...     'magpsf',
-    ...     'sigmapsf',
-    ...     'magnr',
-    ...     'sigmagnr',
-    ...     'isdiffpos',
-    ...     'fid',
-    ...     'jd',
-    ...     'ra',
-    ...     'dec',
+    ...     "distnr",
+    ...     "magpsf",
+    ...     "sigmapsf",
+    ...     "magnr",
+    ...     "sigmagnr",
+    ...     "isdiffpos",
+    ...     "fid",
+    ...     "jd",
+    ...     "ra",
+    ...     "dec",
     ... ]
 
     # Concatenation
-    >>> prefix = 'c'
+    >>> prefix = "c"
     >>> for key in what:
     ...     parDF = concat_col(parDF, colname=key, prefix=prefix)
 
     # Preliminary module run
     >>> args = [
-    ...     'candid',
-    ...     'objectId',
-    ...     'cdistnr',
-    ...     'cmagpsf',
-    ...     'csigmapsf',
-    ...     'cmagnr',
-    ...     'csigmagnr',
-    ...     'cisdiffpos',
-    ...     'cfid',
-    ...     'cjd',
+    ...     "candid",
+    ...     "objectId",
+    ...     "cdistnr",
+    ...     "cmagpsf",
+    ...     "csigmapsf",
+    ...     "cmagnr",
+    ...     "csigmagnr",
+    ...     "cisdiffpos",
+    ...     "cfid",
+    ...     "cjd",
     ... ]
     >>> parDF = parDF.withColumn(
-    ...     'container',
+    ...     "container",
     ...     standardized_flux(*args)
     ... )
     >>> parDF = parDF.withColumn(
-    ...     'cstd_flux',
-    ...     parDF['container'].getItem('flux')
+    ...     "cstd_flux",
+    ...     parDF["container"].getItem("flux")
     ... )
     >>> parDF = parDF.withColumn(
-    ...     'csigma_std_flux',
-    ...     parDF['container'].getItem('sigma')
+    ...     "csigma_std_flux",
+    ...     parDF["container"].getItem("sigma")
     ... )
 
     # Drop temporary columns
     >>> what_prefix = [prefix + key for key in what]
-    >>> parDF = parDF.drop('container')
+    >>> parDF = parDF.drop("container")
 
     # Test the module
-    >>> args = ['candid', 'objectId', 'cstd_flux', 'cjd', 'cra', 'cdec']
-    >>> parDF = parDF.withColumn('blazar_stats', extreme_state(*args))
+    >>> args = ["candid", "objectId", "cstd_flux", "cjd", "cra", "cdec"]
+    >>> parDF = parDF.withColumn("blazar_stats", extreme_state(*args))
 
     # Test
-    >>> pdf = parDF.select(
-    ...     [F.col('blazar_stats').getItem(
-    ...         'instantness_low'
-    ...     ).alias("instantness_low"),
-    ...     [F.col('blazar_stats').getItem(
-    ...         'robustness_low'
-    ...     ).alias("robustness_low"),
-    ...     [F.col('blazar_stats').getItem(
-    ...         'instantness_high'
-    ...     ).alias("instantness_high"),
-    ...     [F.col('blazar_stats').getItem(
-    ...         'robustness_high'
-    ...     ).alias("robustness_high"),
-    ...     [F.col('blazar_stats').getItem(
-    ...         'cdf_quantile'
-    ...     ).alias("cdf_quantile")]
-    ... ).toPandas()
-    >>> (pdf[['instantness_low', 'robustness_low']].sum(axis=1) == -1).sum()
+    >>> pdf = parDF.select([
+    ...     F.col("blazar_stats").getItem("instantness_low").alias("instantness_low"),
+    ...     F.col("blazar_stats").getItem("robustness_low").alias("robustness_low"),
+    ...     F.col("blazar_stats").getItem("instantness_high").alias("instantness_high"),
+    ...     F.col("blazar_stats").getItem("robustness_high").alias("robustness_high"),
+    ...     F.col("blazar_stats").getItem("cdf_quantile").alias("cdf_quantile"),
+    ... ]).toPandas()
+    >>> (pdf[["instantness_low", "robustness_low"]].sum(axis=1) == -1).sum()
     322
     """
     # Load catalog
