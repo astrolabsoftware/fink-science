@@ -366,8 +366,10 @@ def standardise_lc(
     print(sub_catalog.keys())
     print(sub_catalog["medians"].iloc[0])
     print(sub_catalog["medians"].iloc[0].keys())
+    print(sub_catalog.shape)
     lc["std_flux"] = np.full(len(lc), np.nan)
     for filt in lc["filtercode"].unique():
+        print(filt)
         maskFilt = lc["filtercode"] == filt
         median = sub_catalog["medians"][str(filt)]
         lc.loc[maskFilt, "std_flux"] = lc.loc[maskFilt, "flux"] / median
