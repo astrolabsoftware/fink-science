@@ -42,7 +42,7 @@ CATALOG_TAG = "23.v03_2026"
 BLAZAR_LOW_COLS = ["instantness_low", "robustness_low"]
 INST_LOW_TAG, ROB_LOW_TAG = BLAZAR_LOW_COLS
 BLAZAR_HIGH_COLS = ["instantness_high", "robustness_high"]
-INST_HIGH_TAG, ROB_HIGH_TAG = BLAZAR_LOW_COLS
+INST_HIGH_TAG, ROB_HIGH_TAG = BLAZAR_HIGH_COLS
 CDF_COL = ["cdf_quantile"]
 CDF_TAG = CDF_COL[0]
 
@@ -185,7 +185,7 @@ def extreme_state(
     ...     F.col("blazar_stats").getItem("robustness_high").alias("robustness_high"),
     ...     F.col("blazar_stats").getItem("cdf_quantile").alias("cdf_quantile"),
     ... ]).toPandas()
-    >>> (pdf[["instantness_low", "robustness_low"]].sum(axis=1) == -1).sum()
+    >>> (pdf.sum(axis=1) == -5).sum()
     322
     """
     # Load catalog
@@ -235,7 +235,7 @@ def extreme_state(
         )
 
         # High state verification
-        high_state_dic = {k: -1 for k in BLAZAR_HIGH_COLS}
+        high_state_dic = {k: -1.0 for k in BLAZAR_HIGH_COLS}
         if low_state_dic[INST_LOW_TAG] > 1 or low_state_dic[ROB_LOW_TAG] > 1:
             high_state_dic = dict(
                 zip(
@@ -247,7 +247,7 @@ def extreme_state(
             )
 
         # CDF computation
-        cdf_dic = {CDF_TAG: -1}
+        cdf_dic = {CDF_TAG: -1.0}
         if (
             0 <= low_state_dic[INST_LOW_TAG] <= 1
             and 0 <= low_state_dic[ROB_LOW_TAG] <= 1
