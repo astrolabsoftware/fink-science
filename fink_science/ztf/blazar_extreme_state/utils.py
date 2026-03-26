@@ -363,6 +363,9 @@ def standardise_lc(
     _LOG.info(f"Standardisation of {name}")
 
     sub_catalog = CTAO_blazar[CTAO_blazar["ZTF_name"] == name]
+    print(sub_catalog.keys())
+    print(sub_catalog["medians"].iloc[0])
+    print(sub_catalog["medians"].iloc[0].keys())
     lc["std_flux"] = np.full(len(lc), np.nan)
     for filt in lc["filtercode"].unique():
         maskFilt = lc["filtercode"] == filt
