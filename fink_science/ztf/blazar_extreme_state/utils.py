@@ -75,7 +75,10 @@ def _instantness_criterion(
 
 
 def _robustness_criterion(
-    pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame, state_key: str, integration_period: float
+    pdf: pd.DataFrame,
+    CTAO_blazar: pd.DataFrame,
+    state_key: str,
+    integration_period: float,
 ) -> np.float64:
     """Compute robustness criterion for a given state.
 
@@ -139,7 +142,10 @@ not enough points to compute fluence."
 
 
 def extreme_state_(
-    pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame, state_key: str, integration_period: float
+    pdf: pd.DataFrame,
+    CTAO_blazar: pd.DataFrame,
+    state_key: str,
+    integration_period: float,
 ) -> np.ndarray:
     """Returns an array containing blazar features.
 
@@ -227,6 +233,7 @@ def _post_request_with_retry(
     _LOG.warning(f"Failed to connect to {url} after {max_retries} retries.")
     return None
 
+
 def get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
     """Retrieve ZTF light curves from the latest Data Release via SNAD API.
 
@@ -290,9 +297,7 @@ def get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
 
     filter_map = {"zg": 1, "zr": 2, "zi": 3}
     pdf["filtercode"] = pdf["filtercode"].map(filter_map).astype(int)
-    pdf = pdf[
-        (pdf['mjd'] >= 58000) & np.isin(pdf["filtercode"], [1, 2])
-    ].copy()
+    pdf = pdf[(pdf['mjd'] >= 58000) & np.isin(pdf["filtercode"], [1, 2])].copy()
     pdf = pdf.sort_values('mjd', ascending=True, ignore_index=True)
 
     return pdf
@@ -400,4 +405,4 @@ def compute_quantile(lc: pd.DataFrame, measurement: np.float64) -> np.float64:
 
     cdf = np.cumsum(sort_weights) / np.sum(sort_weights)
 
-    return np.interp(measurement, sort_measurements, cdf, left=.0, right=1.)
+    return np.interp(measurement, sort_measurements, cdf, left=0.0, right=1.0)

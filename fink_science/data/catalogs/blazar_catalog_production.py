@@ -37,7 +37,7 @@ CATALOG_COLUMN_NAMES = [
     "ZTF_name",
     "medians",
     "low_threshold",
-    "high_threshold"
+    "high_threshold",
 ]
 
 BLAZAR_CLASSES: set = {"BLLac", "Blazar", "QSO"}
@@ -372,9 +372,7 @@ def get_simbad_coordinates(catalog: pd.DataFrame) -> pd.DataFrame:
 
     try:
         if simbad_df.empty:
-            raise NameError(
-                "No sources found in CDS SIMBAD for the catalog."
-            )
+            raise NameError("No sources found in CDS SIMBAD for the catalog.")
     except NameError:
         logger.exception("No sources found in CDS SIMBAD for the catalog.")
         raise
@@ -441,7 +439,7 @@ def _get_fink_data(name: str) -> pd.DataFrame:
 
     lc["i:mjd"] = lc["i:jd"] - 2400000.5
     lc["i:fid"] = lc["i:fid"].astype(int)
-    lc = lc[lc['d:tag'] == 'valid'].sort_values(
+    lc = lc[lc["d:tag"] == "valid"].sort_values(
         "i:mjd", ascending=True, ignore_index=True
     )
     return lc
@@ -482,7 +480,7 @@ def _get_class_ztf_identifier(
     """
     r = _post_fink(
         f"{FINK_APIURL}/api/v1/conesearch",
-        payload={'ra': ra, 'dec': dec, 'radius': radius, 'columns': 'i:objectId'},
+        payload={"ra": ra, "dec": dec, "radius": radius, "columns": "i:objectId"},
     )
 
     lc = pd.read_json(io.BytesIO(r.content))
@@ -490,11 +488,11 @@ def _get_class_ztf_identifier(
         logger.debug(f"No found Fink correspondance for ra={ra:.6f}, dec={dec:.6f}.")
         return np.array([])
 
-    names = lc['i:objectId'].unique()
+    names = lc["i:objectId"].unique()
     lcs = [_get_fink_data(name) for name in names]
 
     # Convert classifications into sets for faster intersection
-    classifications = [set(lc['v:classification'].unique()) for lc in lcs]
+    classifications = [set(lc["v:classification"].unique()) for lc in lcs]
 
     # Step 1: confirmed blazars
     tags = np.array([bool(classes & source_classes) for classes in classifications])
@@ -503,9 +501,9 @@ def _get_class_ztf_identifier(
         return names[tags]
 
     # Step 2: candidate classes
-    tags = np.array(
-        [bool(classes & candidate_source_classes)for classes in classifications]
-    )
+    tags = np.array([
+        bool(classes & candidate_source_classes)for classes in classifications
+    ])
     if tags.any():
         logger.debug("Source candidate blazar in Fink classification.")
         return names[tags]
@@ -550,18 +548,16 @@ def get_ztf_id(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
             f"Retrieving ZTF id for source {name} ({index + 1}/{len(catalog)})"
         )
         ztf_ids.append(
-            _get_class_ztf_identifier(ra=row["ra"], dec=row["dec"], radius=radius
-            )
+            _get_class_ztf_identifier(ra=row["ra"], dec=row["dec"], radius=radius)
         )
     catalog["ZTF_name"] = ztf_ids
     return catalog
 
+
 # DR download within 2"-cone search
 
 
-def _get_ztf_dr_data(
-    ra: float, dec: float, radius: float
-) -> pd.DataFrame:
+def _get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
     """Retrieve ZTF light curves from the latest Data Release via SNAD API.
 
     Parameters
@@ -619,8 +615,8 @@ def _get_ztf_dr_data(
 
     filter_map = {"zg": 1, "zr": 2, "zi": 3}
     lc["filtercode"] = lc["filtercode"].map(filter_map).astype(int)
-    lc = lc[(lc['mjd'] >= START_ZTF) & np.isin(lc["filtercode"], [1, 2])].copy()
-    lc = lc.sort_values('mjd', ascending=True, ignore_index=True)
+    lc = lc[(lc["mjd"] >= START_ZTF) & np.isin(lc["filtercode"], [1, 2])].copy()
+    lc = lc.sort_values("mjd", ascending=True, ignore_index=True)
 
     return lc
 
@@ -684,9 +680,7 @@ def _from_mag_to_flux(lc):
     uncertainties = lc["magerr"].to_numpy()
 
     lc["flux"] = 3631 * 10 ** (-0.4 * measurements)
-    lc["flux_error"] = (
-        lc["flux"].to_numpy() * 0.4 * np.log(10) * uncertainties
-    )
+    lc["flux_error"] = lc["flux"].to_numpy() * 0.4 * np.log(10) * uncertainties
 
     return lc
 
@@ -727,8 +721,9 @@ def _standardise_lc_1band(lc: pd.DataFrame) -> tuple[pd.DataFrame, float]:
         diff_time = np.diff(time)
         diff_time[diff_time > MAX_DT] = MAX_DT
         median = float(
-                np.quantile(
-                flux[:-1], 0.5,
+            np.quantile(
+                flux[:-1],
+                0.5,
                 method="inverted_cdf",
                 weights=diff_time / (flux_error[:-1] ** 2),
             )
@@ -742,8 +737,12 @@ def _standardise_lc_1band(lc: pd.DataFrame) -> tuple[pd.DataFrame, float]:
 
 
 def _concomitant_weighted(
-    t1: np.ndarray, f1: np.ndarray, e1: np.ndarray,
-    t2: np.ndarray, f2: np.ndarray, e2: np.ndarray,
+    t1: np.ndarray,
+    f1: np.ndarray,
+    e1: np.ndarray,
+    t2: np.ndarray,
+    f2: np.ndarray,
+    e2: np.ndarray,
     T: float
 ) -> tuple[np.ndarray, np.ndarray]:
     """Compute the concomitant matching of two light curves.
@@ -830,20 +829,16 @@ def _standardise_lc_2bands(
         time[~mask],
         measurements[~mask],
         uncertainties[~mask],
-        dt_concomitance
+        dt_concomitance,
     )
 
     # Case 1: there are concomitant measurements
     if len(lc1_concomitant):
-        lc.loc[mask, "std_flux"] = (
-            lc.loc[mask, "flux"] / np.nanmedian(lc1_concomitant)
-        )
-        lc.loc[~mask, "std_flux"] = (
-            lc.loc[~mask, "flux"] / np.nanmedian(lc2_concomitant)
-        )
+        lc.loc[mask, "std_flux"] = lc.loc[mask, "flux"] / np.nanmedian(lc1_concomitant)
+        lc.loc[~mask, "std_flux"] = lc.loc[~mask, "flux"] / np.nanmedian(lc2_concomitant)
         medians = {
             unique_filters[0]: np.nanmedian(lc1_concomitant),
-            unique_filters[1]: np.nanmedian(lc2_concomitant)
+            unique_filters[1]: np.nanmedian(lc2_concomitant),
         }
 
     # Case 2 : No concomitant measurements were found
@@ -951,9 +946,7 @@ source {name} ({index + 1}/{len(catalog)})"
             lc["std_flux"] = np.nan
             medians_source = {"1": np.nan, "2": np.nan}
         else:
-            lc, medians_source = standardise_lc(
-                lc, dt_concomitance
-            )
+            lc, medians_source = standardise_lc(lc, dt_concomitance)
         lcs.append(lc)
         medians.append(medians_source)
     catalog["ZTF_lc"] = lcs
@@ -966,6 +959,7 @@ source {name} ({index + 1}/{len(catalog)})"
 # =====================
 
 # Flux quantile computation
+
 
 def compute_threshold(
     lc: pd.DataFrame, high_threshold: float, low_threshold: float
@@ -1020,15 +1014,15 @@ def compute_threshold(
             cdf,
             sort_measurements,
             left=sort_measurements[0],
-            right=sort_measurements[-1]
+            right=sort_measurements[-1],
         ),
         np.interp(
             low_threshold,
             cdf,
             sort_measurements,
             left=sort_measurements[0],
-            right=sort_measurements[-1]
-        )
+            right=sort_measurements[-1],
+        ),
     )
 
 
@@ -1121,8 +1115,7 @@ def setup_logging(
     console_handler = logging.StreamHandler()
     console_handler.setLevel(level)
     console_format = logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(message)s",
-        "%H:%M:%S"
+        "%(asctime)s | %(levelname)-8s | %(message)s", "%H:%M:%S"
     )
     console_handler.setFormatter(console_format)
 
@@ -1284,9 +1277,7 @@ def main():
 
         # Expand catalog
         catalog = expand_catalog(catalog[CATALOG_COLUMN_NAMES])
-        logger.info(
-            f"Final shape of the expanded catalog: {catalog.shape}"
-        )
+        logger.info(f"Final shape of the expanded catalog: {catalog.shape}")
 
         # Write catalog
         write_catalog(catalog, catalog_filepath)
