@@ -131,7 +131,10 @@ def _robustness_criterion(
     if maskNan.sum() > 1:
         mtimestart = mtime.iloc[0]
         mtimestop = mtime.iloc[-1]
-        integral = np.trapezoid(flux[maskNan], x=mtime)
+        if hasattr(np, "trapezoid"):
+            integral = np.trapezoid(flux[maskNan], x=mtime)
+        else:
+            integral = np.trapz(flux[maskNan], x=mtime)
         return integral / (mtimestop - mtimestart) / threshold
     else:
         _LOG.warning(
