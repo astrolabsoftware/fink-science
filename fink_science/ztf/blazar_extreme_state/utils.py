@@ -297,8 +297,8 @@ def get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
 
     filter_map = {"zg": 1, "zr": 2, "zi": 3}
     pdf["filtercode"] = pdf["filtercode"].map(filter_map).astype(int)
-    pdf = pdf[(pdf['mjd'] >= 58000) & np.isin(pdf["filtercode"], [1, 2])].copy()
-    pdf = pdf.sort_values('mjd', ascending=True, ignore_index=True)
+    pdf = pdf[(pdf["mjd"] >= 58000) & np.isin(pdf["filtercode"], [1, 2])].copy()
+    pdf = pdf.sort_values("mjd", ascending=True, ignore_index=True)
 
     return pdf
 

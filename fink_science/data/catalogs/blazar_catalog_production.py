@@ -502,7 +502,7 @@ def _get_class_ztf_identifier(
 
     # Step 2: candidate classes
     tags = np.array([
-        bool(classes & candidate_source_classes)for classes in classifications
+        bool(classes & candidate_source_classes) for classes in classifications
     ])
     if tags.any():
         logger.debug("Source candidate blazar in Fink classification.")
@@ -743,7 +743,7 @@ def _concomitant_weighted(
     t2: np.ndarray,
     f2: np.ndarray,
     e2: np.ndarray,
-    T: float
+    T: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Compute the concomitant matching of two light curves.
 
@@ -835,7 +835,9 @@ def _standardise_lc_2bands(
     # Case 1: there are concomitant measurements
     if len(lc1_concomitant):
         lc.loc[mask, "std_flux"] = lc.loc[mask, "flux"] / np.nanmedian(lc1_concomitant)
-        lc.loc[~mask, "std_flux"] = lc.loc[~mask, "flux"] / np.nanmedian(lc2_concomitant)
+        lc.loc[~mask, "std_flux"] = lc.loc[~mask, "flux"] / np.nanmedian(
+            lc2_concomitant
+        )
         medians = {
             unique_filters[0]: np.nanmedian(lc1_concomitant),
             unique_filters[1]: np.nanmedian(lc2_concomitant),
