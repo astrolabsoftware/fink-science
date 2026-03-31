@@ -677,7 +677,7 @@ def _standardise_lc_1band(lc: pd.DataFrame) -> tuple[pd.DataFrame, float]:
             )
         )
 
-    lc.loc[:,"std_flux"] = flux / median
+    lc.loc[:, "std_flux"] = flux / median
     return lc, median
 
 
