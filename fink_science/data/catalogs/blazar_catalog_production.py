@@ -1218,74 +1218,70 @@ def main():
 
     logger.info("Start of the blazar watchlist production process.")
 
+    # Configurate file name of the catalog
+    catalog_filepath = args.catalog_path
+    if catalog_filepath is None:
+        version = check_dr_version()
+        now = datetime.datetime.now()
+        date = f"{str(now.month).zfill(2)}_{now.year}"
+        catalog_filepath = f"./CTAO_blazars_ztf_dr{version}.v{date}"
+        catalog_filepath += ".parquet"
+
+    # Retrieve list of sources
+    list_names = read_file_names(args.source_list, colname=args.source_key)
+    logger.info(f"Number of sources waiting to be added: {len(list_names)}")
+
+    # Load catalog, if exists
+    logger.info("Browsing to find former catalog")
+    catalog = read_catalog(catalog_filepath)
+
+    # Merge list and catalog
+    catalog = merge_catalog(list_names, catalog)
+    logger.info(f"Full shape of the new catalog: {catalog.shape}")
+
+    # Retrieve Simbad coordinates
+    logger.info("Retrieving source coordinates in SIMBAD database")
+    catalog = get_simbad_coordinates(catalog)
+
+    # Search ZTF ids
+    logger.info("Retrieving ZTF identifiers of the catalog sources")
+    catalog = get_ztf_id(catalog, radius=search_radius)
+
+    # Download ZTF DR light curves
+    logger.info("Retrieving DR light curves of the catalog sources")
+    catalog = get_ztf_dr_data(catalog, radius=search_radius)
+
+    h, m, s = log_execution_time(start_time)
+    logger.info(f"Total elapsed time after download: {h}h {m}m {s}s")
+
+    # Standardise ZTF light curves
+    logger.info("Standardising light curves of the catalog sources")
+    catalog = standardise_lcs(catalog, dt_concomitance)
+
+    # Compute low- and high-threshold values
+    logger.info("Computing thresholds for the catalog sources")
+    catalog = compute_quantile_for_catalog(
+        catalog, high_threshold=0.9, low_threshold=0.1
+    )
     try:
-        # Configurate file name of the catalog
-        catalog_filepath = args.catalog_path
-        if catalog_filepath is None:
-            version = check_dr_version()
-            now = datetime.datetime.now()
-            date = f"{str(now.month).zfill(2)}_{now.year}"
-            catalog_filepath = f"./CTAO_blazars_ztf_dr{version}.v{date}"
-            catalog_filepath += ".parquet"
+        logger.info("Catalog satisfies expected scheme")
+        assert set(CATALOG_COLUMN_NAMES).issubset(catalog.columns)
+    except Exception:
+        logger.warning("main failed - wrong scheme for catalog: {e}")
 
-        # Retrieve list of sources
-        list_names = read_file_names(args.source_list, colname=args.source_key)
-        logger.info(f"Number of sources waiting to be added: {len(list_names)}")
+    h, m, s = log_execution_time(start_time)
+    logger.info(f"Total elapsed time after analysis: {h}h {m}m {s}s")
 
-        # Load catalog, if exists
-        logger.info("Browsing to find former catalog")
-        catalog = read_catalog(catalog_filepath)
+    # Expand catalog
+    catalog = expand_catalog(catalog[CATALOG_COLUMN_NAMES])
+    logger.info(f"Final shape of the expanded catalog: {catalog.shape}")
 
-        # Merge list and catalog
-        catalog = merge_catalog(list_names, catalog)
-        logger.info(f"Full shape of the new catalog: {catalog.shape}")
+    # Write catalog
+    write_catalog(catalog, catalog_filepath)
+    logger.info(f"Catalog written at {catalog_filepath}")
 
-        # Retrieve Simbad coordinates
-        logger.info("Retrieving source coordinates in SIMBAD database")
-        catalog = get_simbad_coordinates(catalog)
-
-        # Search ZTF ids
-        logger.info("Retrieving ZTF identifiers of the catalog sources")
-        catalog = get_ztf_id(catalog, radius=search_radius)
-
-        # Download ZTF DR light curves
-        logger.info("Retrieving DR light curves of the catalog sources")
-        catalog = get_ztf_dr_data(catalog, radius=search_radius)
-
-        h, m, s = log_execution_time(start_time)
-        logger.info(f"Total elapsed time after download: {h}h {m}m {s}s")
-
-        # Standardise ZTF light curves
-        logger.info("Standardising light curves of the catalog sources")
-        catalog = standardise_lcs(catalog, dt_concomitance)
-
-        # Compute low- and high-threshold values
-        logger.info("Computing thresholds for the catalog sources")
-        catalog = compute_quantile_for_catalog(
-            catalog, high_threshold=0.9, low_threshold=0.1
-        )
-        try:
-            logger.info("Catalog satisfies expected scheme")
-            assert set(CATALOG_COLUMN_NAMES).issubset(catalog.columns)
-        except Exception:
-            logger.warning("main failed - wrong scheme for catalog: {e}")
-
-        h, m, s = log_execution_time(start_time)
-        logger.info(f"Total elapsed time after analysis: {h}h {m}m {s}s")
-
-        # Expand catalog
-        catalog = expand_catalog(catalog[CATALOG_COLUMN_NAMES])
-        logger.info(f"Final shape of the expanded catalog: {catalog.shape}")
-
-        # Write catalog
-        write_catalog(catalog, catalog_filepath)
-        logger.info(f"Catalog written at {catalog_filepath}")
-
-        h, m, s = log_execution_time(start_time)
-        logger.info(f"Total execution time: {h}h {m}m {s}s")
-
-    except Exception as e:
-        logger.exception(f"Pipeline failed: {e}")
+    h, m, s = log_execution_time(start_time)
+    logger.info(f"Total execution time: {h}h {m}m {s}s")
 
 
 # Execute main
