@@ -91,27 +91,27 @@ def extreme_state(
     Returns
     -------
     out: pd.Series of np.ndarray of np.float64
-        Array of ratios for:\n
-        \t-Measurement over threshold of the last alert for low states.\n
-        \t-Fluence over threshold of the last alerts for low states.\n
-        \t-Measurement over threshold of the last alert for high states.\n
-        \t-Fluence over threshold of the last alerts for high states.\n
-        \t-Corresponding quantile of hte last measurement on the CDF.\n
+        Array of ratios for:
+        -Measurement over threshold of the last alert for low states.
+        -Fluence over threshold of the last alerts for low states.
+        -Measurement over threshold of the last alert for high states.
+        -Fluence over threshold of the last alerts for high states.
+        -Corresponding quantile of hte last measurement on the CDF.
         All the default values are set to -1 as it is an unphysical value.
 
     Notes
     -----
     Features are:
-    \t-``instantness_low``: Measurement over threshold of the last alert for
-    low states.\n
-    \t-``robustness_low``: Fluence over threshold of the last alerts for low
-    states.\n
-    \t-``instantness_high``: Measurement over threshold of the last alert for
-    high states.\n
-    \t-``robustness_high``: Fluence over threshold of the last alerts for high
-    states.\n
-    \t-``cdf_quantile``: Corresponding quantile of hte last measurement on the
-    CDF.\n
+    -``instantness_low``: Measurement over threshold of the last alert for
+    low states.
+    -``robustness_low``: Fluence over threshold of the last alerts for low
+    states.
+    -``instantness_high``: Measurement over threshold of the last alert for
+    high states.
+    -``robustness_high``: Fluence over threshold of the last alerts for high
+    states.
+    -``cdf_quantile``: Corresponding quantile of hte last measurement on the
+    CDF.
 
     Examples
     --------
