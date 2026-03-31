@@ -13,8 +13,6 @@ import numpy as np
 import pandas as pd
 from astroquery.simbad import Simbad
 
-logger = logging.getLogger(__name__)
-
 # Globals
 
 CATALOG_COLUMN_NAMES = [
