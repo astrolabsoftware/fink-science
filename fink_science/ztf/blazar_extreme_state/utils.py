@@ -82,7 +82,7 @@ def _robustness_criterion(
 ) -> np.float64:
     """Compute robustness criterion for a given state.
 
-    Returns the sliding mean over 30 days of the standardised flux
+    Returns the sliding mean over ``integration_period`` days of the standardised flux
     over the precomputed threshold ratio.
 
     Parameters
@@ -99,14 +99,16 @@ def _robustness_criterion(
     state_key : string
         Key for the threshold to retrieve from ``CTAO_blazar``.
         Either ``low_threshold`` or ``high_threshold``.
+    integration_period : float
+        Integration period for the computation of the fluence in the
+        robustness criterion.
 
     Returns
     -------
     out: np.float64
-        Ratio of the sliding mean over 30 days of the standardised flux over
-        the precomputed threshold
+        Ratio of the sliding mean over ``integration_period`` days of the standardised
+        flux over the precomputed threshold
     """
-    integration_period = 30
     name = pdf["objectId"].to_numpy()[0]
 
     try:
