@@ -25,7 +25,7 @@ from logging.handlers import RotatingFileHandler
 import numpy as np
 import pandas as pd
 from astroquery.simbad import Simbad
-#from ...ztf.blazar_extreme_state.utils import from_mag_to_flux
+from fink_science.ztf.blazar_extreme_state.utils import from_mag_to_flux
 
 logger = logging.getLogger(__name__)
 
@@ -52,28 +52,6 @@ START_ZTF: float = 58000
 
 CATALOG_FILEPATH: str = "./CTAO_blazars_ztf_dr23.v03_2026.parquet"
 LOGDIRFILENAME: str = "blazar_watchlist.log"
-
-def from_mag_to_flux(
-    mag: np.ndarray, magerr: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
-    """Compute the flux, in Jansky, of the source from its DC magnitude.
-
-    Parameters
-    ----------
-    mag : array_like
-        DC magnitude of the source.
-    magerr : array_like
-        Uncertainties on the DC magnitude of the source.
-
-    Returns
-    -------
-    out : pd.DataFrame
-        Pandas DataFrame of the light curve with added computed flux.
-    """
-    flux = 3631 * 10 ** (-0.4 * mag)
-    flux_error = flux * 0.4 * np.log(10) * magerr
-
-    return flux, flux_error
 
 
 # ===================================
