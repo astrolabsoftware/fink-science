@@ -25,6 +25,7 @@ from logging.handlers import RotatingFileHandler
 import numpy as np
 import pandas as pd
 from astroquery.simbad import Simbad
+from ...ztf.blazar_extreme_state.utils import from_mag_to_flux
 
 logger = logging.getLogger(__name__)
 
@@ -654,32 +655,6 @@ for source {name} ({index + 1}/{len(catalog)})"
 # ===================================
 
 
-# Preprocessing
-
-
-def _from_mag_to_flux(
-    mag: np.ndarray, magerr: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
-    """Compute the flux, in Jansky, of the source from its DC magnitude.
-
-    Parameters
-    ----------
-    mag : array_like
-        DC magnitude of the source.
-    magerr : array_like
-        Uncertainties on the DC magnitude of the source.
-
-    Returns
-    -------
-    out : pd.DataFrame
-        Pandas DataFrame of the light curve with added computed flux.
-    """
-    flux = 3631 * 10 ** (-0.4 * mag)
-    flux_error = flux * 0.4 * np.log(10) * magerr
-
-    return flux, flux_error
-
-
 # 1 band standardisation
 
 
@@ -897,9 +872,10 @@ def standardise_lc(
     ``standardise_lc_2bands``. Please refer to their documentation for
     complementary details.
     """
-    lc["flux"], lc["flux_error"] = _from_mag_to_flux(
-        lc["mag"].to_numpy(), lc["magerr"].to_numpy()
-    )
+    if not np.isin(["flux", "flux_error"], lc.keys()).all():
+        lc["flux"], lc["flux_error"] = from_mag_to_flux(
+            lc["mag"].to_numpy(), lc["magerr"].to_numpy()
+        )
     if len(lc["filtercode"].unique()) == 1:
         lc, median = _standardise_lc_1band(lc)
         medians = medians_for_1band(lc, median)

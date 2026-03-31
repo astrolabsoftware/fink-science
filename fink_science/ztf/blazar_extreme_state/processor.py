@@ -22,7 +22,7 @@ from fink_science.ztf.blazar_extreme_state.utils import (
     extreme_state_,
     get_ztf_dr_data,
     from_mag_to_flux,
-    standardise_lc,
+    standardise_dr_lc,
     compute_quantile,
 )
 
@@ -262,8 +262,10 @@ def extreme_state(
         ) or (high_state_dic[INST_HIGH_TAG] >= 1 and high_state_dic[ROB_HIGH_TAG] >= 1):
             measurement = sub["cstd_flux"].iloc[0]
             lc = get_ztf_dr_data(sub["cra"].mean(), sub["cdec"].mean(), RADIUS)
-            lc = from_mag_to_flux(lc)
-            lc = standardise_lc(sub, lc, CTAO_blazar)
+            lc["flux"], lc["flux_error"] = from_mag_to_flux(
+                lc["mag"].to_numpy(), lc["magerr"].to_numpy()
+            )
+            lc = standardise_dr_lc(sub, lc, CTAO_blazar)
             cdf_dic = {CDF_TAG: compute_quantile(lc, measurement)}
 
         out.append(low_state_dic | high_state_dic | cdf_dic)

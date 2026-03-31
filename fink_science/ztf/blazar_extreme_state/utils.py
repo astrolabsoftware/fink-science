@@ -313,30 +313,30 @@ def get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
 # ===================================
 
 
-def from_mag_to_flux(lc: pd.DataFrame) -> pd.DataFrame:
+def from_mag_to_flux(
+    mag: np.ndarray, magerr: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """Compute the flux, in Jansky, of the source from its DC magnitude.
 
     Parameters
     ----------
-    lc : pd.DataFrame
-        Pandas DataFrame of the light curve to be converted.
-        Must contain: ``mjd``, ``mag``, ``magerr``.
+    mag : array_like
+        DC magnitude of the source.
+    magerr : array_like
+        Uncertainties on the DC magnitude of the source.
 
     Returns
     -------
     out : pd.DataFrame
         Pandas DataFrame of the light curve with added computed flux.
     """
-    measurements = lc["mag"].to_numpy()
-    uncertainties = lc["magerr"].to_numpy()
+    flux = 3631 * 10 ** (-0.4 * mag)
+    flux_error = flux * 0.4 * np.log(10) * magerr
 
-    lc["flux"] = 3631 * 10 ** (-0.4 * measurements)
-    lc["flux_error"] = lc["flux"].to_numpy() * 0.4 * np.log(10) * uncertainties
-
-    return lc
+    return flux, flux_error
 
 
-def standardise_lc(
+def standardise_dr_lc(
     pdf: pd.DataFrame, lc: pd.DataFrame, CTAO_blazar: pd.DataFrame
 ) -> pd.DataFrame:
     """Standardise a light curve using previously computed per-band medians.
