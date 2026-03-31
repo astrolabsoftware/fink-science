@@ -802,7 +802,6 @@ def _standardise_lc_2bands(
     measurements within a band to compare only one measurement per concomitant
     detection.
     """
-    lc = lc.copy()
     time = lc["mjd"].to_numpy()
     measurements = lc["flux"].to_numpy()
     uncertainties = lc["flux_error"].to_numpy()
