@@ -25,11 +25,11 @@ from logging.handlers import RotatingFileHandler
 import numpy as np
 import pandas as pd
 from astroquery.simbad import Simbad
-from fink_science.ztf.blazar_extreme_state.utils import from_mag_to_flux
+#from ...ztf.blazar_extreme_state.utils import from_mag_to_flux
 
 logger = logging.getLogger(__name__)
 
-CATALOG_COLUMN_NAMES = [
+CATALOG_COLUMN_NAMES: list = [
     "Source_name",
     "ZTF_name",
     "medians",
@@ -45,13 +45,35 @@ FINK_APIURL: str = "https://api.ztf.fink-portal.org"
 DR_APIURL: str = "https://db.ztf.snad.space"
 DR_CHECK_URL: str = "https://www.ztf.caltech.edu/nsf-msip.html"
 
-search_radius = 2
-dt_concomitance = 1 / 24
-MAX_DT = 1
-START_ZTF = 58000
+search_radius: int = 2
+dt_concomitance: float = 1 / 24
+MAX_DT: float = 1
+START_ZTF: float = 58000
 
-CATALOG_FILEPATH = "./CTAO_blazars_ztf_dr23.v03_2026.parquet"
-LOGDIRFILENAME = "blazar_watchlist.log"
+CATALOG_FILEPATH: str = "./CTAO_blazars_ztf_dr23.v03_2026.parquet"
+LOGDIRFILENAME: str = "blazar_watchlist.log"
+
+def from_mag_to_flux(
+    mag: np.ndarray, magerr: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute the flux, in Jansky, of the source from its DC magnitude.
+
+    Parameters
+    ----------
+    mag : array_like
+        DC magnitude of the source.
+    magerr : array_like
+        Uncertainties on the DC magnitude of the source.
+
+    Returns
+    -------
+    out : pd.DataFrame
+        Pandas DataFrame of the light curve with added computed flux.
+    """
+    flux = 3631 * 10 ** (-0.4 * mag)
+    flux_error = flux * 0.4 * np.log(10) * magerr
+
+    return flux, flux_error
 
 
 # ===================================
@@ -283,12 +305,7 @@ def _post_fink(
             logger.warning(f"_post_fink failed (attempt {attempt + 1})")
 
     # Error logger handling
-    try:
-        if response.status_code != 200:
-            raise ConnectionError(
-                f"Failed to connect to {url} after {max_retries} retries."
-            )
-    except ConnectionError:
+    if response.status_code != 200:
         logger.exception(f"Failed to connect to {url} after {max_retries} retries.")
         raise
 
@@ -332,12 +349,7 @@ def _get_snad(
             logger.warning(f"_post_fink failed (attempt {attempt + 1})")
 
     # Error logger handling
-    try:
-        if response.status_code != 200:
-            raise ConnectionError(
-                f"Failed to connect to {url} after {max_retries} retries."
-            )
-    except ConnectionError:
+    if response.status_code != 200:
         logger.exception(f"Failed to connect to {url} after {max_retries} retries.")
         raise
 
@@ -367,11 +379,8 @@ def get_simbad_coordinates(catalog: pd.DataFrame) -> pd.DataFrame:
     """
     simbad_df = Simbad.query_objects(catalog["Source_name"].to_numpy()).to_pandas()
 
-    try:
-        if simbad_df.empty:
-            raise NameError("No sources found in CDS SIMBAD for the catalog.")
-    except NameError:
-        logger.exception("No sources found in CDS SIMBAD for the catalog.")
+    if simbad_df.empty:
+        logger.error("No sources found in CDS SIMBAD for the catalog.")
         raise
 
     catalog = catalog.merge(
@@ -427,12 +436,8 @@ def _get_fink_data(name: str) -> pd.DataFrame:
     )
 
     lc = pd.read_json(io.BytesIO(response.content))
-    try:
-        if lc.empty:
-            raise NameError(f'Source "{name}" not found in Fink.')
-    except NameError:
+    if lc.empty:
         logger.exception(f'Source "{name}" not found in Fink.')
-        raise
 
     lc["i:mjd"] = lc["i:jd"] - 2400000.5
     lc["i:fid"] = lc["i:fid"].astype(int)
@@ -532,12 +537,8 @@ def get_ztf_id(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
     """
     ztf_ids = []
 
-    try:
-        if not np.isin(["ra", "dec"], catalog.keys()).all():
-            raise KeyError("get_ztf_id failed: no 'ra' or 'dec' found in catalog keys.")
-    except KeyError:
+    if not np.isin(["ra", "dec"], catalog.keys()).all():
         logger.warning("get_ztf_id failed - no 'ra' or 'ded' found in keys.")
-        raise
 
     for index, row in catalog.iterrows():
         name = row["Source_name"]
@@ -698,7 +699,7 @@ def _standardise_lc_1band(lc: pd.DataFrame) -> tuple[pd.DataFrame, float]:
             )
         )
 
-    lc["std_flux"] = flux / median
+    lc.loc[:,"std_flux"] = flux / median
     return lc, median
 
 
