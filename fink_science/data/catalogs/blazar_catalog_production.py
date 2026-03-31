@@ -437,7 +437,7 @@ def _get_fink_data(name: str) -> pd.DataFrame:
 
     lc = pd.read_json(io.BytesIO(response.content))
     if lc.empty:
-        logger.exception(f'Source "{name}" not found in Fink.')
+        logger.warning(f'Source "{name}" not found in Fink.')
 
     lc["i:mjd"] = lc["i:jd"] - 2400000.5
     lc["i:fid"] = lc["i:fid"].astype(int)
@@ -538,7 +538,7 @@ def get_ztf_id(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
     ztf_ids = []
 
     if not np.isin(["ra", "dec"], catalog.keys()).all():
-        logger.warning("get_ztf_id failed - no 'ra' or 'ded' found in keys.")
+        raise KeyError("get_ztf_id failed - no 'ra' or 'ded' found in keys.")
 
     for index, row in catalog.iterrows():
         name = row["Source_name"]
