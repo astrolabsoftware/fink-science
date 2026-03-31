@@ -25,7 +25,7 @@ from logging.handlers import RotatingFileHandler
 import numpy as np
 import pandas as pd
 from astroquery.simbad import Simbad
-from ...ztf.blazar_extreme_state.utils import from_mag_to_flux
+from fink_science.ztf.blazar_extreme_state.utils import from_mag_to_flux
 
 logger = logging.getLogger(__name__)
 
