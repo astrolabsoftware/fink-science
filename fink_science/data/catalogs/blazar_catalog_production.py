@@ -285,7 +285,9 @@ def _post_fink(
     # Error logger handling
     if response.status_code != 200:
         logger.error(f"Failed to connect to {url} after {max_retries} retries.")
-        raise ConnectionError(f"Failed to connect to {url} after {max_retries} retries.")
+        raise ConnectionError(
+            f"Failed to connect to {url} after {max_retries} retries."
+        )
 
 
 def _get_snad(
@@ -329,7 +331,9 @@ def _get_snad(
     # Error logger handling
     if response.status_code != 200:
         logger.error(f"Failed to connect to {url} after {max_retries} retries.")
-        raise ConnectionError(f"Failed to connect to {url} after {max_retries} retries.")
+        raise ConnectionError(
+            f"Failed to connect to {url} after {max_retries} retries."
+        )
 
 
 def get_simbad_coordinates(catalog: pd.DataFrame) -> pd.DataFrame:
