@@ -657,28 +657,26 @@ for source {name} ({index + 1}/{len(catalog)})"
 # Preprocessing
 
 
-def _from_mag_to_flux(lc):
+def _from_mag_to_flux(mag, magerr):
     """Compute the flux, in Jansky, of the source from its DC magnitude.
 
     Parameters
     ----------
-    lc : pd.DataFrame
-        Pandas DataFrame of the light curve to be converted.
-        Must contain: ``mjd``, ``mag``, ``magerr``.
+    mag : array_like
+        DC magnitude of the source.
+    magerr : array_like
+        Uncertainties on the DC magnitude of the source.
 
     Returns
     -------
     out : pd.DataFrame
         Pandas DataFrame of the light curve with added computed flux.
     """
-    lc = lc.copy()
-    measurements = lc["mag"].to_numpy()
-    uncertainties = lc["magerr"].to_numpy()
 
-    lc["flux"] = 3631 * 10 ** (-0.4 * measurements)
-    lc["flux_error"] = lc["flux"].to_numpy() * 0.4 * np.log(10) * uncertainties
+    flux = 3631 * 10 ** (-0.4 * mag)
+    flux_error = flux * 0.4 * np.log(10) * magerr
 
-    return lc
+    return flux, flux_error
 
 
 # 1 band standardisation
@@ -900,7 +898,9 @@ def standardise_lc(
     ``standardise_lc_2bands``. Please refer to their documentation for
     complementary details.
     """
-    lc = _from_mag_to_flux(lc)
+    lc["flux"], lc["flux_error"] = _from_mag_to_flux(
+        lc["mag"].to_numpy(), lc["magerr"].to_numpy()
+    )
     if len(lc["filtercode"].unique()) == 1:
         lc, median = _standardise_lc_1band(lc)
         medians = medians_for_1band(lc, median)
