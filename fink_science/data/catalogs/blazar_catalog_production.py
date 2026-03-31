@@ -657,7 +657,9 @@ for source {name} ({index + 1}/{len(catalog)})"
 # Preprocessing
 
 
-def _from_mag_to_flux(mag, magerr):
+def _from_mag_to_flux(
+    mag: np.ndarray, magerr: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """Compute the flux, in Jansky, of the source from its DC magnitude.
 
     Parameters
@@ -672,7 +674,6 @@ def _from_mag_to_flux(mag, magerr):
     out : pd.DataFrame
         Pandas DataFrame of the light curve with added computed flux.
     """
-
     flux = 3631 * 10 ** (-0.4 * mag)
     flux_error = flux * 0.4 * np.log(10) * magerr
 
@@ -704,7 +705,6 @@ def _standardise_lc_1band(lc: pd.DataFrame) -> tuple[pd.DataFrame, float]:
     curve weighted by the inverse of its uncertainties and the elapsed time
     until the next measurement.
     """
-    lc = lc.copy()
     time = lc["mjd"].to_numpy()
     flux = lc["flux"].to_numpy()
     flux_error = lc["flux_error"].to_numpy()
