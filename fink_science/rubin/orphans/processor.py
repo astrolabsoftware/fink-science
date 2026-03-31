@@ -111,4 +111,4 @@ if __name__ == "__main__":
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite
-    # spark_unit_tests(globs)
+    spark_unit_tests(globs)
