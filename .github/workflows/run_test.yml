@@ -1,4 +1,4 @@
-name: Sentinel Rubin
+name: Sentinel
 
 on:
   push:
@@ -12,10 +12,10 @@ jobs:
 
     strategy:
       matrix:
-        container: ["gitlab-registry.in2p3.fr/astrolabsoftware/fink/fink-deps-sentinel-rubin:latest"]
+        survey: ["ztf", "rubin"]
 
     container:
-      image: ${{ matrix.container }}
+      image: "gitlab-registry.in2p3.fr/astrolabsoftware/fink/fink-deps-sentinel-${{ matrix.survey }}:latest"
 
 
     steps:
@@ -48,8 +48,8 @@ jobs:
         # for the test suite
         cp -r fink-alert-schemas/datasim fink_science/
 
-    - name: Run test suites for Rubin
+    - name: ${{ matrix.survey }} test suite
       run: |
         rm -f /tmp/forest_*.onnx
-        ./run_tests.sh -s rubin
+        ./run_tests.sh -s ${{ matrix.survey }}
         curl -s https://codecov.io/bash | bash
