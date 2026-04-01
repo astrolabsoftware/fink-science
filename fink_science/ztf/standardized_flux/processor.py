@@ -25,7 +25,7 @@ from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 import os
 
-CATALOG_TAG = "23.v7_2025"
+CATALOG_TAG = "23.v03_2026"
 
 
 @pandas_udf(MapType(StringType(), ArrayType(DoubleType())))
@@ -85,57 +85,57 @@ def standardized_flux(
 
     # Required alert columns
     >>> what = [
-    ...     'distnr',
-    ...     'magpsf',
-    ...     'sigmapsf',
-    ...     'magnr',
-    ...     'sigmagnr',
-    ...     'isdiffpos',
-    ...     'fid',
-    ...     'jd'
+    ...     "distnr",
+    ...     "magpsf",
+    ...     "sigmapsf",
+    ...     "magnr",
+    ...     "sigmagnr",
+    ...     "isdiffpos",
+    ...     "fid",
+    ...     "jd"
     ... ]
 
     # Concatenation
-    >>> prefix = 'c'
+    >>> prefix = "c"
     >>> for key in what:
     ...     parDF = concat_col(parDF, colname=key, prefix=prefix)
 
     # Run the module
     >>> args = [
-    ...     'candid',
-    ...     'objectId',
-    ...     'cdistnr',
-    ...     'cmagpsf',
-    ...     'csigmapsf',
-    ...     'cmagnr',
-    ...     'csigmagnr',
-    ...     'cisdiffpos',
-    ...     'cfid',
-    ...     'cjd'
+    ...     "candid",
+    ...     "objectId",
+    ...     "cdistnr",
+    ...     "cmagpsf",
+    ...     "csigmapsf",
+    ...     "cmagnr",
+    ...     "csigmagnr",
+    ...     "cisdiffpos",
+    ...     "cfid",
+    ...     "cjd"
     ... ]
     >>> parDF = parDF.withColumn(
-    ...     'container',
+    ...     "container",
     ...     standardized_flux(*args)
     ... )
     >>> parDF = parDF.withColumn(
-    ...     'cstd_flux',
-    ...     parDF['container'].getItem('flux')
+    ...     "cstd_flux",
+    ...     parDF["container"].getItem("flux")
     ... )
     >>> parDF = parDF.withColumn(
-    ...     'csigma_std_flux',
-    ...     parDF['container'].getItem('sigma')
+    ...     "csigma_std_flux",
+    ...     parDF["container"].getItem("sigma")
     ... )
 
     # Drop temporary columns
     >>> what_prefix = [prefix + key for key in what]
-    >>> parDF = parDF.drop('container')
+    >>> parDF = parDF.drop("container")
     >>> parDF = parDF.drop(*what_prefix)
 
     # Test
-    >>> parDF.filter(F.array_max(parDF['cstd_flux']) < 1).count()
-    28
-    >>> parDF.filter(F.array_max(parDF['cstd_flux']) > 1).count()
-    64
+    >>> parDF.filter(F.array_max(parDF["cstd_flux"]) < 1).count()
+    27
+    >>> parDF.filter(F.array_max(parDF["cstd_flux"]) > 1).count()
+    65
     """
     path = os.path.dirname(os.path.abspath(__file__))
     CTAO_PATH = os.path.join(path, "data/catalogs")
