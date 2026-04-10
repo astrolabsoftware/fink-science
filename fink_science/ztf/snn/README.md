@@ -34,23 +34,26 @@ from pyspark.sql import functions as F
 df = ...
 
 # Required alert columns
-what = ['jd', 'fid', 'magpsf', 'sigmapsf']
+what = ["jd", "fid", "magpsf", "sigmapsf"]
 
 # Use for creating temp name
-prefix = 'c'
+prefix = "c"
 what_prefix = [prefix + i for i in what]
 
 # Append temp columns with historical + current measurements
 for colname in what:
-  df = concat_col(df, colname, prefix=prefix)
+    df = concat_col(df, colname, prefix=prefix)
 
 # Perform the fit + classification (default model)
-args = ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf', F.lit('snn_snia_vs_nonia')]
-df = df.withColumn('pIa', snn_ia(*args))
+args = ["candid", "cjd", "cfid", "cmagpsf", "csigmapsf", F.lit("snn_snia_vs_nonia")]
+df = df.withColumn("pIa", snn_ia(*args))
 
 # Note that we can also specify the path to a model (needs to be distributed though)
-args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']] + [F.lit(''), F.lit(model_path)]
-df = df.withColumn('pIa', snn_ia(*args))
+args = [F.col(i) for i in ["candid", "cjd", "cfid", "cmagpsf", "csigmapsf"]] + [
+    F.lit(""),
+    F.lit(model_path),
+]
+df = df.withColumn("pIa", snn_ia(*args))
 ```
 
 ## Todo
