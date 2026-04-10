@@ -13,24 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
-import pandas as pd
+
 
 def compute_delta(magpsf: np.array) -> float:
-    """ Compute the difference between 2 consecutive magnitude measurements,
-    and returns the last one.
-    
+    """Compute the difference between 2 consecutive magnitude measurements and returns the last one.
+
     Parameters
     ----------
     magpsf: 1d array
         Vector of magnitude measurements from the most ancient
         to the most recent.
-        
+
     Returns
-    ----------
+    -------
     out: float
         Difference between the last 2 measurements. NaN is the difference
         cannot be computed.
     """
     if len(magpsf) <= 1:
         return None
-    return np.diff(magpsf)[-1] 
+    return np.diff(magpsf)[-1]

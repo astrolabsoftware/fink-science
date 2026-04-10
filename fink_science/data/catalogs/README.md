@@ -36,6 +36,6 @@ import pandas as pd
 data = fits.open("spicy")
 table = data[1].data
 pdf = pd.DataFrame(table)
-pdf[["RAdeg", "DEdeg",  "SPICY", "class"]].to_parquet("spicy.parquet")
+pdf[["RAdeg", "DEdeg", "SPICY", "class"]].to_parquet("spicy.parquet")
 ```
 

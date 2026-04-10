@@ -19,10 +19,10 @@ import pandas as pd
 
 from utilities import compute_delta
 
+
 @pandas_udf(FloatType())
 def deltamaglatest(magpsf: pd.Series) -> pd.Series:
-    """ Compute the change in magnitude between the 
-    2 latest magnitudes.
+    """Compute the change in magnitude between the 2 latest magnitudes.
 
     Parameters
     ----------
@@ -30,12 +30,12 @@ def deltamaglatest(magpsf: pd.Series) -> pd.Series:
         Magnitude from PSF-fit photometry
 
     Returns
-    ----------
+    -------
     delta_mag: pd.Series
         Difference magnitude between last 2 measurements
 
     Examples
-    ----------
+    --------
     >>> from fink_science.utilities import concat_col
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
 
