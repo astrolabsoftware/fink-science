@@ -229,7 +229,12 @@ def _post_request_with_retry(
         Successful response object. Else None.
     """
     for _ in range(max_retries):
-        response = requests.get(url, params=payload, timeout=10)
+        try:
+            response = requests.get(url, params=payload, timeout=10)
+        except (requests.exceptions.ReadTimeout, requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
+            _LOG.warning("SNAD DB connection error")
+            return None
+
         if response.status_code == 200:
             return response
         else:
