@@ -231,7 +231,11 @@ def _post_request_with_retry(
     for _ in range(max_retries):
         try:
             response = requests.get(url, params=payload, timeout=10)
-        except (requests.exceptions.ReadTimeout, requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
+        except (
+            requests.exceptions.ReadTimeout,
+            requests.exceptions.HTTPError,
+            requests.exceptions.ConnectionError,
+        ):
             _LOG.warning("SNAD DB connection error")
             return None
 
