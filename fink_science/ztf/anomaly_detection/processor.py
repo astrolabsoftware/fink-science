@@ -67,7 +67,7 @@ ANOMALY_MODELS = [
     "_emille_30days",
     "_varvara",
 ]  # noqa
-NOTIFICATIONS_COUNT = {"_emille": 30, "_emille_30days": 30, "_varvara": 100}
+NOTIFICATIONS_COUNT = {"_emille": 30, "_emille_30days": 30, "_varvara": 200}
 CURVE_LAST_DAYS = {"_emille_30days": 30}
 CUSTOM_FILTERS = {
     "_beta": "objectId LIKE '%ZTF21%'",
