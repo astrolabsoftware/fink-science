@@ -40,6 +40,7 @@ from scipy.stats import skew, kurtosis
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
+from asteroid_spinprops.ssolib import dataprep
 from asteroid_spinprops.ssolib import modelfit
 
 import logging
@@ -251,15 +252,15 @@ COLUMNS_SOCCA = {
     },
     "max_cos_lambda": {
         "type": "double",
-        "description": "Maximum of the absolute value of the cosine for the aspect angle",
+        "description": "Maximum of the cosine for the aspect angle",
     },
     "mean_cos_lambda": {
         "type": "double",
-        "description": "Mean of the absolute value of the cosine for the aspect angle",
+        "description": "Mean of the cosine for the aspect angle",
     },
     "min_cos_lambda": {
         "type": "double",
-        "description": "Minimum of the absolute value of the cosine for the aspect angle",
+        "description": "Minimum of the cosine for the aspect angle",
     },
     "period": {
         "type": "double",
@@ -344,15 +345,15 @@ COLUMNS_SHG1G2 = {
     },
     "max_cos_lambda": {
         "type": "double",
-        "description": "Maximum of the absolute value of the cosine for the aspect angle",
+        "description": "Maximum of the cosine for the aspect angle",
     },
     "mean_cos_lambda": {
         "type": "double",
-        "description": "Mean of the absolute value of the cosine for the aspect angle",
+        "description": "Mean of the cosine for the aspect angle",
     },
     "min_cos_lambda": {
         "type": "double",
-        "description": "Minimum of the absolute value of the cosine for the aspect angle",
+        "description": "Minimum of the cosine for the aspect angle",
     },
 }
 
@@ -480,7 +481,7 @@ def extract_ssoft_parameters(
             ),
         },
         "SOCCA": {
-            "p0": [15.0, 0.15, 0.15, np.pi, 0.0, 5.0, 1.05, 1.05, 0.0],
+            "p0": [15.0, 0.15, 0.15, np.pi, 0.0, 5.0, 1.05, 1.15, 0.0],
             "bounds": (
                 [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
                 [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
@@ -525,16 +526,24 @@ def extract_ssoft_parameters(
                 colname: [pdf[colname].to_numpy()] for colname in pdf.columns
             })
 
+            clean_data, _ = dataprep.errorbar_filtering(
+                data=pdf_transposed, mlimit=0.7928
+            )
+            clean_data, _ = dataprep.projection_filtering(data=clean_data)
+            clean_data, _ = dataprep.iterative_filtering(data=clean_data)
+
             # parameter estimation
             outdic = modelfit.get_fit_params(
-                pdf_transposed,
+                clean_data,
                 flavor=model_name,
                 shg1g2_constrained=True,
                 period_blind=True,
-                pole_blind=True,
+                pole_blind=False,
                 alt_spin=False,
                 period_in=None,
                 terminator=False,
+                period_quality_flag=True,
+                time_in=True,
             )
 
             # replace names inplace for the remaning computation
