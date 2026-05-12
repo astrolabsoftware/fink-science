@@ -426,6 +426,8 @@ def extract_ssoft_parameters(
     phase,
     dobs,
     dhelio,
+    cdx,
+    cdy,
     method,
     model,
 ):
@@ -455,6 +457,8 @@ def extract_ssoft_parameters(
     phase:
     dobs:
     dhelio:
+    cdx:
+    cdy:
     method: str
         Method to compute ephemerides: `ephemcc` or `rest`.
         Use only the former on the Spark Cluster (local installation of ephemcc),
@@ -474,17 +478,11 @@ def extract_ssoft_parameters(
         "HG1G2": {"p0": [15.0, 0.15, 0.15], "bounds": ([-3, 0, 0], [30, 1, 1])},
         "SHG1G2": {
             "p0": [15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
-            "bounds": (
-                [-3, 0, 0, 3e-1, 0, -np.pi / 2],
-                [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
-            ),
+            "bounds": None,  # initialised inside fit_spin 
         },
         "SOCCA": {
             "p0": [15.0, 0.15, 0.15, np.pi, 0.0, 5.0, 1.05, 1.05, 0.0],
-            "bounds": (
-                [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
-                [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
-            ),
+            "bounds": None,  # initialised inside fit_spin
         },
     }
 
@@ -517,24 +515,59 @@ def extract_ssoft_parameters(
                 "cjd": jd_lt,
                 "i:raephem": extract_array_from_series(raephem, index, float),
                 "i:decephem": extract_array_from_series(decephem, index, float),
+                "ra_s": extract_array_from_series(raephem, index, float),
+                "dec_s": extract_array_from_series(decephem, index, float),
+                "cdx": extract_array_from_series(cdx, index, float),
+                "cdy": extract_array_from_series(cdy, index, float),
+                "Dhelio": extract_array_from_series(dhelio, index, float),
             })
             pdf = pdf.sort_values("cjd")
+
+            # Clean data in-place
+            pdf["dxy"] = np.sqrt(pdf["cdx"] ** 2 + pdf["cdy"] ** 2)
+            pdf = dxy_cleaning(
+                pdf,
+                pdf["dxy"],
+                pdf["cmred"],
+                threshold=0.95,
+            )
+
+            pdf = iterative_cleaning(
+                pdf,
+                pdf["cmred"],
+                pdf["csigmapsf"],
+                pdf["Phase"],
+                pdf["cfid"],
+                pdf["ra"],
+                pdf["dec"],
+            )
 
             # Wrap columns inplace
             pdf_transposed = pd.DataFrame({
                 colname: [pdf[colname].to_numpy()] for colname in pdf.columns
             })
 
-            # parameter estimation
+            base_kwargs = dict(
+                use_angles=True,
+                use_filter_dependent=True,
+                use_phase=True,
+                use_shape=True,
+            )
+
+            current_kwargs = base_kwargs.copy()
+            
             outdic = modelfit.get_fit_params(
-                pdf_transposed,
+                data=pdf_transposed,
                 flavor=model_name,
                 shg1g2_constrained=True,
                 period_blind=True,
-                pole_blind=True,
-                alt_spin=False,
+                pole_blind=False,
                 period_in=None,
-                terminator=False,
+                period_quality_flag=True,
+                terminator=True,
+                time_me=True,
+                remap=True,
+                remap_kwargs=current_kwargs,
             )
 
             # replace names inplace for the remaning computation
