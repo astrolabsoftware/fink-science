@@ -66,6 +66,7 @@ ANOMALY_MODELS = [
     "_maria",
     "_emille_30days",
     "_varvara",
+    "_alexanta",
 ]  # noqa
 NOTIFICATIONS_COUNT = {"_emille": 30, "_emille_30days": 30, "_varvara": 200}
 CURVE_LAST_DAYS = {"_emille_30days": 30}
