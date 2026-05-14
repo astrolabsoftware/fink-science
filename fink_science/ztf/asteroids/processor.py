@@ -14,7 +14,7 @@
 # limitations under the License.
 from line_profiler import profile
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import IntegerType
 
 from fink_science import __file__
@@ -26,9 +26,9 @@ import numpy as np
 from fink_science.tester import spark_unit_tests
 
 
-@pandas_udf(IntegerType(), PandasUDFType.SCALAR)
+@pandas_udf(IntegerType())
 @profile
-def roid_catcher(jd, magpsf, ndethist, sgscore1, ssdistnr, distpsnr1):
+def roid_catcher(jd: pd.Series, magpsf: pd.Series, ndethist: pd.Series, sgscore1: pd.Series, ssdistnr: pd.Series, distpsnr1: pd.Series) -> pd.Series:
     """Determine if an alert is a potential Solar System object (SSO) using two criteria:
 
     1. The alert has been flagged as an SSO by ZTF (MPC) within 5"

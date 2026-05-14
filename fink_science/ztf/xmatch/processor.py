@@ -16,7 +16,7 @@ from line_profiler import profile
 
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import StringType, MapType
 
 from astropy.coordinates import SkyCoord
@@ -39,15 +39,14 @@ from fink_science import __file__
 
 from fink_tns.utils import download_catalog
 
-from typing import Any
 
 _LOG = logging.getLogger(__name__)
 
 
-@pandas_udf(StringType(), PandasUDFType.SCALAR)
+@pandas_udf(StringType())
 @profile
 def cdsxmatch(
-    objectId: Any, ra: Any, dec: Any, distmaxarcsec: float, extcatalog: str, cols: str
+    objectId: pd.Series, ra: pd.Series, dec: pd.Series, distmaxarcsec: pd.Series, extcatalog: pd.Series, cols: pd.Series
 ) -> pd.Series:
     """Query the CDSXmatch service to find identified objects in alerts.
 
@@ -359,8 +358,8 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     spark = SparkSession.builder.getOrCreate()
     pdf_tns_filt_b = spark.sparkContext.broadcast(pdf_tns_filt)
 
-    @pandas_udf(StringType(), PandasUDFType.SCALAR)
-    def crossmatch_with_tns(objectid, ra, dec):
+    @pandas_udf(StringType())
+    def crossmatch_with_tns(objectid: pd.Series, ra: pd.Series, dec: pd.Series) -> pd.Series:
         """Spark pandas_udf to crossmatch ZTF alerts with TNS
 
         Parameters
@@ -428,9 +427,9 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     return df
 
 
-@pandas_udf(StringType(), PandasUDFType.SCALAR)
+@pandas_udf(StringType())
 @profile
-def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
+def crossmatch_other_catalog(candid: pd.Series, ra: pd.Series, dec: pd.Series, catalog_name: pd.Series, radius_arcsec: pd.Series) -> pd.Series:
     """Crossmatch alerts with user-defined catalogs
 
     Currently supporting:
@@ -581,9 +580,9 @@ def crossmatch_other_catalog(candid, ra, dec, catalog_name, radius_arcsec=None):
     return pdf_merge["Type"]
 
 
-@pandas_udf(MapType(StringType(), StringType()), PandasUDFType.SCALAR)
+@pandas_udf(MapType(StringType(), StringType()))
 @profile
-def crossmatch_mangrove(candid, ra, dec, radius_arcsec=None):
+def crossmatch_mangrove(candid: pd.Series, ra: pd.Series, dec: pd.Series, radius_arcsec: pd.Series) -> pd.Series:
     """Crossmatch alerts with the Mangrove catalog
 
     Parameters

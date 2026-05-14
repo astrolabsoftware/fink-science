@@ -14,6 +14,9 @@
 # limitations under the License.
 from line_profiler import profile
 
+import warnings
+warnings.filterwarnings("ignore", message="In Python 3.6\\+ and Spark 3.0\\+", category=UserWarning)
+
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import FloatType, ArrayType
 
@@ -35,12 +38,12 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(FloatType(), PandasUDFType.SCALAR)
 @profile
 def snn_ia_elasticc(
-    diaSourceId,
-    midpointMjdTai,
-    band,
-    psfFlux,
-    psfFluxErr,
-    model_name,
+    diaSourceId: pd.Series,
+    midpointMjdTai: pd.Series,
+    band: pd.Series,
+    psfFlux: pd.Series,
+    psfFluxErr: pd.Series,
+    model_name: pd.Series,
     model_ext=None,
 ) -> pd.Series:
     """Compute probabilities of alerts to be SN Ia using SuperNNova
@@ -168,12 +171,12 @@ def extract_max_prob(arr):
 @pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 @profile
 def snn_broad_elasticc(
-    diaSourceId,
-    midpointMjdTai,
-    band,
-    psfFlux,
-    psfFluxErr,
-    model_name,
+    diaSourceId: pd.Series,
+    midpointMjdTai: pd.Series,
+    band: pd.Series,
+    psfFlux: pd.Series,
+    psfFluxErr: pd.Series,
+    model_name: pd.Series,
     model_ext=None,
 ) -> pd.Series:
     """Compute main class and associated probability for each alert

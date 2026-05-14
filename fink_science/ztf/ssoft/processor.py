@@ -23,7 +23,7 @@ from line_profiler import profile
 
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import MapType, FloatType, StringType
 
 from fink_utils.sso.spins import estimate_sso_params
@@ -411,24 +411,24 @@ COLUMNS_HG = {
 }
 
 
-@pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
+@pandas_udf(MapType(StringType(), FloatType()))
 @profile
 def extract_ssoft_parameters(
-    ssnamenr,
-    magpsf,
-    sigmapsf,
-    jd,
-    fid,
-    raobs,
-    decobs,
-    raephem,
-    decephem,
-    phase,
-    dobs,
-    dhelio,
-    method,
-    model,
-):
+    ssnamenr: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    jd: pd.Series,
+    fid: pd.Series,
+    raobs: pd.Series,
+    decobs: pd.Series,
+    raephem: pd.Series,
+    decephem: pd.Series,
+    phase: pd.Series,
+    dobs: pd.Series,
+    dhelio: pd.Series,
+    method: pd.Series,
+    model: pd.Series,
+) -> pd.Series:
     """Extract phase and spin parameters from Fink alert data using Apache Spark
 
     Notes

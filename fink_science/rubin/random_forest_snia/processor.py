@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
+warnings.filterwarnings("ignore", message="In Python 3.6\\+ and Spark 3.0\\+", category=UserWarning)
+
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import DoubleType
 
@@ -159,10 +162,10 @@ def extract_features_rainbow(
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_rainbow_elasticc_nometa(
-    midpointMjdTai,
-    band,
-    cpsfFlux,
-    cpsfFluxErr,
+    midpointMjdTai: pd.Series,
+    band: pd.Series,
+    cpsfFlux: pd.Series,
+    cpsfFluxErr: pd.Series,
     maxduration=None,
     model=None,
     band_wave_aa=None,

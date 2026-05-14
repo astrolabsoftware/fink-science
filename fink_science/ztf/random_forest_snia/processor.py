@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
+warnings.filterwarnings("ignore", message="In Python 3.6\\+ and Spark 3.0\\+", category=UserWarning)
+
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import DoubleType, StringType
 
@@ -77,12 +80,12 @@ def apply_selection_cuts_ztf(
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_sigmoid_full(
-    jd,
-    fid,
-    magpsf,
-    sigmapsf,
-    cdsxmatch,
-    ndethist,
+    jd: pd.Series,
+    fid: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    cdsxmatch: pd.Series,
+    ndethist: pd.Series,
     min_rising_points=None,
     min_data_points=None,
     rising_criteria=None,
@@ -243,7 +246,9 @@ def rfscore_sigmoid_full(
     flag = np.array(flag, dtype=bool)
 
     # Make predictions
-    probabilities = clf.predict_proba(test_features)
+    probabilities = clf.predict_proba(
+        pd.DataFrame(test_features, columns=clf.feature_names_in_)
+    )
 
     # pIa = 0.0 for objects that do not
     # have both features non-zero.
@@ -259,12 +264,12 @@ def rfscore_sigmoid_full(
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def extract_features_rf_snia(
-    jd,
-    fid,
-    magpsf,
-    sigmapsf,
-    cdsxmatch,
-    ndethist,
+    jd: pd.Series,
+    fid: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    cdsxmatch: pd.Series,
+    ndethist: pd.Series,
     min_rising_points=None,
     min_data_points=None,
     rising_criteria=None,
