@@ -791,9 +791,9 @@ def build_the_ssoft(
 
     # cdx, cdy only required for SOCCA
     if ("cdx" not in df.columns) or ("cdy" not in df.columns):
-        _LOG.warning("cdx or cdy not found in columns. Setting it to 0")
-        df = df.withColumn("cdx", F.lit(0.0))
-        df = df.withColumn("cdy", F.lit(0.0))
+        _LOG.warning("cdx or cdy not found in columns. Drawing from standard normal distribution")
+        df = df.withColumn("cdx", F.randn(seed=3))
+        df = df.withColumn("cdy", F.randn(seed=3))
 
     # FIXME: ssnamenr is not defined for ATLAS data
     cols = ["ssnamenr", "params_str"]
