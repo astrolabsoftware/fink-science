@@ -789,6 +789,12 @@ def build_the_ssoft(
             )
         )
 
+    # cdx, cdy only required for SOCCA
+    if ("cdx" not in df.columns) or ("cdy" not in df.columns):
+        _LOG.warning("cdx or cdy not found in columns. Setting it to 0")
+        df = df.withColumn("cdx", F.lit(0.0))
+        df = df.withColumn("cdy", F.lit(0.0))
+
     cols = ["ssnamenr", "params"]
     t0 = time.time()
     pdf = (
@@ -808,6 +814,8 @@ def build_the_ssoft(
                 "Phase",
                 "Dobs",
                 "Dhelio",
+                "cdx",
+                "cdy",
                 F.lit(ephem_method),
                 F.lit(model),
             ),
