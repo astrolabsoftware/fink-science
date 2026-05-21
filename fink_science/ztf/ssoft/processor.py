@@ -791,7 +791,9 @@ def build_the_ssoft(
 
     # cdx, cdy only required for SOCCA
     if ("cdx" not in df.columns) or ("cdy" not in df.columns):
-        _LOG.warning("cdx or cdy not found in columns. Drawing from standard normal distribution")
+        _LOG.warning(
+            "cdx or cdy not found in columns. Drawing from standard normal distribution"
+        )
         df = df.withColumn("cdx", F.randn(seed=3))
         df = df.withColumn("cdy", F.randn(seed=3))
 
@@ -801,7 +803,7 @@ def build_the_ssoft(
     pdf = (
         df
         .withColumn(
-            "params",
+            "params_str",
             extract_ssoft_parameters(
                 F.col("ssnamenr").astype("string"),
                 "cmagpsf",
