@@ -412,6 +412,27 @@ COLUMNS_HG = {
 }
 
 
+def sanitize_dict(outdic):
+    """Replace arrays with lists"""
+    outdic2 = {}
+    for k, v in outdic.items():
+        if isinstance(v, np.ndarray):
+            outdic2.update({k: list(v)})
+        else:
+            outdic2.update({k: v})
+    return outdic2
+
+
+@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
+def randn(cmagpsf):
+    """Construct column with random values from standard normal distribution"""
+    rng = np.random.default_rng(seed=3)
+    out = [
+        rng.standard_normal(len(vec), dtype=np.float32) for vec in cmagpsf.to_numpy()
+    ]
+    return pd.Series(out)
+
+
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def extract_ssoft_parameters(
@@ -571,6 +592,8 @@ def extract_ssoft_parameters(
                 remap_kwargs=current_kwargs,
             )
 
+            outdic = sanitize_dict(outdic)
+
             # replace names inplace for the remaning computation
             pdf = pdf.rename(
                 columns={
@@ -640,16 +663,6 @@ def extract_ssoft_parameters(
         outdic["last_jd"] = pdf["i:jd"].max()
 
         out.append(str(outdic))
-    return pd.Series(out)
-
-
-@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
-def randn(cmagpsf):
-    """Construct column with random values from standard normal distribution"""
-    rng = np.random.default_rng(seed=3)
-    out = [
-        rng.standard_normal(len(vec), dtype=np.float32) for vec in cmagpsf.to_numpy()
-    ]
     return pd.Series(out)
 
 
