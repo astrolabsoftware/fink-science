@@ -24,7 +24,7 @@ from line_profiler import profile
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StringType
+from pyspark.sql.types import StringType, ArrayType, FloatType
 
 from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.spins import extract_obliquity
@@ -643,6 +643,16 @@ def extract_ssoft_parameters(
     return pd.Series(out)
 
 
+@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
+def randn(cmagpsf):
+    """Construct column with random values from standard normal distribution"""
+    rng = np.random.default_rng(seed=3)
+    out = [
+        rng.standard_normal(len(vec), dtype=np.float32) for vec in cmagpsf.to_numpy()
+    ]
+    return pd.Series(out)
+
+
 def build_the_ssoft(
     aggregated_filename,
     nparts=400,
@@ -794,8 +804,8 @@ def build_the_ssoft(
         _LOG.warning(
             "cdx or cdy not found in columns. Drawing from standard normal distribution"
         )
-        df = df.withColumn("cdx", F.randn(seed=3))
-        df = df.withColumn("cdy", F.randn(seed=3))
+        df = df.withColumn("cdx", randn("cmagpsf"))
+        df = df.withColumn("cdy", randn("cmagpsf"))
 
     # FIXME: ssnamenr is not defined for ATLAS data
     cols = ["ssnamenr", "params_str"]
