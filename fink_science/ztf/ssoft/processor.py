@@ -24,7 +24,7 @@ from line_profiler import profile
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import MapType, FloatType, StringType
+from pyspark.sql.types import StringType
 
 from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.spins import extract_obliquity
@@ -412,7 +412,7 @@ COLUMNS_HG = {
 }
 
 
-@pandas_udf(MapType(StringType(), FloatType()), PandasUDFType.SCALAR)
+@pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def extract_ssoft_parameters(
     ssnamenr,
@@ -795,7 +795,8 @@ def build_the_ssoft(
         df = df.withColumn("cdx", F.lit(0.0))
         df = df.withColumn("cdy", F.lit(0.0))
 
-    cols = ["ssnamenr", "params"]
+    # FIXME: ssnamenr is not defined for ATLAS data
+    cols = ["ssnamenr", "params_str"]
     t0 = time.time()
     pdf = (
         df
@@ -826,7 +827,14 @@ def build_the_ssoft(
 
     _LOG.info("Time to extract parameters: {:.2f} seconds".format(time.time() - t0))
 
-    pdf = pd.concat([pdf, pd.json_normalize(pdf.params)], axis=1).drop("params", axis=1)
+    glob = globals()
+    glob["nan"] = np.nan
+
+    pdf["params_dict"] = pdf["params_str"].apply(lambda string: eval(string, glob))
+
+    pdf = pd.concat([pdf, pd.json_normalize(pdf.params_dict)], axis=1).drop(
+        columns=["params_dict", "params_str"], axis=1
+    )
 
     sso_name, sso_number = rockify(pdf.ssnamenr.copy())
     pdf["sso_name"] = sso_name
