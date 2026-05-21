@@ -30,6 +30,7 @@ from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.spins import extract_obliquity
 from fink_utils.sso.utils import rockify, extract_array_from_series
 from fink_utils.sso.utils import compute_light_travel_correction
+from fink_utils.sso.cleaning import dxy_cleaning, iterative_cleaning
 
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
@@ -478,7 +479,7 @@ def extract_ssoft_parameters(
         "HG1G2": {"p0": [15.0, 0.15, 0.15], "bounds": ([-3, 0, 0], [30, 1, 1])},
         "SHG1G2": {
             "p0": [15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
-            "bounds": None,  # initialised inside fit_spin 
+            "bounds": None,  # initialised inside fit_spin
         },
         "SOCCA": {
             "p0": [15.0, 0.15, 0.15, np.pi, 0.0, 5.0, 1.05, 1.05, 0.0],
@@ -555,7 +556,7 @@ def extract_ssoft_parameters(
             )
 
             current_kwargs = base_kwargs.copy()
-            
+
             outdic = modelfit.get_fit_params(
                 data=pdf_transposed,
                 flavor=model_name,
