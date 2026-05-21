@@ -639,7 +639,7 @@ def extract_ssoft_parameters(
 
         outdic["last_jd"] = pdf["i:jd"].max()
 
-        out.append(outdic)
+        out.append(str(outdic))
     return pd.Series(out)
 
 
