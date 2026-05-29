@@ -462,7 +462,8 @@ def crossmatch_other_catalog(
     catalog_name: str
         Name of the catalog to use. currently supported: gcvs, vsx, 3hsp, 4lac
     radius_arcsec: float, optional
-        Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
+   radius_arcsec: float
+       Crossmatch radius in arcsecond.
 
     Returns
     -------
@@ -495,7 +496,7 @@ def crossmatch_other_catalog(
     Test the processor by adding a new column with the result of the xmatch
     >>> df.withColumn(
     ...     'gcvs',
-    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'))
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'), lit(1.5))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+-----------+-----------+-------+
     | id|         ra|        dec|   gcvs|
@@ -509,7 +510,7 @@ def crossmatch_other_catalog(
 
     >>> df.withColumn(
     ...     'vsx',
-    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'))
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'), lit(1.5))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+-----------+-----------+-------+
     | id|         ra|        dec|    vsx|
@@ -523,7 +524,7 @@ def crossmatch_other_catalog(
 
     >>> df.withColumn(
     ...     '3hsp',
-    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('3hsp'))
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('3hsp'), lit(1.5))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+-----------+-----------+--------------------+
     | id|         ra|        dec|                3hsp|
@@ -609,7 +610,8 @@ def crossmatch_mangrove(
     dec: float
         ZTF declinations
     radius_arcsec: float, optional
-        Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
+   radius_arcsec: float
+       Crossmatch radius in arcsecond.
 
     Returns
     -------
