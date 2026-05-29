@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import logging
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import ArrayType, FloatType
 
 from fink_science import __file__
@@ -38,7 +38,7 @@ model_path = curdir + "/data/models/cats_models/cats_small_nometa_serial_219_sav
 dummy_layer = tf.keras.layers.TFSMLayer(model_path, call_endpoint="serving_default")
 
 
-@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
+@pandas_udf(ArrayType(FloatType()))
 @profile
 def predict_nn(
     midpointMjdTai: pd.Series,

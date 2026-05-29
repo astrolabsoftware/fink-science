@@ -16,7 +16,7 @@ from line_profiler import profile
 
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import StringType, MapType, StructType, StructField
 
 from astropy.coordinates import SkyCoord
@@ -46,20 +46,19 @@ from fink_science import __file__
 
 from fink_tns.utils import download_catalog
 
-from typing import Any
 
 _LOG = logging.getLogger(__name__)
 
 
-@pandas_udf(StringType(), PandasUDFType.SCALAR)
+@pandas_udf(StringType())
 @profile
 def cdsxmatch(
-    diaSourceId: Any,
-    ra: Any,
-    dec: Any,
-    distmaxarcsec: float,
-    extcatalog: str,
-    cols: str,
+    diaSourceId: pd.Series,
+    ra: pd.Series,
+    dec: pd.Series,
+    distmaxarcsec: pd.Series,
+    extcatalog: pd.Series,
+    cols: pd.Series,
 ) -> pd.Series:
     """Query the CDSXmatch service to find identified objects in alerts.
 
@@ -422,8 +421,10 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         StructField(k, v, True) for k, v in TNS_SPARK_SCHEMA.items()
     ])
 
-    @pandas_udf(tns_schema, PandasUDFType.SCALAR)
-    def crossmatch_with_tns(diaSourceId, ra, dec):
+    @pandas_udf(tns_schema)
+    def crossmatch_with_tns(
+        diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series
+    ) -> pd.Series:
         """Spark pandas_udf to crossmatch Rubin alerts with TNS
 
         Parameters
@@ -508,9 +509,15 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     return df
 
 
-@pandas_udf(StringType(), PandasUDFType.SCALAR)
+@pandas_udf(StringType())
 @profile
-def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=None):
+def crossmatch_other_catalog(
+    diaSourceId: pd.Series,
+    ra: pd.Series,
+    dec: pd.Series,
+    catalog_name: pd.Series,
+    radius_arcsec: pd.Series,
+) -> pd.Series:
     """Crossmatch alerts with user-defined catalogs
 
     Currently supporting:
@@ -531,7 +538,8 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     catalog_name: str
         Name of the catalog to use. currently supported: gcvs, vsx, 3hsp, 4lac
     radius_arcsec: float, optional
-        Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
+    radius_arcsec: float
+       Crossmatch radius in arcsecond.
 
     Returns
     -------
@@ -564,7 +572,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     Test the processor by adding a new column with the result of the xmatch
     >>> df.withColumn(
     ...     'gcvs',
-    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'))
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'), lit(1.5))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+-----------+-----------+----+
     | id|         ra|        dec|gcvs|
@@ -578,7 +586,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
 
     >>> df.withColumn(
     ...     'vsx',
-    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'))
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'), lit(1.5))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+-----------+-----------+----+
     | id|         ra|        dec| vsx|
@@ -592,7 +600,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
 
     >>> df.withColumn(
     ...     '3hsp',
-    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('3hsp'))
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('3hsp'), lit(1.5))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+-----------+-----------+--------------------+
     | id|         ra|        dec|                3hsp|
@@ -633,10 +641,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     <BLANKLINE>
     """
     # set separation length
-    if radius_arcsec is None:
-        radius_arcsec = 1.5
-    elif isinstance(radius_arcsec, pd.Series):
-        radius_arcsec = float(radius_arcsec.to_numpy()[0])
+    radius_arcsec = float(radius_arcsec.to_numpy()[0])
 
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
@@ -700,9 +705,11 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     return pdf_merge["Type"]
 
 
-@pandas_udf(MapType(StringType(), StringType()), PandasUDFType.SCALAR)
+@pandas_udf(MapType(StringType(), StringType()))
 @profile
-def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
+def crossmatch_mangrove(
+    diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series, radius_arcsec: pd.Series
+) -> pd.Series:
     """Crossmatch alerts with the Mangrove catalog
 
     Parameters
@@ -714,7 +721,8 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     dec: float
         Rubin declinations
     radius_arcsec: float, optional
-        Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
+    radius_arcsec: float
+       Crossmatch radius in arcsecond.
 
     Returns
     -------
@@ -760,10 +768,7 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     <BLANKLINE>
     """
     # set separation length
-    if radius_arcsec is None:
-        radius_arcsec = 1.5
-    elif isinstance(radius_arcsec, pd.Series):
-        radius_arcsec = float(radius_arcsec.to_numpy()[0])
+    radius_arcsec = float(radius_arcsec.to_numpy()[0])
 
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),

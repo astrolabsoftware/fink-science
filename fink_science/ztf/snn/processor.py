@@ -84,15 +84,15 @@ def apply_selection_cuts_ztf(
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def snn_ia(
-    candid,
-    jd,
-    fid,
-    magpsf,
-    sigmapsf,
-    roid,
-    cdsxmatch,
-    jdstarthist,
-    model_name,
+    candid: pd.Series,
+    jd: pd.Series,
+    fid: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    roid: pd.Series,
+    cdsxmatch: pd.Series,
+    jdstarthist: pd.Series,
+    model_name: pd.Series,
     model_ext=None,
 ) -> pd.Series:
     """Compute probabilities of alerts to be SN Ia using SuperNNova

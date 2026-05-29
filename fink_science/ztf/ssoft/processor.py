@@ -23,7 +23,7 @@ from line_profiler import profile
 
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import StringType, ArrayType, FloatType
 
 from fink_utils.sso.spins import estimate_sso_params
@@ -423,8 +423,8 @@ def sanitize_dict(outdic):
     return outdic2
 
 
-@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
-def randn(cmagpsf):
+@pandas_udf(ArrayType(FloatType()))
+def randn(cmagpsf: pd.Series) -> pd.Series:
     """Construct column with random values from standard normal distribution"""
     rng = np.random.default_rng(seed=3)
     out = [
@@ -433,26 +433,26 @@ def randn(cmagpsf):
     return pd.Series(out)
 
 
-@pandas_udf(StringType(), PandasUDFType.SCALAR)
+@pandas_udf(StringType())
 @profile
 def extract_ssoft_parameters(
-    ssnamenr,
-    magpsf,
-    sigmapsf,
-    jd,
-    fid,
-    raobs,
-    decobs,
-    raephem,
-    decephem,
-    phase,
-    dobs,
-    dhelio,
-    cdx,
-    cdy,
-    method,
-    model,
-):
+    ssnamenr: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    jd: pd.Series,
+    fid: pd.Series,
+    raobs: pd.Series,
+    decobs: pd.Series,
+    raephem: pd.Series,
+    decephem: pd.Series,
+    phase: pd.Series,
+    dobs: pd.Series,
+    dhelio: pd.Series,
+    cdx: pd.Series,
+    cdy: pd.Series,
+    method: pd.Series,
+    model: pd.Series,
+) -> pd.Series:
     """Extract phase and spin parameters from Fink alert data using Apache Spark
 
     Notes
