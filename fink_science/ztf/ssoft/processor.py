@@ -24,12 +24,13 @@ from line_profiler import profile
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf
-from pyspark.sql.types import MapType, FloatType, StringType
+from pyspark.sql.types import StringType, ArrayType, FloatType
 
 from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.spins import extract_obliquity
 from fink_utils.sso.utils import rockify, extract_array_from_series
 from fink_utils.sso.utils import compute_light_travel_correction
+from fink_utils.sso.cleaning import dxy_cleaning, iterative_cleaning
 
 from fink_science import __file__
 from fink_science.tester import spark_unit_tests
@@ -410,6 +411,26 @@ COLUMNS_HG = {
     },
 }
 
+def sanitize_dict(outdic):
+    """Replace arrays with lists"""
+    outdic2 = {}
+    for k, v in outdic.items():
+        if isinstance(v, np.ndarray):
+            outdic2.update({k: list(v)})
+        else:
+            outdic2.update({k: v})
+    return outdic2
+
+
+@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
+def randn(cmagpsf):
+    """Construct column with random values from standard normal distribution"""
+    rng = np.random.default_rng(seed=3)
+    out = [
+        rng.standard_normal(len(vec), dtype=np.float32) for vec in cmagpsf.      to_numpy()
+    ]
+    return pd.Series(out)
+
 
 @pandas_udf(MapType(StringType(), FloatType()))
 @profile
@@ -426,6 +447,8 @@ def extract_ssoft_parameters(
     phase: pd.Series,
     dobs: pd.Series,
     dhelio: pd.Series,
+    cdx: pd.Series,
+    cdy: pd.Series,
     method: pd.Series,
     model: pd.Series,
 ) -> pd.Series:
@@ -455,6 +478,8 @@ def extract_ssoft_parameters(
     phase:
     dobs:
     dhelio:
+    cdx:
+    cdy:
     method: str
         Method to compute ephemerides: `ephemcc` or `rest`.
         Use only the former on the Spark Cluster (local installation of ephemcc),
@@ -474,17 +499,11 @@ def extract_ssoft_parameters(
         "HG1G2": {"p0": [15.0, 0.15, 0.15], "bounds": ([-3, 0, 0], [30, 1, 1])},
         "SHG1G2": {
             "p0": [15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
-            "bounds": (
-                [-3, 0, 0, 3e-1, 0, -np.pi / 2],
-                [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
-            ),
+            "bounds": None,  # initialised inside fit_spin
         },
         "SOCCA": {
             "p0": [15.0, 0.15, 0.15, np.pi, 0.0, 5.0, 1.05, 1.05, 0.0],
-            "bounds": (
-                [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
-                [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
-            ),
+            "bounds": None,  # initialised inside fit_spin
         },
     }
 
@@ -517,25 +536,62 @@ def extract_ssoft_parameters(
                 "cjd": jd_lt,
                 "i:raephem": extract_array_from_series(raephem, index, float),
                 "i:decephem": extract_array_from_series(decephem, index, float),
+                "ra_s": extract_array_from_series(raephem, index, float),
+                "dec_s": extract_array_from_series(decephem, index, float),
+                "cdx": extract_array_from_series(cdx, index, float),
+                "cdy": extract_array_from_series(cdy, index, float),
+                "Dhelio": extract_array_from_series(dhelio, index, float),
             })
             pdf = pdf.sort_values("cjd")
+
+            # Clean data in-place
+            pdf["dxy"] = np.sqrt(pdf["cdx"] ** 2 + pdf["cdy"] ** 2)
+            pdf = dxy_cleaning(
+                pdf,
+                pdf["dxy"],
+                pdf["cmred"],
+                threshold=0.95,
+            )
+
+            pdf = iterative_cleaning(
+                pdf,
+                pdf["cmred"],
+                pdf["csigmapsf"],
+                pdf["Phase"],
+                pdf["cfid"],
+                pdf["ra"],
+                pdf["dec"],
+            )
 
             # Wrap columns inplace
             pdf_transposed = pd.DataFrame({
                 colname: [pdf[colname].to_numpy()] for colname in pdf.columns
             })
 
-            # parameter estimation
+            base_kwargs = dict(
+                use_angles=True,
+                use_filter_dependent=True,
+                use_phase=True,
+                use_shape=True,
+            )
+
+            current_kwargs = base_kwargs.copy()
+
             outdic = modelfit.get_fit_params(
-                pdf_transposed,
+                data=pdf_transposed,
                 flavor=model_name,
                 shg1g2_constrained=True,
                 period_blind=True,
-                pole_blind=True,
-                alt_spin=False,
+                pole_blind=False,
                 period_in=None,
-                terminator=False,
+                period_quality_flag=True,
+                terminator=True,
+                time_me=True,
+                remap=True,
+                remap_kwargs=current_kwargs,
             )
+
+            outdic = sanitize_dict(outdic)
 
             # replace names inplace for the remaning computation
             pdf = pdf.rename(
@@ -605,7 +661,7 @@ def extract_ssoft_parameters(
 
         outdic["last_jd"] = pdf["i:jd"].max()
 
-        out.append(outdic)
+        out.append(str(outdic))
     return pd.Series(out)
 
 
@@ -755,12 +811,21 @@ def build_the_ssoft(
             )
         )
 
-    cols = ["ssnamenr", "params"]
+    # cdx, cdy only required for SOCCA
+    if ("cdx" not in df.columns) or ("cdy" not in df.columns):
+        _LOG.warning(
+            "cdx or cdy not found in columns. Drawing from standard normal distribution"
+        )
+        df = df.withColumn("cdx", randn("cmagpsf"))
+        df = df.withColumn("cdy", randn("cmagpsf"))
+
+    # FIXME: ssnamenr is not defined for ATLAS data
+    cols = ["ssnamenr", "params_str"]
     t0 = time.time()
     pdf = (
         df
         .withColumn(
-            "params",
+            "params_str",
             extract_ssoft_parameters(
                 F.col("ssnamenr").astype("string"),
                 "cmagpsf",
@@ -774,6 +839,8 @@ def build_the_ssoft(
                 "Phase",
                 "Dobs",
                 "Dhelio",
+                "cdx",
+                "cdy",
                 F.lit(ephem_method),
                 F.lit(model),
             ),
@@ -784,7 +851,14 @@ def build_the_ssoft(
 
     _LOG.info("Time to extract parameters: {:.2f} seconds".format(time.time() - t0))
 
-    pdf = pd.concat([pdf, pd.json_normalize(pdf.params)], axis=1).drop("params", axis=1)
+    glob = globals()
+    glob["nan"] = np.nan
+
+    pdf["params_dict"] = pdf["params_str"].apply(lambda string: eval(string, glob))
+
+    pdf = pd.concat([pdf, pd.json_normalize(pdf.params_dict)], axis=1).drop(
+        columns=["params_dict", "params_str"], axis=1
+    )
 
     sso_name, sso_number = rockify(pdf.ssnamenr.copy())
     pdf["sso_name"] = sso_name
