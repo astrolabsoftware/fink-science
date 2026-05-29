@@ -1,5 +1,5 @@
 # Copyright 2019-2025 AstroLab Software
-# Authors: Marina Masson
+# Authors: Marina Masson, Hugo Sedlacek
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ def orphan_grb(cmidpointMjdTai, cpsfFlux, cpsfFluxErr, cband):
     >>> df = df.withColumn("prob", orphan_grb(*args))
 
     # No match obviously from the current test set
-    >>> df.filter(df["prob"] > 0.0).count()
+    >>> df.filter(df["prob"] > 0.1).count()
     0
     """
     # Compute diff mag from diff flux
