@@ -462,7 +462,7 @@ def crossmatch_other_catalog(
     catalog_name: str
         Name of the catalog to use. currently supported: gcvs, vsx, 3hsp, 4lac
     radius_arcsec: float, optional
-   radius_arcsec: float
+    radius_arcsec: float
        Crossmatch radius in arcsecond.
 
     Returns
@@ -610,7 +610,7 @@ def crossmatch_mangrove(
     dec: float
         ZTF declinations
     radius_arcsec: float, optional
-   radius_arcsec: float
+    radius_arcsec: float
        Crossmatch radius in arcsecond.
 
     Returns

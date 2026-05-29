@@ -538,7 +538,7 @@ def crossmatch_other_catalog(
     catalog_name: str
         Name of the catalog to use. currently supported: gcvs, vsx, 3hsp, 4lac
     radius_arcsec: float, optional
-   radius_arcsec: float
+    radius_arcsec: float
        Crossmatch radius in arcsecond.
 
     Returns
@@ -641,10 +641,7 @@ def crossmatch_other_catalog(
     <BLANKLINE>
     """
     # set separation length
-    if radius_arcsec is None:
-        radius_arcsec = 1.5
-    elif isinstance(radius_arcsec, pd.Series):
-radius_arcsec = float(radius_arcsec.to_numpy()[0])
+    radius_arcsec = float(radius_arcsec.to_numpy()[0])
 
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
@@ -724,7 +721,7 @@ def crossmatch_mangrove(
     dec: float
         Rubin declinations
     radius_arcsec: float, optional
-   radius_arcsec: float
+    radius_arcsec: float
        Crossmatch radius in arcsecond.
 
     Returns
@@ -771,11 +768,7 @@ def crossmatch_mangrove(
     <BLANKLINE>
     """
     # set separation length
-    if radius_arcsec is None:
-        radius_arcsec = 1.5
-    elif isinstance(radius_arcsec, pd.Series):
-# set separation length
-radius_arcsec = float(radius_arcsec.to_numpy()[0])
+    radius_arcsec = float(radius_arcsec.to_numpy()[0])
 
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
