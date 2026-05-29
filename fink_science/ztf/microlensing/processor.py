@@ -14,7 +14,7 @@
 # limitations under the License.
 from line_profiler import profile
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import StringType, DoubleType
 
 import numpy as np
@@ -35,9 +35,17 @@ from LIA import microlensing_classifier
 from fink_science.tester import spark_unit_tests
 
 
-@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+@pandas_udf(DoubleType())
 @profile
-def mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos, ndethist):
+def mulens(
+    fid: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    magnr: pd.Series,
+    sigmagnr: pd.Series,
+    isdiffpos: pd.Series,
+    ndethist: pd.Series,
+) -> pd.Series:
     """Returns the probability of an alert to be a microlensing event
 
     Notes
@@ -180,9 +188,16 @@ def mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos, ndethist):
     return pd.Series(to_return)
 
 
-@pandas_udf(StringType(), PandasUDFType.SCALAR)
+@pandas_udf(StringType())
 @profile
-def extract_features_mulens(fid, magpsf, sigmapsf, magnr, sigmagnr, isdiffpos):
+def extract_features_mulens(
+    fid: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    magnr: pd.Series,
+    sigmagnr: pd.Series,
+    isdiffpos: pd.Series,
+) -> pd.Series:
     """Extract mulens features
 
     Parameters

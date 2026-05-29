@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import IntegerType
 
 import pandas as pd
@@ -25,8 +25,8 @@ from fink_science import __file__
 from fink_science.tester import spark_unit_tests
 
 
-@pandas_udf(IntegerType(), PandasUDFType.SCALAR)
-def nalerthist(magpsf) -> pd.Series:
+@pandas_udf(IntegerType())
+def nalerthist(magpsf: pd.Series) -> pd.Series:
     """Compute the number of detections contained in the alert (current+history)
 
     Notes

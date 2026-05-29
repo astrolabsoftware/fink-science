@@ -159,10 +159,10 @@ def extract_features_rainbow(
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_rainbow_elasticc_nometa(
-    midpointMjdTai,
-    band,
-    cpsfFlux,
-    cpsfFluxErr,
+    midpointMjdTai: pd.Series,
+    band: pd.Series,
+    cpsfFlux: pd.Series,
+    cpsfFluxErr: pd.Series,
     maxduration=None,
     model=None,
     band_wave_aa=None,
