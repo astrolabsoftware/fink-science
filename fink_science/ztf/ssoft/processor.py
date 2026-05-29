@@ -411,6 +411,7 @@ COLUMNS_HG = {
     },
 }
 
+
 def sanitize_dict(outdic):
     """Replace arrays with lists"""
     outdic2 = {}
@@ -422,17 +423,17 @@ def sanitize_dict(outdic):
     return outdic2
 
 
-@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
-def randn(cmagpsf):
+@pandas_udf(ArrayType(FloatType()))
+def randn(cmagpsf: pd.Series) -> pd.Series:
     """Construct column with random values from standard normal distribution"""
     rng = np.random.default_rng(seed=3)
     out = [
-        rng.standard_normal(len(vec), dtype=np.float32) for vec in cmagpsf.      to_numpy()
+        rng.standard_normal(len(vec), dtype=np.float32) for vec in cmagpsf.to_numpy()
     ]
     return pd.Series(out)
 
 
-@pandas_udf(MapType(StringType(), FloatType()))
+@pandas_udf(StringType())
 @profile
 def extract_ssoft_parameters(
     ssnamenr: pd.Series,

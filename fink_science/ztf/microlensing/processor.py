@@ -37,7 +37,15 @@ from fink_science.tester import spark_unit_tests
 
 @pandas_udf(DoubleType())
 @profile
-def mulens(fid: pd.Series, magpsf: pd.Series, sigmapsf: pd.Series, magnr: pd.Series, sigmagnr: pd.Series, isdiffpos: pd.Series, ndethist: pd.Series) -> pd.Series:
+def mulens(
+    fid: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    magnr: pd.Series,
+    sigmagnr: pd.Series,
+    isdiffpos: pd.Series,
+    ndethist: pd.Series,
+) -> pd.Series:
     """Returns the probability of an alert to be a microlensing event
 
     Notes
@@ -182,7 +190,14 @@ def mulens(fid: pd.Series, magpsf: pd.Series, sigmapsf: pd.Series, magnr: pd.Ser
 
 @pandas_udf(StringType())
 @profile
-def extract_features_mulens(fid: pd.Series, magpsf: pd.Series, sigmapsf: pd.Series, magnr: pd.Series, sigmagnr: pd.Series, isdiffpos: pd.Series) -> pd.Series:
+def extract_features_mulens(
+    fid: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    magnr: pd.Series,
+    sigmagnr: pd.Series,
+    isdiffpos: pd.Series,
+) -> pd.Series:
     """Extract mulens features
 
     Parameters

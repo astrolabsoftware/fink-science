@@ -46,7 +46,12 @@ _LOG = logging.getLogger(__name__)
 @pandas_udf(StringType())
 @profile
 def cdsxmatch(
-    objectId: pd.Series, ra: pd.Series, dec: pd.Series, distmaxarcsec: pd.Series, extcatalog: pd.Series, cols: pd.Series
+    objectId: pd.Series,
+    ra: pd.Series,
+    dec: pd.Series,
+    distmaxarcsec: pd.Series,
+    extcatalog: pd.Series,
+    cols: pd.Series,
 ) -> pd.Series:
     """Query the CDSXmatch service to find identified objects in alerts.
 
@@ -359,7 +364,9 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     pdf_tns_filt_b = spark.sparkContext.broadcast(pdf_tns_filt)
 
     @pandas_udf(StringType())
-    def crossmatch_with_tns(objectid: pd.Series, ra: pd.Series, dec: pd.Series) -> pd.Series:
+    def crossmatch_with_tns(
+        objectid: pd.Series, ra: pd.Series, dec: pd.Series
+    ) -> pd.Series:
         """Spark pandas_udf to crossmatch ZTF alerts with TNS
 
         Parameters
@@ -429,7 +436,13 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
 @pandas_udf(StringType())
 @profile
-def crossmatch_other_catalog(candid: pd.Series, ra: pd.Series, dec: pd.Series, catalog_name: pd.Series, radius_arcsec: pd.Series) -> pd.Series:
+def crossmatch_other_catalog(
+    candid: pd.Series,
+    ra: pd.Series,
+    dec: pd.Series,
+    catalog_name: pd.Series,
+    radius_arcsec: pd.Series,
+) -> pd.Series:
     """Crossmatch alerts with user-defined catalogs
 
     Currently supporting:
@@ -582,7 +595,9 @@ def crossmatch_other_catalog(candid: pd.Series, ra: pd.Series, dec: pd.Series, c
 
 @pandas_udf(MapType(StringType(), StringType()))
 @profile
-def crossmatch_mangrove(candid: pd.Series, ra: pd.Series, dec: pd.Series, radius_arcsec: pd.Series) -> pd.Series:
+def crossmatch_mangrove(
+    candid: pd.Series, ra: pd.Series, dec: pd.Series, radius_arcsec: pd.Series
+) -> pd.Series:
     """Crossmatch alerts with the Mangrove catalog
 
     Parameters

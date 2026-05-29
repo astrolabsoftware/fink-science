@@ -422,7 +422,9 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     ])
 
     @pandas_udf(tns_schema)
-    def crossmatch_with_tns(diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series) -> pd.Series:
+    def crossmatch_with_tns(
+        diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series
+    ) -> pd.Series:
         """Spark pandas_udf to crossmatch Rubin alerts with TNS
 
         Parameters
@@ -509,7 +511,13 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
 @pandas_udf(StringType())
 @profile
-def crossmatch_other_catalog(diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series, catalog_name: pd.Series, radius_arcsec: pd.Series) -> pd.Series:
+def crossmatch_other_catalog(
+    diaSourceId: pd.Series,
+    ra: pd.Series,
+    dec: pd.Series,
+    catalog_name: pd.Series,
+    radius_arcsec: pd.Series,
+) -> pd.Series:
     """Crossmatch alerts with user-defined catalogs
 
     Currently supporting:
@@ -701,7 +709,9 @@ def crossmatch_other_catalog(diaSourceId: pd.Series, ra: pd.Series, dec: pd.Seri
 
 @pandas_udf(MapType(StringType(), StringType()))
 @profile
-def crossmatch_mangrove(diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series, radius_arcsec: pd.Series) -> pd.Series:
+def crossmatch_mangrove(
+    diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series, radius_arcsec: pd.Series
+) -> pd.Series:
     """Crossmatch alerts with the Mangrove catalog
 
     Parameters

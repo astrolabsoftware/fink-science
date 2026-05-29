@@ -14,9 +14,6 @@
 # limitations under the License.
 from line_profiler import profile
 
-import warnings
-warnings.filterwarnings("ignore", message="In Python 3.6\\+ and Spark 3.0\\+", category=UserWarning)
-
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import DoubleType, StringType
 
@@ -40,7 +37,14 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def knscore(
-    jd: pd.Series, fid: pd.Series, magpsf: pd.Series, sigmapsf: pd.Series, jdstarthist: pd.Series, cdsxmatch: pd.Series, ndethist: pd.Series, model_name=None
+    jd: pd.Series,
+    fid: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    jdstarthist: pd.Series,
+    cdsxmatch: pd.Series,
+    ndethist: pd.Series,
+    model_name=None,
 ) -> pd.Series:
     """Return the probability of an alert to be a Kilonova using a Random Forest Classifier.
 
@@ -200,7 +204,9 @@ def knscore(
 
 @pandas_udf(StringType())
 @profile
-def extract_features_knscore(jd: pd.Series, fid: pd.Series, magpsf: pd.Series, sigmapsf: pd.Series) -> pd.Series:
+def extract_features_knscore(
+    jd: pd.Series, fid: pd.Series, magpsf: pd.Series, sigmapsf: pd.Series
+) -> pd.Series:
     """Extract features used by the Kilonova classifier (using a Random Forest Classifier).
 
     Parameters

@@ -14,9 +14,6 @@
 # limitations under the License.
 from line_profiler import profile
 
-import warnings
-warnings.filterwarnings("ignore", message="In Python 3.6\\+ and Spark 3.0\\+", category=UserWarning)
-
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import FloatType, ArrayType
 
