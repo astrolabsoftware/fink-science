@@ -633,6 +633,7 @@ def extract_ssoft_parameters(
                 bounds=MODELS[model_name]["bounds"],
                 model=model_name,
                 normalise_to_V=False,
+                remap=True,
             )
 
         # Add astrometry
