@@ -19,6 +19,8 @@ import pandas as pd
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import MapType, StringType, FloatType
 from fink_science.ztf.blazar_extreme_state.utils import (
+    catalog_update,
+    get_FLaapLUC_deviation,
     extreme_state_,
     get_ztf_dr_data,
     from_mag_to_flux,
@@ -38,6 +40,10 @@ import os
 # Latest catalog version name
 CATALOG_TAG = "23.v03_2026"
 
+# FLaapLUC required data
+FLAAPLUC_SCHEMA_PATH = "flaapluc_static.json"
+DELTATIME_CHECK_HISTORY = 7.
+
 # New columns to be produced and added to the scheme
 BLAZAR_LOW_COLS = ["instantness_low", "robustness_low"]
 INST_LOW_TAG, ROB_LOW_TAG = BLAZAR_LOW_COLS
@@ -45,6 +51,7 @@ BLAZAR_HIGH_COLS = ["instantness_high", "robustness_high"]
 INST_HIGH_TAG, ROB_HIGH_TAG = BLAZAR_HIGH_COLS
 CDF_COL = ["cdf_quantile"]
 CDF_TAG = CDF_COL[0]
+FLAAPLUC_TAG = "flaapluc_deviation"
 
 # Integration periods for the computation
 # of the fluence in the robustness criterion
@@ -267,8 +274,23 @@ def extreme_state(
             )
             lc = standardise_dr_lc(sub, lc, CTAO_blazar)
             cdf_dic = {CDF_TAG: compute_quantile(lc, measurement)}
+        
+        flaapluc_dic = {FLAAPLUC_TAG: -1.0}
+        flaapluc_flux_dic = {FLAAPLUC_FLUX_TAG: -1.0}
+        if (high_state_dic[INST_HIGH_TAG] >= 1 and high_state_dic[ROB_HIGH_TAG] >= 1):
+            CTAO_blazar = catalog_update(
+                CTAO_blazar,
+                FLAAPLUC_SCHEMA_PATH,
+                deltatime_check_history=DELTATIME_CHECK_HISTORY
+            )
+            # Retrieve FLaapLUC alert data
+            flaapluc_deviation, flaapluc_flux = get_FLaapLUC_deviation(sub, CTAO_blazar)
+            flaapluc_dic = {FLAAPLUC_TAG: flaapluc_deviation}
+            flaapluc_flux_dic = {FLAAPLUC_FLUX_TAG: flaapluc_flux}
 
-        out.append(low_state_dic | high_state_dic | cdf_dic)
+        out.append(
+            flaapluc_flux_dic | flaapluc_dic | low_state_dic | high_state_dic | cdf_dic
+        )
 
     return pd.Series(out)
 

@@ -13,14 +13,208 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import io
+import json
 import requests
 import time
 import logging
+import datetime
+
+from pathlib import Path
+from confluent_kafka import Consumer, OFFSET_BEGINNING
+from fastavro import schemaless_reader, parse_schema
 
 import numpy as np
 import pandas as pd
 
+from astropy.time import Time
+
 _LOG = logging.getLogger(__name__)
+
+# ============================
+# Download of FLaapLUC alerts
+# ============================
+
+
+def _reset_to_beginning(consumer: Consumer, partitions: list) -> None:
+    """Reset the offset of each queried Kafka partition.
+
+    Reset the commit offset of each queried Kafka partition of FLaapLUC Kafka.
+    Used to ensure that all the FLaapLUC stream is queried everytime.
+
+    Parameters
+    ----------
+    consumer : Consumer
+        Kafka Consumer instance to query the FLaapLUC producer.
+    partitions : list
+        List of Kafka partitions on which to reset the offset.
+    """
+    for p in partitions:
+        p.offset = OFFSET_BEGINNING
+    consumer.assign(partitions)
+
+
+def _FLaapLUC_download(flaapluc_static_path: str) -> pd.DataFrame:
+    """Download FLaapLUC alerts.
+
+    Retrieve the FLaapLUC alerts available in the FLaapLUC Kafka stream
+    (see Lenain, J.-P., Astron. Comput. 2018, 22).
+    Compute the time of the latest detected alert per source and the sigma deviation.
+
+    Parameters
+    ----------
+    flaapluc_static_path : string
+        Path of the .json file containing the globals used for FLaapLUC access.
+
+    Returns
+    -------
+    dataset : pd.DataFrame
+        Pandas DataFrame containg all the objects with an available alert in FLaapLUC
+        Kafka. Contains the columns ``4FGL_name``, ``mjd``, ``sigma_deviation``.
+    """
+
+    dir_path = Path(os.path.abspath(__file__)).parent
+    file_path = dir_path / flaapluc_static_path
+    with open(file_path) as f:
+        static = json.load(f)
+
+    schema_path = dir_path / static["flaapluc_avro_schema_path"]
+    with open(schema_path) as f:
+        schema = json.load(f)
+        parsed_schema = parse_schema(schema)
+
+    consumer = Consumer(static["flaapluc_kafka_config"])
+    consumer.subscribe(
+        static["flaapluc_kafka_topics"], on_assign=_reset_to_beginning
+    )
+
+    empty_polls = 0
+    max_empty = 4
+
+    source_names = []
+    times = []
+    deviations = []
+
+    while True:
+        msg = consumer.poll(5)
+
+        if msg is None:
+            empty_polls += 1
+            if empty_polls >= max_empty:
+                break
+            continue
+
+        empty_polls = 0
+
+        if msg.error():
+            print("Kafka error:", msg.error())
+            continue
+
+        decoded = schemaless_reader(
+            io.BytesIO(msg.value()), parsed_schema
+        )
+
+        source_names.append(decoded["alert"]["fermi_counterpart_name"])
+        times.append(Time(decoded["alert"]["time_last_photon"]).mjd)
+        sigma_conversion = (
+            decoded["alert"]["flux_threshold"]
+            - decoded["alert"]["flux_long_term_average"]
+        ) / decoded["alert"]["n_sigma"]
+        absolute_deviation = (
+            decoded["alert"]["flux"]
+            - decoded["alert"]["flux_long_term_average"]
+        )
+        deviations.append(absolute_deviation / sigma_conversion)
+
+    dataset = pd.DataFrame(
+        {
+            "4FGL_name": source_names,
+            "mjd": times,
+            "sigma_deviation": deviations,
+            "gamma_flux": decoded["alert"]["flux"]
+        }
+    )
+    return dataset
+
+
+def catalog_update(
+    CTAO_blazar: pd.DataFrame, flaapluc_static_path: str,
+    deltatime_check_history: float = 7.
+) -> pd.DataFrame:
+    """Update catalog with FLaapLUC alerts.
+
+    Update the CTAO-blazar static catalog with FLaapLUC alerts if a flare has been
+    detected by Fermi-LAT (see Lenain, J.-P., Astron. Comput. 2018, 22).
+    Add a column with the number of sigma (number of standard deviation) deviation
+    from the gamma-ray long-time average.
+    If no flare has been detected, use Not a Number element instead.
+
+    Parameters
+    ----------
+    CTAO_blazar : pd.DataFrame
+        Pandas DataFrame of the monitored sources containing:
+        ``Source_name``, ``4FGL_name``, ``ZTF_name``, ``medians``,
+        ``low_threshold``, ``high_threshold``.
+    flaapluc_static_path : string
+        Path of the .json file containing the globals used for FLaapLUC access.
+    deltatime_check_history : float, optional
+        Period (in days) to consider when retrieving the latest FLaapLUC alerts.
+        Default: 7.
+
+    Returns
+    -------
+    updated_CTAO_blazar : pd.DataFrame
+        Updated pandas DataFrame of the monitored sources, with an additional
+        ``sigma_deviation`` column containing the results from FLaapLUC
+    """
+    dataset = _FLaapLUC_download(flaapluc_static_path)
+    dataset = dataset.drop_duplicates(subset=["4FGL_name"], keep="last")
+    dataset = dataset.loc[
+        dataset["mjd"] > Time(
+            datetime.datetime.now(),
+            format="datetime"
+        ).mjd - deltatime_check_history
+    ]
+    updated_CTAO_blazar = CTAO_blazar.join(
+        dataset[["4FGL_name", "sigma_deviation", "gamma_flux"]].set_index("4FGL_name"),
+        on="4FGL_name"
+    )
+    return updated_CTAO_blazar
+
+
+def get_FLaapLUC_deviation(pdf, CTAO_blazar):
+    """Retrieve the deviation computed from FLaapLUC.
+
+    Retrieve the number of sigma deviation computed from the FLaapLUC alerts.
+    Return ``-1.0`` by default (no FLaapLUC data or the source is not in the catalog).
+
+    Parameters
+    ----------
+    pdf : pd.DataFrame
+        Pandas DataFrame of the alert history containing at least:
+        ``candid``, ``ojbectId``, ``cdistnr``, ``cmagpsf``, ``csigmapsf``,
+        ``cmagnr``, ``csigmagnr``, ``cisdiffpos``, ``cfid``, ``cjd``,
+        ``cstd_flux``, ``csigma_std_flux``.
+    CTAO_blazar : pd.DataFrame
+        Pandas DataFrame of the monitored sources containing:
+        ``Source_name``, ``4FGL_name``, ``ZTF_name``, ``medians``,
+        ``low_threshold``, ``high_threshold``, ``sigma_deviation``.
+
+    Returns
+    -------
+    res : float
+        Number of sigma (number of standard deviation) deviation
+        from the gamma-ray long-time average.
+        ``-1,0`` if no flare has been found in FLaapLUC.
+
+    """
+    row = CTAO_blazar.loc[CTAO_blazar["ZTF_name"] == pdf["objectId"].iloc[0]]
+
+    res = row["sigma_deviation"].iloc[0]
+    if not row.empty and np.isfinite(res) and (res >= 0):
+        return res, row["gamma_flux"].iloc[0]
+    return -1., -1.
 
 
 # ============================
@@ -45,7 +239,7 @@ def _instantness_criterion(
         ``cstd_flux``, ``csigma_std_flux``.
     CTAO_blazar : pd.DataFrame
         Pandas DataFrame of the monitored sources containing:
-        ``Source_name``, ``ZTF_name``, ``medians``,
+        ``Source_name``, ``4FGL_name``, ``ZTF_name``, ``medians``,
         ``low_threshold``, ``high_threshold``.
     state_key : string
         Key for the threshold to retrieve from ``CTAO_blazar``.
@@ -94,7 +288,7 @@ def _robustness_criterion(
         ``cstd_flux``, ``csigma_std_flux``.
     CTAO_blazar : pd.DataFrame
         Pandas DataFrame of the monitored sources containing:
-        ``Source_name``, ``ZTF_name``, ``medians``,
+        ``Source_name``, ``4FGL_name``, ``ZTF_name``, ``medians``,
         ``low_threshold``, ``high_threshold``.
     state_key : string
         Key for the threshold to retrieve from ``CTAO_blazar``.
@@ -163,7 +357,7 @@ def extreme_state_(
         ``cstd_flux``, ``csigma_std_flux``.
     CTAO_blazar : pd.DataFrame
         Pandas DataFrame of the monitored sources containing:
-        ``Source_name``, ``ZTF_name``, ``medians``,
+        ``Source_name``, ``4FGL_name``, ``ZTF_name``, ``medians``,
         ``low_threshold``, ``high_threshold``.
     state_key : string
         Key for the threshold to retrieve from ``CTAO_blazar``.
@@ -353,7 +547,7 @@ def standardise_dr_lc(
         Must contain: ``filtercode``, ``flux``.
     CTAO_blazar : pd.DataFrame
         Pandas DataFrame of the monitored sources containing:
-        ``Source_name``, ``ZTF_name``, ``medians``,
+        ``Source_name``, ``4FGL_name``, ``ZTF_name``, ``medians``,
         ``low_threshold``, ``high_threshold``.
 
     Returns
