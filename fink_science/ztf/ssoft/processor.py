@@ -547,14 +547,14 @@ def extract_ssoft_parameters(
 
             # Clean data in-place
             pdf["dxy"] = np.sqrt(pdf["cdx"] ** 2 + pdf["cdy"] ** 2)
-            pdf = dxy_cleaning(
+            pdf, _ = dxy_cleaning(
                 pdf,
                 pdf["dxy"],
                 pdf["cmred"],
                 threshold=0.95,
             )
 
-            pdf = iterative_cleaning(
+            pdf, _ = iterative_cleaning(
                 pdf,
                 pdf["cmred"],
                 pdf["csigmapsf"],
