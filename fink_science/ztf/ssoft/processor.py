@@ -503,7 +503,7 @@ def extract_ssoft_parameters(
             "bounds": None,  # initialised inside fit_spin
         },
         "SOCCA": {
-            "p0": [15.0, 0.15, 0.15, np.pi, 0.0, 5.0, 1.05, 1.05, 0.0],
+            "p0": None,  # Not used initially in SOCCA
             "bounds": None,  # initialised inside fit_spin
         },
     }
