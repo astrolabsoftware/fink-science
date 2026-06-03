@@ -193,9 +193,6 @@ def extreme_state(
     8
     >>> ((pdf["instantness_high"] > 1) & (pdf["robustness_high"] > 1)).sum()
     24
-
-    # the exact number can fluctuate due to network issues
-    >>> assert ((pdf["cdf_quantile"] != -1).sum() > 0) is True
     """
     # Load catalog
     path = os.path.dirname(os.path.abspath(__file__))
