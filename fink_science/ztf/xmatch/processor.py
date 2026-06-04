@@ -37,7 +37,7 @@ from fink_science.ztf.xmatch.utils import extract_mangrove, MANGROVE_COLS
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
-from fink_tns.utils import download_catalog
+from fink_tns.ztf.utils import download_catalog
 
 
 _LOG = logging.getLogger(__name__)
