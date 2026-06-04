@@ -121,14 +121,12 @@ def _flaapluc_download(flaapluc_static_path: str) -> pd.DataFrame:
         )
         deviations.append(absolute_deviation / sigma_conversion)
 
-    dataset = pd.DataFrame(
-        {
-            "4FGL_name": source_names,
-            "mjd": times,
-            "sigma_deviation": deviations,
-            "gamma_flux": decoded["alert"]["flux"],
-        }
-    )
+    dataset = pd.DataFrame({
+        "4FGL_name": source_names,
+        "mjd": times,
+        "sigma_deviation": deviations,
+        "gamma_flux": decoded["alert"]["flux"],
+    })
     return dataset
 
 
@@ -377,12 +375,10 @@ def extreme_state_(
     _LOG.info(f"Extreme state determination of {name}.")
 
     if not CTAO_blazar.loc[CTAO_blazar["ZTF_name"] == name].empty:
-        return np.array(
-            [
-                _robustness_criterion(pdf, CTAO_blazar, state_key, integration_period),
-                _instantness_criterion(pdf, CTAO_blazar, state_key),
-            ]
-        )
+        return np.array([
+            _robustness_criterion(pdf, CTAO_blazar, state_key, integration_period),
+            _instantness_criterion(pdf, CTAO_blazar, state_key),
+        ])
 
     else:
         return np.full(2, -1)

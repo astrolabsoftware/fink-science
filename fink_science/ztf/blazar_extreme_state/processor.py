@@ -211,16 +211,14 @@ def extreme_state(
     CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
 
     # Transform alert packet to pandas DataFrame
-    pdf = pd.DataFrame(
-        {
-            "candid": candid,
-            "objectId": objectId,
-            "cstd_flux": cstd_flux,
-            "cjd": cjd,
-            "cra": cra,
-            "cdec": cdec,
-        }
-    )
+    pdf = pd.DataFrame({
+        "candid": candid,
+        "objectId": objectId,
+        "cstd_flux": cstd_flux,
+        "cjd": cjd,
+        "cra": cra,
+        "cdec": cdec,
+    })
     out = []
 
     # Loop over all candidate ids
@@ -233,16 +231,14 @@ def extreme_state(
             continue
 
         # Else:
-        sub = pd.DataFrame(
-            {
-                "candid": tmp["candid"].to_numpy()[0],
-                "objectId": tmp["objectId"].to_numpy()[0],
-                "cstd_flux": tmp["cstd_flux"].to_numpy()[0],
-                "cjd": tmp["cjd"].to_numpy()[0],
-                "cra": tmp["cra"].to_numpy()[0],
-                "cdec": tmp["cdec"].to_numpy()[0],
-            }
-        )
+        sub = pd.DataFrame({
+            "candid": tmp["candid"].to_numpy()[0],
+            "objectId": tmp["objectId"].to_numpy()[0],
+            "cstd_flux": tmp["cstd_flux"].to_numpy()[0],
+            "cjd": tmp["cjd"].to_numpy()[0],
+            "cra": tmp["cra"].to_numpy()[0],
+            "cdec": tmp["cdec"].to_numpy()[0],
+        })
 
         # Low state verification
         low_state_dic = dict(
