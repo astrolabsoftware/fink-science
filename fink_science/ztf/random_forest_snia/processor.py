@@ -27,7 +27,7 @@ from fink_utils.data.utils import format_data_as_snana
 from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
-from actsnfink.classifier_sigmoid import get_sigmoid_features_dev
+from actsnfink.classifier_sigmoid import get_sigmoid_features_dev_fast
 
 from actsnfink.classifier_sigmoid import RF_FEATURE_NAMES
 
@@ -77,12 +77,12 @@ def apply_selection_cuts_ztf(
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_sigmoid_full(
-    jd,
-    fid,
-    magpsf,
-    sigmapsf,
-    cdsxmatch,
-    ndethist,
+    jd: pd.Series,
+    fid: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    cdsxmatch: pd.Series,
+    ndethist: pd.Series,
     min_rising_points=None,
     min_data_points=None,
     rising_criteria=None,
@@ -226,9 +226,9 @@ def rfscore_sigmoid_full(
 
     test_features = []
     flag = []
-    for id in np.unique(pdf["SNID"]):
-        pdf_sub = pdf[pdf["SNID"] == id]
-        features = get_sigmoid_features_dev(
+
+    for _, pdf_sub in pdf.groupby("SNID"):
+        features = get_sigmoid_features_dev_fast(
             pdf_sub,
             min_rising_points=min_rising_points.to_numpy()[0],
             min_data_points=min_data_points.to_numpy()[0],
@@ -243,7 +243,9 @@ def rfscore_sigmoid_full(
     flag = np.array(flag, dtype=bool)
 
     # Make predictions
-    probabilities = clf.predict_proba(test_features)
+    probabilities = clf.predict_proba(
+        pd.DataFrame(test_features, columns=clf.feature_names_in_)
+    )
 
     # pIa = 0.0 for objects that do not
     # have both features non-zero.
@@ -259,12 +261,12 @@ def rfscore_sigmoid_full(
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 @profile
 def extract_features_rf_snia(
-    jd,
-    fid,
-    magpsf,
-    sigmapsf,
-    cdsxmatch,
-    ndethist,
+    jd: pd.Series,
+    fid: pd.Series,
+    magpsf: pd.Series,
+    sigmapsf: pd.Series,
+    cdsxmatch: pd.Series,
+    ndethist: pd.Series,
     min_rising_points=None,
     min_data_points=None,
     rising_criteria=None,
@@ -346,9 +348,9 @@ def extract_features_rf_snia(
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     test_features = []
-    for id in np.unique(pdf["SNID"]):
-        pdf_sub = pdf[pdf["SNID"] == id]
-        features = get_sigmoid_features_dev(
+
+    for _, pdf_sub in pdf.groupby("SNID"):
+        features = get_sigmoid_features_dev_fast(
             pdf_sub,
             min_rising_points=min_rising_points.to_numpy()[0],
             min_data_points=min_data_points.to_numpy()[0],

@@ -1,4 +1,4 @@
-# Copyright 2020-2025 AstroLab Software
+# Copyright 2020-2026 AstroLab Software
 # Author: Andre Santos, Bernardo Fraga, Clecio de Bom
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,23 +17,34 @@ from line_profiler import profile
 import os
 import numpy as np
 import pandas as pd
+import logging
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import ArrayType, FloatType
 
 from fink_science import __file__
-from fink_science.rubin.cats.utilities import norm_column
+from fink_science.rubin.cats.utilities import norm_column, CATS_CLASS_DICT
 from fink_science.tester import spark_unit_tests
 
+import tensorflow as tf
+from tensorflow import keras
 
-@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
+logger = logging.getLogger(__name__)
+
+# Pretty slow -- do it once
+logger.info("Loading CATS model")
+curdir = os.path.dirname(os.path.abspath(__file__))
+model_path = curdir + "/data/models/cats_models/cats_small_nometa_serial_219_savedmodel"
+dummy_layer = tf.keras.layers.TFSMLayer(model_path, call_endpoint="serving_default")
+
+
+@pandas_udf(ArrayType(FloatType()))
 @profile
 def predict_nn(
     midpointMjdTai: pd.Series,
     psfFlux: pd.Series,
     psfFluxErr: pd.Series,
     band: pd.Series,
-    model=None,
 ) -> pd.Series:
     """Return broad predictions from a CBPF classifier model (cats general)
 
@@ -59,8 +70,6 @@ def predict_nn(
         flux error from LSST (float)
     band: spark DataFrame Column
         observed filter (string)
-    model: spark DataFrame Column
-        path to pre-trained Hierarchical Classifier model. (string)
 
     Returns
     -------
@@ -82,36 +91,51 @@ def predict_nn(
     >>> what_prefix = [prefix + i for i in what]
 
     # Append temp columns with historical + current measurements
+    # FIXME: switch to ForcedSources when it will be available
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaForcedSources')
+    ...         current='diaSource', history='prvDiaSources')
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
     >>> df = df.withColumn('preds', predict_nn(*args))
+
+    # Remove 0 predictions
+    >>> df = df.filter(F.array_max("preds") > 0.0)
+
+    # Extract the max position
     >>> df = df.withColumn('argmax', F.expr('array_position(preds, array_max(preds)) - 1'))
     >>> df.filter(df['argmax'] == 0).count()
-    50
+    8
+
+    # check size of output
     """
-    import tensorflow as tf
-    from tensorflow import keras
+    preds = pd.Series([
+        [0.0] * len(CATS_CLASS_DICT) for i in range(len(midpointMjdTai))
+    ])
+    # at least 2 points.
+    mask = midpointMjdTai.apply(lambda x: len(x) > 1)
+
+    if mask.sum() == 0:
+        return preds
 
     filter_dict = {"u": 1, "g": 2, "r": 3, "i": 4, "z": 5, "y": 6}
 
     mjd = []
     filters = []
 
-    for i, mjds in enumerate(midpointMjdTai):
-        if len(mjds) > 0:
-            filters.append(
-                np.array([filter_dict[f] for f in band.to_numpy()[i]]).astype(np.int16)
+    for i, mjds in enumerate(midpointMjdTai[mask]):
+        filters.append(
+            np.array([filter_dict[f] for f in band[mask].to_numpy()[i]]).astype(
+                np.int16
             )
+        )
 
-            mjd.append(mjds - mjds[0])
+        mjd.append(mjds - mjds[0])
 
-    flux = psfFlux.apply(lambda x: norm_column(x))
-    error = psfFluxErr.apply(lambda x: norm_column(x))
+    flux = psfFlux[mask].apply(lambda x: norm_column(x))
+    error = psfFluxErr[mask].apply(lambda x: norm_column(x))
 
     flux = keras.utils.pad_sequences(
         flux, maxlen=395, value=-999.0, padding="post", dtype=np.float32
@@ -133,18 +157,16 @@ def predict_nn(
         [mjd[..., None], flux[..., None], error[..., None], band[..., None]], axis=-1
     )
 
-    if model is None:
-        # Load pre-trained model
-        curdir = os.path.dirname(os.path.abspath(__file__))
-        model_path = curdir + "/data/models/cats_models/cats_small_nometa_serial.keras"
-    else:
-        model_path = model.to_numpy()[0]
+    inp = tf.keras.layers.Input(shape=(395, 4), dtype=tf.float32)
+    out = dummy_layer(inp)
 
-    NN = tf.keras.models.load_model(model_path)
+    NN = tf.keras.Model(inp, out)
 
-    preds = NN.predict([lc])
+    valid_preds = NN.predict([lc], verbose=0)
 
-    return pd.Series(list(preds))
+    preds.loc[mask] = [list(i) for i in valid_preds["dense_24"]]
+
+    return preds
 
 
 if __name__ == "__main__":
@@ -153,7 +175,8 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
+    # from fink-alerts-schemas (see CI configuration)
+    rubin_alert_sample = "file://{}/datasim/rubin_test_data_10_0.parquet".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite

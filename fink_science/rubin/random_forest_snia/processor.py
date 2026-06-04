@@ -1,5 +1,5 @@
-# Copyright 2019-2025 AstroLab Software
-# Author: Julien Peloton
+# Copyright 2019-2026 AstroLab Software
+# Author: Julien Peloton, Emille E. O. Ishida
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -99,7 +99,7 @@ def extract_features_rainbow(
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaForcedSources')
+    ...         current='diaSource', history='prvDiaSources')
 
     >>> pdf = df.select(what_prefix).toPandas()
 
@@ -124,20 +124,34 @@ def extract_features_rainbow(
     if low_bound is None:
         low_bound = -10
 
-    if len(midpointMjdTai) < min_data_points:
+    # Flux can have NaN
+    mask = ~pd.isna(cpsfFlux)
+
+    if len(midpointMjdTai[mask]) < min_data_points:
         return np.zeros(len(RAINBOW_FEATURES_NAMES), dtype=float)
 
-    features = fit_rainbow(
-        midpointMjdTai,
-        band,
-        cpsfFlux,
-        cpsfFluxErr,
-        band_wave_aa=band_wave_aa,
-        with_baseline=with_baseline,
-        min_data_points=min_data_points,
-        list_filters=band_wave_aa.keys(),
-        low_bound=low_bound,
-    )
+    # get unique bands in this light curve
+    unique_bands = np.unique(band[mask])
+
+    # if 2 filters exist, all should rising
+    # if 3 or more filters exist, minum 3 should be rising
+    nrising_filters = max(2, min(3, unique_bands.shape[0]))
+
+    try:
+        features = fit_rainbow(
+            midpointMjdTai[mask],
+            band[mask],
+            cpsfFlux[mask],
+            cpsfFluxErr[mask],
+            band_wave_aa=band_wave_aa,
+            with_baseline=with_baseline,
+            min_data_points=min_data_points,
+            list_filters=band_wave_aa.keys(),
+            nrising_filters=nrising_filters,
+            low_bound=low_bound,
+        )
+    except ValueError:
+        return np.zeros(len(RAINBOW_FEATURES_NAMES), dtype=float)
 
     return features[1:]
 
@@ -145,10 +159,10 @@ def extract_features_rainbow(
 @pandas_udf(DoubleType(), PandasUDFType.SCALAR)
 @profile
 def rfscore_rainbow_elasticc_nometa(
-    midpointMjdTai,
-    band,
-    cpsfFlux,
-    cpsfFluxErr,
+    midpointMjdTai: pd.Series,
+    band: pd.Series,
+    cpsfFlux: pd.Series,
+    cpsfFluxErr: pd.Series,
     maxduration=None,
     model=None,
     band_wave_aa=None,
@@ -205,7 +219,7 @@ def rfscore_rainbow_elasticc_nometa(
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaForcedSources')
+    ...         current='diaSource', history='prvDiaSources')
 
     # Perform the fit + classification (default model)
     >>> args = [F.col(i) for i in what_prefix]
@@ -215,7 +229,7 @@ def rfscore_rainbow_elasticc_nometa(
     0
 
     >>> df.filter(df['pIa'] == -1.0).count()
-    50
+    100
     """
     if band_wave_aa is None:
         band_wave_aa = pd.Series([
@@ -305,7 +319,8 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
+    # from fink-alerts-schemas (see CI configuration)
+    rubin_alert_sample = "file://{}/datasim/rubin_test_data_10_0.parquet".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite

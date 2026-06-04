@@ -200,7 +200,7 @@ def expand_catalog(catalog: pd.DataFrame) -> pd.DataFrame:
 
     Returns
     -------
-    out : pd.DataFrame
+    final_catalog : pd.DataFrame
         Expanded catalog.
     """
     list_to_concat = []
@@ -216,7 +216,10 @@ def expand_catalog(catalog: pd.DataFrame) -> pd.DataFrame:
             new_row["ZTF_name"] = ""
             list_to_concat.append(new_row.to_frame().T)
 
-    return pd.concat(list_to_concat, ignore_index=True)
+    final_catalog = pd.concat(list_to_concat, ignore_index=True)
+    final_catalog = final_catalog.loc[~pd.isnull(final_catalog["high_threshold"])]
+    final_catalog = final_catalog.reset_index()
+    return final_catalog
 
 
 # =========================
@@ -604,7 +607,9 @@ def get_ztf_id(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
 # DR download within 2"-cone search
 
 
-def _get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
+def _get_ztf_dr_data(
+    ra: float, dec: float, radius: float, retries: int = 10
+) -> pd.DataFrame:
     """Retrieve ZTF light curves from the latest Data Release via SNAD API.
 
     Parameters
@@ -615,6 +620,9 @@ def _get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
         Declination in degrees.
     radius : float
         Search radius in arcseconds.
+    retries : int, optional
+        Maximum number of retries to get hte DR lgiht curve.
+        Defalut is 10.
 
     Returns
     -------
@@ -622,10 +630,29 @@ def _get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
         Light curve data including fluxes,
         uncertainties, filters, and metadata.
     """
+    list_ra = str(ra).split(".")
+    ra = float(list_ra[0] + "." + list_ra[1][:10])
+    list_dec = str(dec).split(".")
+    dec = float(list_dec[0] + "." + list_dec[1][:10])
     response = _get_snad(
         f"{DR_APIURL}/api/v3/data/latest/circle/full/json",
         payload={"ra": ra, "dec": dec, "radius_arcsec": radius},
     )
+    response = _get_snad(
+        f"{DR_APIURL}/api/v3/data/latest/circle/full/json",
+        payload={"ra": ra, "dec": dec, "radius_arcsec": radius},
+    )
+
+    # Retry if needed
+    for n_retry in range(retries):
+        if not len(response.json().items()):
+            logger.debug(f"Failed retrieving DR at attempt {n_retry+1}: retrying...")
+            response = _get_snad(
+                f"{DR_APIURL}/api/v3/data/latest/circle/full/json",
+                payload={"ra": ra, "dec": dec, "radius_arcsec": radius},
+            )
+        else:
+            break
 
     records = []
     for oid, entry in response.json().items():
@@ -664,6 +691,7 @@ def _get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
     lc["filtercode"] = lc["filtercode"].map(filter_map).astype(int)
     lc = lc[(lc["mjd"] >= START_ZTF) & np.isin(lc["filtercode"], [1, 2])].copy()
     lc = lc.sort_values("mjd", ascending=True, ignore_index=True)
+    logger.debug(f"Number of entries: {len(lc)}")
 
     return lc
 
@@ -705,6 +733,35 @@ for source {name} ({index + 1}/{len(catalog)})"
 # ===================================
 
 
+def weighted_quantile_1d(
+    a: np.ndarray, q: np.ndarray, weights: np.ndarray = None
+) -> float:
+    """Utility function to compute the weighted quantile of an array.
+
+    Parameters
+    ----------
+    a : array like
+        Array form where to compute the quantile.
+    q : float
+        Quantile to compute (between 0 and 1).
+    weights : array like of shape a.shape; optional
+        Weights of each element of a.
+        Default is `None`, meaning same weight for each element.
+
+    Returns
+    -------
+    out : float
+        Corresponding quantile.
+    """
+    if weights is None:
+        weights = np.ones_like(a)
+    idxs = np.argsort(a)
+    a = a[idxs]
+    weights = np.cumsum(weights[idxs]) / np.sum(weights)
+    return float(a[weights <= q][-1])
+
+
+
 # 1 band standardisation
 
 
@@ -739,13 +796,8 @@ def _standardise_lc_1band(lc: pd.DataFrame) -> tuple[pd.DataFrame, float]:
     else:
         diff_time = np.diff(time)
         diff_time[diff_time > MAX_DT] = MAX_DT
-        median = float(
-            np.quantile(
-                flux[:-1],
-                0.5,
-                method="inverted_cdf",
-                weights=diff_time / (flux_error[:-1] ** 2),
-            )
+        median = weighted_quantile_1d(
+            flux[:-1], 0.5, weights=diff_time / (flux_error[:-1] ** 2)
         )
 
     lc.loc[:, "std_flux"] = flux / median

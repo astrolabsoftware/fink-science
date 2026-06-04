@@ -26,6 +26,7 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
+    "*.ipynb",
 ]
 
 # Same as Black.
@@ -44,7 +45,8 @@ ignore = [
     "D400", "D401", "D100", "D102", "D103", "D104", "D415", "D419", "D301", 
     "E731",
     "N812", "N806", "N803", 
-    "PLR0913"
+    "PLR0913",
+    "D420"
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.

@@ -1,4 +1,4 @@
-# Copyright 2019-2025 AstroLab Software
+# Copyright 2019-2026 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from pyspark.sql.types import StringType, FloatType
+
 from line_profiler import profile
 
 import io
@@ -26,30 +28,43 @@ import astropy.units as u
 from fink_science.tester import regular_unit_tests
 
 MANGROVE_COLS = ["HyperLEDA_name", "2MASS_name", "lum_dist", "ang_dist"]
+MANGROVE_TYPES = ["string", "string", "float", "float"]
+
+TNS_SPARK_SCHEMA = {
+    "fullname": StringType(),
+    "type": StringType(),
+    "redshift": FloatType(),
+}
+TNS_COLS = list(TNS_SPARK_SCHEMA)
+TNS_TYPES = [v.simpleString() for v in TNS_SPARK_SCHEMA.values()]
 
 
 @profile
-def cross_match_astropy(pdf, catalog_ztf, catalog_other, radius_arcsec=None):
+def cross_match_astropy(pdf, catalog_lsst, catalog_other, radius_arcsec=None):
     """Crossmatch two catalogs
 
     Parameters
     ----------
     pdf: pd.DataFrame
         Input alert dataframe
-    catalog_ztf: SkyCoord
-        Catalog of ZTF objects
+    catalog_lsst: SkyCoord
+        Catalog of LSST objects
     catalog_other: SkyCoord
         Catalog of other objects
-    radius_arcsec: pd.Series or None
+    radius_arcsec: float, pd.Series or None
         If None, default is 1.5 arcsec
+
+    Returns
+    -------
+    out: (pd.Series, pd.Series, pd.Series)
     """
     # cross-match
-    idx, d2d, _ = catalog_other.match_to_catalog_sky(catalog_ztf)
+    idx, d2d, _ = catalog_other.match_to_catalog_sky(catalog_lsst)
 
     # set separation length
     if radius_arcsec is None:
         radius_arcsec = 1.5
-    else:
+    elif isinstance(radius_arcsec, pd.Series):
         radius_arcsec = float(radius_arcsec.to_numpy()[0])
 
     sep_constraint = d2d.degree < radius_arcsec / 3600.0
@@ -66,13 +81,13 @@ def cross_match_astropy(pdf, catalog_ztf, catalog_other, radius_arcsec=None):
     mask = pdf_merge["match"].apply(lambda x: x is True)
 
     # Now get types for these
-    catalog_ztf_merge = SkyCoord(
+    catalog_lsst_merge = SkyCoord(
         ra=np.array(pdf_merge.loc[mask, "ra"].to_numpy(), dtype=float) * u.degree,
         dec=np.array(pdf_merge.loc[mask, "dec"].to_numpy(), dtype=float) * u.degree,
     )
 
     # cross-match
-    idx2, _, _ = catalog_ztf_merge.match_to_catalog_sky(catalog_other)
+    idx2, _, _ = catalog_lsst_merge.match_to_catalog_sky(catalog_other)
 
     return pdf_merge, mask, idx2
 
@@ -88,7 +103,7 @@ def extract_mangrove(filename):
     Returns
     -------
     out: pd.Series, pd.Series, pd.Series
-        (ra, dec, Source Name )from the catalog
+        (ra, dec, payload) from the catalog
 
     Examples
     --------
@@ -99,15 +114,33 @@ def extract_mangrove(filename):
     """
     pdf = pd.read_parquet(filename)
 
-    cols = ["HyperLEDA_name", "2MASS_name", "lum_dist", "ang_dist"]
-
-    for col_ in cols:
+    for col_ in MANGROVE_COLS:
         # stringify
         pdf[col_] = pdf[col_].astype(str)
 
-    payload = pdf[cols].to_dict(orient="records")
+    payload = pdf[MANGROVE_COLS].to_dict(orient="records")
 
-    return pdf["ra"], pdf["dec"], payload
+    return pdf["ra"], pdf["dec"], np.array(payload)
+
+
+def extract_tns(pdf):
+    """Extract useful columns from the TNS catalog
+
+    Parameters
+    ----------
+    pdf: pd.DataFrame
+        Full TNS catalog
+
+    Returns
+    -------
+    out: pd.Series, pd.Series, pd.Series
+        (ra, dec, payload) from the catalog
+    """
+    if "fullname" not in pdf.columns:
+        pdf["fullname"] = pdf["name_prefix"] + " " + pdf["name"]
+    payload = pdf[TNS_COLS].to_numpy()
+
+    return pdf["ra"], pdf["declination"], payload
 
 
 def extract_4lac(filename_h, filename_l):
@@ -233,11 +266,35 @@ def extract_vsx(filename):
     --------
     >>> import os
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
-    >>> catalog = curdir + '/../../data/catalogs/vsx.parquet'
+    >>> catalog = curdir + "/../../data/catalogs/vsx"
     >>> ra, dec, vtype = extract_vsx(catalog)
     """
     pdf_vsx = pd.read_parquet(filename)
-    return pdf_vsx["RAJ2000"], pdf_vsx["DEJ2000"], pdf_vsx["VType"]
+    return pdf_vsx["RAdeg"], pdf_vsx["DEdeg"], pdf_vsx["Type"]
+
+
+def extract_spicy(filename):
+    """Read the SPICY catalog and extract useful columns
+
+    Parameters
+    ----------
+    filename: str
+        Path to the catalog (parquet file)
+
+    Returns
+    -------
+    out: pd.Series, pd.Series, pd.Series
+        ra, dec, class from the catalog
+
+    Examples
+    --------
+    >>> import os
+    >>> curdir = os.path.dirname(os.path.abspath(__file__))
+    >>> catalog = curdir + '/../../data/catalogs/spicy.parquet'
+    >>> ra, dec, vtype = extract_spicy(catalog)
+    """
+    pdf_spicy = pd.read_parquet(filename)
+    return pdf_spicy["RAdeg"], pdf_spicy["DEdeg"], pdf_spicy["class"]
 
 
 @profile

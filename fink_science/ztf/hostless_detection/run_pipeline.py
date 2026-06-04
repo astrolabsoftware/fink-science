@@ -74,11 +74,13 @@ class HostLessExtragalactic:
                 template_stamp,
                 science_stamp_clipped.mask.astype(int),
                 template_stamp_clipped.mask.astype(int),
-                self._image_shape,
+                crop_radius=self.configs["hostless_detection_with_clipping"][
+                    "crop_radius"
+                ],
             )
             return power_spectrum_results[
-                "kstest_SCIENCE_15_statistic"
-            ], power_spectrum_results["kstest_TEMPLATE_15_statistic"]
+                "kstest_SCIENCE_statistic"
+            ], power_spectrum_results["kstest_TEMPLATE_statistic"]
         return -99, -99
 
     def _run_sigma_clipping(

@@ -35,12 +35,12 @@ from fink_science.tester import spark_unit_tests
 @pandas_udf(FloatType(), PandasUDFType.SCALAR)
 @profile
 def snn_ia_elasticc(
-    diaSourceId,
-    midpointMjdTai,
-    band,
-    psfFlux,
-    psfFluxErr,
-    model_name,
+    diaSourceId: pd.Series,
+    midpointMjdTai: pd.Series,
+    band: pd.Series,
+    psfFlux: pd.Series,
+    psfFluxErr: pd.Series,
+    model_name: pd.Series,
     model_ext=None,
 ) -> pd.Series:
     """Compute probabilities of alerts to be SN Ia using SuperNNova
@@ -86,7 +86,7 @@ def snn_ia_elasticc(
     >>> for colname in what:
     ...     df = concat_col(
     ...         df, colname, prefix=prefix,
-    ...         current='diaSource', history='prvDiaForcedSources')
+    ...         current='diaSource', history='prvDiaSources')
 
     # Does not work for the moment
     # # Perform the fit + classification: Ia vs all
@@ -105,7 +105,7 @@ def snn_ia_elasticc(
     >>> df = df.withColumn('sn_vs_all', snn_ia_elasticc(*args))
 
     >>> df.filter(df['sn_vs_all'] > 0.5).count()
-    48
+    99
     """
     # No a priori cuts
     mask = np.ones(len(diaSourceId), dtype=bool)
@@ -168,12 +168,12 @@ def extract_max_prob(arr):
 @pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
 @profile
 def snn_broad_elasticc(
-    diaSourceId,
-    midpointMjdTai,
-    band,
-    psfFlux,
-    psfFluxErr,
-    model_name,
+    diaSourceId: pd.Series,
+    midpointMjdTai: pd.Series,
+    band: pd.Series,
+    psfFlux: pd.Series,
+    psfFluxErr: pd.Series,
+    model_name: pd.Series,
     model_ext=None,
 ) -> pd.Series:
     """Compute main class and associated probability for each alert
@@ -260,7 +260,8 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
+    # from fink-alerts-schemas (see CI configuration)
+    rubin_alert_sample = "file://{}/datasim/rubin_test_data_10_0.parquet".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite

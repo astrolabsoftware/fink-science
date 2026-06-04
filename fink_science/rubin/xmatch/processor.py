@@ -16,8 +16,8 @@ from line_profiler import profile
 
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
-from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StringType, MapType
+from pyspark.sql.functions import pandas_udf
+from pyspark.sql.types import StringType, MapType, StructType, StructField
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -33,26 +33,32 @@ from fink_science.rubin.xmatch.utils import cross_match_astropy
 from fink_science.rubin.xmatch.utils import generate_csv
 from fink_science.rubin.xmatch.utils import extract_vsx, extract_gcvs
 from fink_science.rubin.xmatch.utils import extract_3hsp, extract_4lac
+from fink_science.rubin.xmatch.utils import extract_spicy
 from fink_science.rubin.xmatch.utils import extract_mangrove, MANGROVE_COLS
+from fink_science.rubin.xmatch.utils import (
+    extract_tns,
+    TNS_COLS,
+    TNS_TYPES,
+    TNS_SPARK_SCHEMA,
+)
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
-from fink_tns.utils import download_catalog
+from fink_tns.lsst.utils import download_catalog
 
-from typing import Any
 
 _LOG = logging.getLogger(__name__)
 
 
-@pandas_udf(StringType(), PandasUDFType.SCALAR)
+@pandas_udf(StringType())
 @profile
 def cdsxmatch(
-    diaSourceId: Any,
-    ra: Any,
-    dec: Any,
-    distmaxarcsec: float,
-    extcatalog: str,
-    cols: str,
+    diaSourceId: pd.Series,
+    ra: pd.Series,
+    dec: pd.Series,
+    distmaxarcsec: pd.Series,
+    extcatalog: pd.Series,
+    cols: pd.Series,
 ) -> pd.Series:
     """Query the CDSXmatch service to find identified objects in alerts.
 
@@ -95,9 +101,9 @@ def cdsxmatch(
     Examples
     --------
     Simulate fake data
-    >>> ra = [26.8566983, 26.24497, 1.0]
-    >>> dec = [-26.9677112, -26.7569436, 0.0]
-    >>> id = ["a", "b", "c"]
+    >>> ra = [26.8566983, 26.24497, 1.0, 0.0]
+    >>> dec = [-26.9677112, -26.7569436, 0.0, -90.0]
+    >>> id = ["a", "b", "c", "d"]
 
     Wrap data into a Spark DataFrame
     >>> rdd = spark.sparkContext.parallelize(zip(id, ra, dec))
@@ -109,6 +115,7 @@ def cdsxmatch(
     |  a|26.8566983|-26.9677112|
     |  b|  26.24497|-26.7569436|
     |  c|       1.0|        0.0|
+    |  d|       0.0|      -90.0|
     +---+----------+-----------+
     <BLANKLINE>
 
@@ -125,9 +132,13 @@ def cdsxmatch(
     |  a|26.8566983|-26.9677112|         LP*|
     |  b|  26.24497|-26.7569436|           *|
     |  c|       1.0|        0.0|        null|
+    |  d|       0.0|      -90.0|        null|
     +---+----------+-----------+------------+
     <BLANKLINE>
     """
+    distmaxarcsec_f = distmaxarcsec.to_numpy()[0]
+    pad_deg = 2 * distmaxarcsec_f / 3600
+
     # If nothing
     if len(ra) == 0:
         return pd.Series([])
@@ -143,13 +154,18 @@ def cdsxmatch(
             "http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync",
             data={
                 "request": "xmatch",
-                "distMaxArcsec": distmaxarcsec.to_numpy()[0],
+                "distMaxArcsec": distmaxarcsec_f,
                 "selection": "all",
                 "RESPONSEFORMAT": "csv",
                 "cat2": extcatalog.to_numpy()[0],
                 "cols2": cols.to_numpy()[0],
                 "colRA1": "ra_in",
                 "colDec1": "dec_in",
+                "area": "zone",
+                "raMin": ra.min() - pad_deg,
+                "decMin": dec.min() - pad_deg,
+                "raMax": ra.max() + pad_deg,
+                "decMax": dec.max() + pad_deg,
             },
             files={"cat1": table},
         )
@@ -191,10 +207,12 @@ def cdsxmatch(
                 col_list = [i.strip() for i in col_list]
                 pdf_out = pdf_out[col_list]
                 pdf_out["concat_cols"] = pdf_out.apply(
-                    lambda row: None
-                    if all(row[col] is None for col in col_list)
-                    else ",".join(
-                        str(row[col]) for col in col_list if row[col] is not None
+                    lambda row: (
+                        None
+                        if all(row[col] is None for col in col_list)
+                        else ",".join(
+                            str(row[col]) for col in col_list if row[col] is not None
+                        )
                     ),
                     axis=1,
                 )
@@ -216,6 +234,7 @@ def cdsxmatch(
 def xmatch_cds(
     df,
     catalogname="simbad",
+    prefix_col_out=None,
     distmaxarcsec=1.0,
     cols_in=None,
     cols_out=None,
@@ -235,6 +254,12 @@ def xmatch_cds(
     catalogname: str
         Name of the catalog in Vizier, or directly simbad (default).
         Default is simbad.
+    prefix_col_out: str
+        Output DataFrame columns will be named
+        <prefix_col_out>_<col>. If None,
+        `prefix_col_out`=`catalogname`, but set it if there are
+        illegal characters in the catalogname.
+
     distmaxarcsec: float
         Cross-match radius in arcsecond. Default is 1.0 arcsecond.
     cols_in: list of str
@@ -267,9 +292,10 @@ def xmatch_cds(
     ...     df,
     ...     distmaxarcsec=1,
     ...     catalogname='vizier:I/355/gaiadr3',
+    ...     prefix_col_out="gaiadr3",
     ...     cols_out=['DR3Name', 'Plx', 'e_Plx'],
     ...     types=['string', 'float', 'float'])
-    >>> 'vizier:I/355/gaiadr3_Plx' in df_gaia.columns
+    >>> 'gaiadr3_Plx' in df_gaia.columns
     True
 
     # VSX
@@ -299,6 +325,9 @@ def xmatch_cds(
     if types is None:
         types = ["string"]
 
+    if prefix_col_out is None:
+        prefix_col_out = catalogname
+
     df_out = df.withColumn(
         "xmatch",
         cdsxmatch(
@@ -313,7 +342,7 @@ def xmatch_cds(
 
     for index, col_, type_ in zip(range(len(cols_out)), cols_out, types):
         df_out = df_out.withColumn(
-            "{}_{}".format(catalogname, col_),
+            "{}_{}".format(prefix_col_out, col_),
             F.split("xmatch", ",").getItem(index).astype(type_),
         )
 
@@ -324,6 +353,10 @@ def xmatch_cds(
 
 def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     """Cross-match Fink data from a Spark DataFrame with the latest TNS catalog
+
+    Notes
+    -----
+    From 2026/01, we crossmatch with all entries - not only the confirmed ones.
 
     Parameters
     ----------
@@ -352,11 +385,11 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     >>> curdir = os.path.dirname(os.path.abspath(__file__))
     >>> path = curdir + '/data/catalogs'
     >>> df_tns = xmatch_tns(df, tns_raw_output=path)
-    >>> 'tns_type' in df_tns.columns
-    True
+    >>> assert 'tns_type' in df_tns.columns, df_tns.columns
+    >>> assert 'tns_redshift' in df_tns.columns, df_tns.columns
 
     >>> df_tns.filter(df_tns["tns_type"].isNull()).count()
-    50
+    100
 
     """
     if tns_raw_output == "":
@@ -371,22 +404,27 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
                 "TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master."
             )
             _LOG.warning(
-                "Skipping crossmatch with TNS. Creating a tns_type columns with null values."
+                "Skipping crossmatch with TNS. Creating columns with null values."
             )
-            df = df.withColumn("tns_type", F.lit(None).cast("string"))
+            for col_name, col_type in zip(TNS_COLS, TNS_TYPES):
+                df = df.withColumn(
+                    "tns_{}".format(col_name), F.lit(None).astype(col_type)
+                )
             return df
     else:
         pdf_tns = pd.read_parquet(os.path.join(tns_raw_output, "tns_raw.parquet"))
 
-    # Filter TNS confirmed data
-    f1 = ~pdf_tns["type"].isna()
-    pdf_tns_filt = pdf_tns[f1]
-
     spark = SparkSession.builder.getOrCreate()
-    pdf_tns_filt_b = spark.sparkContext.broadcast(pdf_tns_filt)
+    pdf_tns_b = spark.sparkContext.broadcast(pdf_tns)
 
-    @pandas_udf(StringType(), PandasUDFType.SCALAR)
-    def crossmatch_with_tns(diaSourceId, ra, dec):
+    tns_schema = StructType([
+        StructField(k, v, True) for k, v in TNS_SPARK_SCHEMA.items()
+    ])
+
+    @pandas_udf(tns_schema)
+    def crossmatch_with_tns(
+        diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series
+    ) -> pd.Series:
         """Spark pandas_udf to crossmatch Rubin alerts with TNS
 
         Parameters
@@ -400,14 +438,34 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
         Returns
         -------
-        to_return: pd.Series of str
-            TNS type for the alert. null if no match.
+        to_return: pd.Series of dict
+            TNS name and type for the alert. null if no match.
         """
-        pdf = pdf_tns_filt_b.value
-        ra2, dec2, type2 = pdf["ra"], pdf["declination"], pdf["type"]
+        pdf_lsst = pd.DataFrame({
+            "diaSourceId": range(len(ra)),
+            "ra": ra.to_numpy(),
+            "dec": dec.to_numpy(),
+        })
+
+        ra2, dec2, payload = extract_tns(pdf_tns_b.value)
+
+        # limit the catalog
+        dec_min, dec_max = dec.min(), dec.max()
+
+        # Extend the box for safety
+        pad = 2 * distmaxarcsec / 3600
+        mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
+        if mask.sum() == 0:
+            # No error, but no overlap, return None (null values for Spark)
+            out = [[None] * len(TNS_SPARK_SCHEMA)] * len(ra)
+            return pd.DataFrame(out)
+
+        ra2 = ra2[mask]
+        dec2 = dec2[mask]
+        payload = payload[mask.to_numpy()]
 
         # create catalogs
-        catalog_rubin = SkyCoord(
+        catalog_lsst = SkyCoord(
             ra=np.array(ra, dtype=float) * u.degree,
             dec=np.array(dec, dtype=float) * u.degree,
         )
@@ -416,47 +474,50 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
             dec=np.array(dec2, dtype=float) * u.degree,
         )
 
-        # cross-match
-        _, _, _ = catalog_tns.match_to_catalog_sky(catalog_rubin)
-
-        sub_pdf = pd.DataFrame({
-            "diaSourceId": diaSourceId.to_numpy(),
-            "ra": ra.to_numpy(),
-            "dec": dec.to_numpy(),
-        })
-
-        # cross-match
-        idx2, d2d2, _ = catalog_rubin.match_to_catalog_sky(catalog_tns)
-
-        # set separation length
-        sep_constraint2 = d2d2.degree < distmaxarcsec / 3600.0
-
-        sub_pdf["TNS"] = [None] * len(sub_pdf)
-        sub_pdf["TNS"][sep_constraint2] = type2.to_numpy()[idx2[sep_constraint2]]
-
-        # Here we take the first match
-        # What if there are many? AT & SN?
-        to_return = diaSourceId.apply(
-            lambda x: None
-            if x not in sub_pdf["diaSourceId"].to_numpy()
-            else sub_pdf["TNS"][sub_pdf["diaSourceId"] == x].to_numpy()[0]
+        pdf_merge, mask, idx2 = cross_match_astropy(
+            pdf_lsst, catalog_lsst, catalog_tns, radius_arcsec=distmaxarcsec
         )
 
-        return to_return
+        default = [None] * len(TNS_SPARK_SCHEMA)
+        pdf_merge["return"] = pd.Series([default for i in range(len(pdf_merge))])
+        pdf_merge.loc[mask, "return"] = pd.Series([
+            [None if pd.isna(x) else x for x in payload[i].tolist()] for i in idx2
+        ]).to_numpy()
+
+        out = pd.DataFrame.from_dict(
+            dict(zip(pdf_merge["return"].index, pdf_merge["return"].values)),
+            columns=TNS_COLS,
+            orient="index",
+        )
+        return out
 
     df = df.withColumn(
-        "tns_type",
+        "tns",
         crossmatch_with_tns(
             df["diaSource.diaSourceId"], df["diaSource.ra"], df["diaSource.dec"]
         ),
     )
 
+    # Explode TNS
+    for col_ in TNS_COLS:
+        df = df.withColumn(
+            "tns_{}".format(col_),
+            df["tns"].getItem(col_),
+        )
+    df = df.drop("tns")
+
     return df
 
 
-@pandas_udf(StringType(), PandasUDFType.SCALAR)
+@pandas_udf(StringType())
 @profile
-def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=None):
+def crossmatch_other_catalog(
+    diaSourceId: pd.Series,
+    ra: pd.Series,
+    dec: pd.Series,
+    catalog_name: pd.Series,
+    radius_arcsec: pd.Series,
+) -> pd.Series:
     """Crossmatch alerts with user-defined catalogs
 
     Currently supporting:
@@ -464,6 +525,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     - VSX
     - 3HSP
     - 4LAC
+    - SPICY
 
     Parameters
     ----------
@@ -476,7 +538,8 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     catalog_name: str
         Name of the catalog to use. currently supported: gcvs, vsx, 3hsp, 4lac
     radius_arcsec: float, optional
-        Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
+    radius_arcsec: float
+       Crossmatch radius in arcsecond.
 
     Returns
     -------
@@ -509,7 +572,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     Test the processor by adding a new column with the result of the xmatch
     >>> df.withColumn(
     ...     'gcvs',
-    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'))
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('gcvs'), lit(1.5))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+-----------+-----------+----+
     | id|         ra|        dec|gcvs|
@@ -523,7 +586,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
 
     >>> df.withColumn(
     ...     'vsx',
-    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'))
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('vsx'), lit(1.5))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+-----------+-----------+----+
     | id|         ra|        dec| vsx|
@@ -537,7 +600,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
 
     >>> df.withColumn(
     ...     '3hsp',
-    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('3hsp'))
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('3hsp'), lit(1.5))
     ... ).show() # doctest: +NORMALIZE_WHITESPACE
     +---+-----------+-----------+--------------------+
     | id|         ra|        dec|                3hsp|
@@ -562,7 +625,24 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     |  4| 0.31820833|29.59277778|             null|
     +---+-----------+-----------+-----------------+
     <BLANKLINE>
+
+    >>> df.withColumn(
+    ...     'spicy',
+    ...     crossmatch_other_catalog(df['id'], df['ra'], df['dec'], lit('spicy'), lit(1.2))
+    ... ).show() # doctest: +NORMALIZE_WHITESPACE
+    +---+-----------+-----------+-----+
+    | id|         ra|        dec|spicy|
+    +---+-----------+-----------+-----+
+    |  1| 26.8566983|-26.9677112| null|
+    |  2|101.3520545| 24.5421872| null|
+    |  3|     0.3126|    47.6859| null|
+    |  4| 0.31820833|29.59277778| null|
+    +---+-----------+-----------+-----+
+    <BLANKLINE>
     """
+    # set separation length
+    radius_arcsec = float(radius_arcsec.to_numpy()[0])
+
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
         "dec": dec.to_numpy(),
@@ -574,7 +654,7 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
         catalog = curdir + "/data/catalogs/gcvs.parquet"
         ra2, dec2, type2 = extract_gcvs(catalog)
     elif catalog_name.to_numpy()[0] == "vsx":
-        catalog = curdir + "/data/catalogs/vsx.parquet"
+        catalog = curdir + "/data/catalogs/vsx/"
         ra2, dec2, type2 = extract_vsx(catalog)
     elif catalog_name.to_numpy()[0] == "3hsp":
         catalog = curdir + "/data/catalogs/3hsp.csv"
@@ -583,6 +663,24 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
         catalog_h = curdir + "/data/catalogs/table-4LAC-DR3-h.fits"
         catalog_l = curdir + "/data/catalogs/table-4LAC-DR3-l.fits"
         ra2, dec2, type2 = extract_4lac(catalog_h, catalog_l)
+    elif catalog_name.to_numpy()[0] == "spicy":
+        catalog = curdir + "/data/catalogs/spicy.parquet"
+        ra2, dec2, type2 = extract_spicy(catalog)
+
+    # limit the catalog
+    dec_min, dec_max = dec.min(), dec.max()
+
+    # Extend the box for safety
+    pad = 2 * radius_arcsec / 3600
+    mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
+    if mask.sum() == 0:
+        # No error, but no overlap, return None (null values for Spark)
+        out = [None] * len(ra)
+        return pd.Series(out)
+
+    ra2 = ra2[mask]
+    dec2 = dec2[mask]
+    type2 = type2[mask]
 
     # create catalogs
     catalog_rubin = SkyCoord(
@@ -607,9 +705,11 @@ def crossmatch_other_catalog(diaSourceId, ra, dec, catalog_name, radius_arcsec=N
     return pdf_merge["Type"]
 
 
-@pandas_udf(MapType(StringType(), StringType()), PandasUDFType.SCALAR)
+@pandas_udf(MapType(StringType(), StringType()))
 @profile
-def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
+def crossmatch_mangrove(
+    diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series, radius_arcsec: pd.Series
+) -> pd.Series:
     """Crossmatch alerts with the Mangrove catalog
 
     Parameters
@@ -621,7 +721,8 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     dec: float
         Rubin declinations
     radius_arcsec: float, optional
-        Crossmatch radius in arcsecond. Default is 1.5 arcseconds.
+    radius_arcsec: float
+       Crossmatch radius in arcsecond.
 
     Returns
     -------
@@ -655,13 +756,20 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     >>> df.withColumn(
     ...     'mangrove',
     ...     crossmatch_mangrove(df['id'], df['ra'], df['dec'], lit(60.0))
-    ... ).toPandas() # doctest: +NORMALIZE_WHITESPACE
-      id          ra        dec                                           mangrove
-    0  1  198.955536  42.029289  {'HyperLEDA_name': 'NGC5055', '2MASS_name': '1...
-    1  2  101.352054  24.542187  {'HyperLEDA_name': None, '2MASS_name': None, '...
-    2  3    0.312600  47.685900  {'HyperLEDA_name': None, '2MASS_name': None, '...
-    3  4    0.318208  29.592778  {'HyperLEDA_name': None, '2MASS_name': None, '...
+    ... ).select("mangrove.HyperLEDA_name").show()
+    +--------------+
+    |HyperLEDA_name|
+    +--------------+
+    |       NGC5055|
+    |          null|
+    |          null|
+    |          null|
+    +--------------+
+    <BLANKLINE>
     """
+    # set separation length
+    radius_arcsec = float(radius_arcsec.to_numpy()[0])
+
     pdf = pd.DataFrame({
         "ra": ra.to_numpy(),
         "dec": dec.to_numpy(),
@@ -671,6 +779,21 @@ def crossmatch_mangrove(diaSourceId, ra, dec, radius_arcsec=None):
     curdir = os.path.dirname(os.path.abspath(__file__))
     catalog = curdir + "/data/catalogs/mangrove_filtered.parquet"
     ra2, dec2, payload = extract_mangrove(catalog)
+
+    # limit the catalog
+    dec_min, dec_max = dec.min(), dec.max()
+
+    # Extend the box for safety
+    pad = 2 * radius_arcsec / 3600
+    mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
+    if mask.sum() == 0:
+        # No error, but no overlap, return None (null values for Spark)
+        out = [{name: None for name in MANGROVE_COLS}] * len(ra)
+        return pd.Series(out)
+
+    ra2 = ra2[mask]
+    dec2 = dec2[mask]
+    payload = payload[mask.to_numpy()]
 
     # create catalogs
     catalog_rubin = SkyCoord(
@@ -700,7 +823,8 @@ if __name__ == "__main__":
     globs = globals()
     path = os.path.dirname(__file__)
 
-    rubin_alert_sample = "file://{}/data/alerts/or4_lsst7.1".format(path)
+    # from fink-alerts-schemas (see CI configuration)
+    rubin_alert_sample = "file://{}/datasim/rubin_test_data_10_0.parquet".format(path)
     globs["rubin_alert_sample"] = rubin_alert_sample
 
     # Run the test suite
