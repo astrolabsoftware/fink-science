@@ -217,7 +217,7 @@ def expand_catalog(catalog: pd.DataFrame) -> pd.DataFrame:
             list_to_concat.append(new_row.to_frame().T)
 
     final_catalog = pd.concat(list_to_concat, ignore_index=True)
-    final_catalog = final_catalog.loc[~pd.isnull(final_catalog["high_threshold"])]
+    final_catalog = final_catalog.loc[~pd.isna(final_catalog["high_threshold"])]
     final_catalog = final_catalog.reset_index()
     return final_catalog
 
@@ -225,6 +225,7 @@ def expand_catalog(catalog: pd.DataFrame) -> pd.DataFrame:
 # =========================
 # DR and Fink API handling
 # =========================
+
 
 def check_dr_version() -> int:
     """Scrape the ZTF DR website to get the latest public DR version.
@@ -284,8 +285,8 @@ def _post_fink(
     ConnectionError
         If the request fails after all retries.
     """
-    for attempt in range(max_retries):
-        try:
+    try:
+        for attempt in range(max_retries):
             response = requests.post(url, json=payload, timeout=10)
             if response.status_code == 200:
                 return response
@@ -293,10 +294,10 @@ def _post_fink(
                 time.sleep(delay)
                 delay *= 2
                 logger.warning(f"_post_fink failed (attempt {attempt + 1})")
-        except:
-            time.sleep(delay)
-            delay *= 2
-            logger.warning(f"_post_fink failed (attempt {attempt + 1})")
+    except Exception as e:
+        time.sleep(delay)
+        delay *= 2
+        logger.warning(f"_post_fink failed (attempt {attempt + 1}): {e}")
 
     # Error logger handling
     logger.error(f"Failed to connect to {url} after {max_retries} retries.")
@@ -386,7 +387,8 @@ def get_simbad_coordinates(catalog: pd.DataFrame) -> pd.DataFrame:
     )
     return catalog
 
-def get_4FGL_name(catalog: pd.DataFrame) -> pd.DataFrame:
+
+def get_4fgl_name(catalog: pd.DataFrame) -> pd.DataFrame:
     """Find 4FGL name of the sources in the catalog.
 
     Find the 4FGL corresponding name for each source in the catalog.
@@ -409,8 +411,7 @@ def get_4FGL_name(catalog: pd.DataFrame) -> pd.DataFrame:
     NameError
         If no sources has been found in the CDS SIMBAD database.
     """
-
-    names = np.full(len(catalog), '                 ')
+    names = np.full(len(catalog), "                 ")
     for index, row in catalog.iterrows():
         simbad_results = Simbad.query_objectids(row["Source_name"]).to_pandas()
 
@@ -551,9 +552,9 @@ def _get_class_ztf_identifier(
         return names[tags]
 
     # Step 2: candidate classes
-    tags = np.array([
-        bool(classes & candidate_source_classes) for classes in classifications
-    ])
+    tags = np.array(
+        [bool(classes & candidate_source_classes) for classes in classifications]
+    )
     if tags.any():
         logger.debug("Source candidate blazar in Fink classification.")
         return names[tags]
@@ -563,7 +564,7 @@ def _get_class_ztf_identifier(
     if tags.any():
         logger.debug("Source classification not known by Fink.")
         return names[tags]
-    
+
     # Step 4: no name found (should not happen but worst-case scenario handling)
     return np.array([])
 
@@ -646,7 +647,7 @@ def _get_ztf_dr_data(
     # Retry if needed
     for n_retry in range(retries):
         if not len(response.json().items()):
-            logger.debug(f"Failed retrieving DR at attempt {n_retry+1}: retrying...")
+            logger.debug(f"Failed retrieving DR at attempt {n_retry + 1}: retrying...")
             response = _get_snad(
                 f"{DR_APIURL}/api/v3/data/latest/circle/full/json",
                 payload={"ra": ra, "dec": dec, "radius_arcsec": radius},
@@ -759,7 +760,6 @@ def weighted_quantile_1d(
     a = a[idxs]
     weights = np.cumsum(weights[idxs]) / np.sum(weights)
     return float(a[weights <= q][-1])
-
 
 
 # 1 band standardisation
@@ -1322,7 +1322,7 @@ def main():
 
     # Get 4FGL corresponding names (when available)
     logger.info("Get 4FGL corresponding names (when available)")
-    catalog = get_4FGL_name(catalog)
+    catalog = get_4fgl_name(catalog)
 
     # Search ZTF ids
     logger.info("Retrieving ZTF identifiers of the catalog sources")

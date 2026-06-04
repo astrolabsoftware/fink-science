@@ -55,7 +55,7 @@ def _reset_to_beginning(consumer: Consumer, partitions: list) -> None:
     consumer.assign(partitions)
 
 
-def _FLaapLUC_download(flaapluc_static_path: str) -> pd.DataFrame:
+def _flaapluc_download(flaapluc_static_path: str) -> pd.DataFrame:
     """Download FLaapLUC alerts.
 
     Retrieve the FLaapLUC alerts available in the FLaapLUC Kafka stream
@@ -73,7 +73,6 @@ def _FLaapLUC_download(flaapluc_static_path: str) -> pd.DataFrame:
         Pandas DataFrame containg all the objects with an available alert in FLaapLUC
         Kafka. Contains the columns ``4FGL_name``, ``mjd``, ``sigma_deviation``.
     """
-
     dir_path = Path(os.path.abspath(__file__)).parent
     file_path = dir_path / flaapluc_static_path
     with open(file_path) as f:
@@ -85,9 +84,7 @@ def _FLaapLUC_download(flaapluc_static_path: str) -> pd.DataFrame:
         parsed_schema = parse_schema(schema)
 
     consumer = Consumer(static["flaapluc_kafka_config"])
-    consumer.subscribe(
-        static["flaapluc_kafka_topics"], on_assign=_reset_to_beginning
-    )
+    consumer.subscribe(static["flaapluc_kafka_topics"], on_assign=_reset_to_beginning)
 
     empty_polls = 0
     max_empty = 4
@@ -111,9 +108,7 @@ def _FLaapLUC_download(flaapluc_static_path: str) -> pd.DataFrame:
             print("Kafka error:", msg.error())
             continue
 
-        decoded = schemaless_reader(
-            io.BytesIO(msg.value()), parsed_schema
-        )
+        decoded = schemaless_reader(io.BytesIO(msg.value()), parsed_schema)
 
         source_names.append(decoded["alert"]["fermi_counterpart_name"])
         times.append(Time(decoded["alert"]["time_last_photon"]).mjd)
@@ -122,8 +117,7 @@ def _FLaapLUC_download(flaapluc_static_path: str) -> pd.DataFrame:
             - decoded["alert"]["flux_long_term_average"]
         ) / decoded["alert"]["n_sigma"]
         absolute_deviation = (
-            decoded["alert"]["flux"]
-            - decoded["alert"]["flux_long_term_average"]
+            decoded["alert"]["flux"] - decoded["alert"]["flux_long_term_average"]
         )
         deviations.append(absolute_deviation / sigma_conversion)
 
@@ -132,15 +126,16 @@ def _FLaapLUC_download(flaapluc_static_path: str) -> pd.DataFrame:
             "4FGL_name": source_names,
             "mjd": times,
             "sigma_deviation": deviations,
-            "gamma_flux": decoded["alert"]["flux"]
+            "gamma_flux": decoded["alert"]["flux"],
         }
     )
     return dataset
 
 
 def catalog_update(
-    CTAO_blazar: pd.DataFrame, flaapluc_static_path: str,
-    deltatime_check_history: float = 7.
+    CTAO_blazar: pd.DataFrame,
+    flaapluc_static_path: str,
+    deltatime_check_history: float = 7.0,
 ) -> pd.DataFrame:
     """Update catalog with FLaapLUC alerts.
 
@@ -168,22 +163,20 @@ def catalog_update(
         Updated pandas DataFrame of the monitored sources, with an additional
         ``sigma_deviation`` column containing the results from FLaapLUC
     """
-    dataset = _FLaapLUC_download(flaapluc_static_path)
+    dataset = _flaapluc_download(flaapluc_static_path)
     dataset = dataset.drop_duplicates(subset=["4FGL_name"], keep="last")
     dataset = dataset.loc[
-        dataset["mjd"] > Time(
-            datetime.datetime.now(),
-            format="datetime"
-        ).mjd - deltatime_check_history
+        dataset["mjd"]
+        > Time(datetime.datetime.now(), format="datetime").mjd - deltatime_check_history
     ]
     updated_CTAO_blazar = CTAO_blazar.join(
         dataset[["4FGL_name", "sigma_deviation", "gamma_flux"]].set_index("4FGL_name"),
-        on="4FGL_name"
+        on="4FGL_name",
     )
     return updated_CTAO_blazar
 
 
-def get_FLaapLUC_deviation(pdf, CTAO_blazar):
+def get_flaapluc_deviation(pdf, CTAO_blazar):
     """Retrieve the deviation computed from FLaapLUC.
 
     Retrieve the number of sigma deviation computed from the FLaapLUC alerts.
@@ -214,7 +207,7 @@ def get_FLaapLUC_deviation(pdf, CTAO_blazar):
     res = row["sigma_deviation"].iloc[0]
     if not row.empty and np.isfinite(res) and (res >= 0):
         return res, row["gamma_flux"].iloc[0]
-    return -1., -1.
+    return -1.0, -1.0
 
 
 # ============================
@@ -384,10 +377,12 @@ def extreme_state_(
     _LOG.info(f"Extreme state determination of {name}.")
 
     if not CTAO_blazar.loc[CTAO_blazar["ZTF_name"] == name].empty:
-        return np.array([
-            _robustness_criterion(pdf, CTAO_blazar, state_key, integration_period),
-            _instantness_criterion(pdf, CTAO_blazar, state_key),
-        ])
+        return np.array(
+            [
+                _robustness_criterion(pdf, CTAO_blazar, state_key, integration_period),
+                _instantness_criterion(pdf, CTAO_blazar, state_key),
+            ]
+        )
 
     else:
         return np.full(2, -1)

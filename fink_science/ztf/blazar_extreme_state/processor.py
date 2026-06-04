@@ -20,7 +20,7 @@ from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import MapType, StringType, FloatType
 from fink_science.ztf.blazar_extreme_state.utils import (
     catalog_update,
-    get_FLaapLUC_deviation,
+    get_flaapluc_deviation,
     extreme_state_,
     get_ztf_dr_data,
     from_mag_to_flux,
@@ -42,7 +42,7 @@ CATALOG_TAG = "23.v03_2026"
 
 # FLaapLUC required data
 FLAAPLUC_SCHEMA_PATH = "flaapluc_static.json"
-DELTATIME_CHECK_HISTORY = 7.
+DELTATIME_CHECK_HISTORY = 7.0
 
 # New columns to be produced and added to the scheme
 BLAZAR_LOW_COLS = ["instantness_low", "robustness_low"]
@@ -52,6 +52,7 @@ INST_HIGH_TAG, ROB_HIGH_TAG = BLAZAR_HIGH_COLS
 CDF_COL = ["cdf_quantile"]
 CDF_TAG = CDF_COL[0]
 FLAAPLUC_TAG = "flaapluc_deviation"
+FLAAPLUC_FLUX_TAG = "flaapluc_absolute_flux"
 
 # Integration periods for the computation
 # of the fluence in the robustness criterion
@@ -210,14 +211,16 @@ def extreme_state(
     CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
 
     # Transform alert packet to pandas DataFrame
-    pdf = pd.DataFrame({
-        "candid": candid,
-        "objectId": objectId,
-        "cstd_flux": cstd_flux,
-        "cjd": cjd,
-        "cra": cra,
-        "cdec": cdec,
-    })
+    pdf = pd.DataFrame(
+        {
+            "candid": candid,
+            "objectId": objectId,
+            "cstd_flux": cstd_flux,
+            "cjd": cjd,
+            "cra": cra,
+            "cdec": cdec,
+        }
+    )
     out = []
 
     # Loop over all candidate ids
@@ -230,14 +233,16 @@ def extreme_state(
             continue
 
         # Else:
-        sub = pd.DataFrame({
-            "candid": tmp["candid"].to_numpy()[0],
-            "objectId": tmp["objectId"].to_numpy()[0],
-            "cstd_flux": tmp["cstd_flux"].to_numpy()[0],
-            "cjd": tmp["cjd"].to_numpy()[0],
-            "cra": tmp["cra"].to_numpy()[0],
-            "cdec": tmp["cdec"].to_numpy()[0],
-        })
+        sub = pd.DataFrame(
+            {
+                "candid": tmp["candid"].to_numpy()[0],
+                "objectId": tmp["objectId"].to_numpy()[0],
+                "cstd_flux": tmp["cstd_flux"].to_numpy()[0],
+                "cjd": tmp["cjd"].to_numpy()[0],
+                "cra": tmp["cra"].to_numpy()[0],
+                "cdec": tmp["cdec"].to_numpy()[0],
+            }
+        )
 
         # Low state verification
         low_state_dic = dict(
@@ -274,17 +279,17 @@ def extreme_state(
             )
             lc = standardise_dr_lc(sub, lc, CTAO_blazar)
             cdf_dic = {CDF_TAG: compute_quantile(lc, measurement)}
-        
+
         flaapluc_dic = {FLAAPLUC_TAG: -1.0}
         flaapluc_flux_dic = {FLAAPLUC_FLUX_TAG: -1.0}
-        if (high_state_dic[INST_HIGH_TAG] >= 1 and high_state_dic[ROB_HIGH_TAG] >= 1):
+        if high_state_dic[INST_HIGH_TAG] >= 1 and high_state_dic[ROB_HIGH_TAG] >= 1:
             CTAO_blazar = catalog_update(
                 CTAO_blazar,
                 FLAAPLUC_SCHEMA_PATH,
-                deltatime_check_history=DELTATIME_CHECK_HISTORY
+                deltatime_check_history=DELTATIME_CHECK_HISTORY,
             )
             # Retrieve FLaapLUC alert data
-            flaapluc_deviation, flaapluc_flux = get_FLaapLUC_deviation(sub, CTAO_blazar)
+            flaapluc_deviation, flaapluc_flux = get_flaapluc_deviation(sub, CTAO_blazar)
             flaapluc_dic = {FLAAPLUC_TAG: flaapluc_deviation}
             flaapluc_flux_dic = {FLAAPLUC_FLUX_TAG: flaapluc_flux}
 
