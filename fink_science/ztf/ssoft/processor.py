@@ -503,7 +503,7 @@ def extract_ssoft_parameters(
             "bounds": None,  # initialised inside fit_spin
         },
         "SOCCA": {
-            "p0": [15.0, 0.15, 0.15, np.pi, 0.0, 5.0, 1.05, 1.05, 0.0],
+            "p0": None,  # Not used initially in SOCCA
             "bounds": None,  # initialised inside fit_spin
         },
     }
@@ -547,14 +547,14 @@ def extract_ssoft_parameters(
 
             # Clean data in-place
             pdf["dxy"] = np.sqrt(pdf["cdx"] ** 2 + pdf["cdy"] ** 2)
-            pdf = dxy_cleaning(
+            pdf, _ = dxy_cleaning(
                 pdf,
                 pdf["dxy"],
                 pdf["cmred"],
                 threshold=0.95,
             )
 
-            pdf = iterative_cleaning(
+            pdf, _ = iterative_cleaning(
                 pdf,
                 pdf["cmred"],
                 pdf["csigmapsf"],
@@ -633,6 +633,7 @@ def extract_ssoft_parameters(
                 bounds=MODELS[model_name]["bounds"],
                 model=model_name,
                 normalise_to_V=False,
+                remap=True,
             )
 
         # Add astrometry
