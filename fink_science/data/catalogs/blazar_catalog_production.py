@@ -17,7 +17,7 @@ import io
 import time
 import logging
 import argparse
-import datetime
+import datetime as dt
 import requests
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 CATALOG_COLUMN_NAMES: list = [
     "Source_name",
+    "4FGL_name",
     "ZTF_name",
     "medians",
     "low_threshold",
@@ -43,14 +44,14 @@ UNKNOWN_CLASSES: set = {"Unknown", "Unknown_Candidate"}
 
 FINK_APIURL: str = "https://api.ztf.fink-portal.org"
 DR_APIURL: str = "https://db.ztf.snad.space"
-DR_CHECK_URL: str = "https://www.ztf.caltech.edu/nsf-msip.html"
+DR_CHECK_URL: str = "https://www.ztf.caltech.edu/ztf-public-releases.html"
 
 search_radius: int = 2
 dt_concomitance: float = 1 / 24
 MAX_DT: float = 1
 START_ZTF: float = 58000
 
-CATALOG_FILEPATH: str = "./CTAO_blazars_ztf_dr23.v03_2026.parquet"
+CATALOG_FILEPATH: str = "./CTAO_blazars_ztf_dr23.v05_2026.parquet"
 LOGDIRFILENAME: str = "blazar_watchlist.log"
 
 
@@ -199,7 +200,7 @@ def expand_catalog(catalog: pd.DataFrame) -> pd.DataFrame:
 
     Returns
     -------
-    out : pd.DataFrame
+    final_catalog : pd.DataFrame
         Expanded catalog.
     """
     list_to_concat = []
@@ -215,7 +216,10 @@ def expand_catalog(catalog: pd.DataFrame) -> pd.DataFrame:
             new_row["ZTF_name"] = ""
             list_to_concat.append(new_row.to_frame().T)
 
-    return pd.concat(list_to_concat, ignore_index=True)
+    final_catalog = pd.concat(list_to_concat, ignore_index=True)
+    final_catalog = final_catalog.loc[~pd.isna(final_catalog["high_threshold"])]
+    final_catalog = final_catalog.reset_index()
+    return final_catalog
 
 
 # =========================
@@ -233,11 +237,19 @@ def check_dr_version() -> int:
     """
     try:
         r = requests.get(DR_CHECK_URL)
-        lines = r.text.split("\n")
-        detection_key = '\t\t\t\t\t<table class="table table-bordered">'
-        table_index = np.where(np.array(lines) == detection_key)[0][0]
-        dr_line = lines[table_index + 9].split("<")[4]
-        dr_version = int(dr_line[23:])
+        lines = r.text.split("<td><strong>Data Release</strong></td>")[1]
+        lines = lines.split("</table>")[0].split("<tr>")[1:]
+        lines = [line[4:28].strip("<").split("</td><td>") for line in lines]
+
+        dr_table = pd.DataFrame(lines, columns=["DR version", "Date"])
+        dr_table["DR version"] = dr_table["DR version"].apply(lambda x: int(x[3:]))
+        dr_table["Date"] = dr_table["Date"].apply(
+            lambda x: dt.datetime.strptime(x, "%d-%m-%Y")
+        )
+        maskTime = dr_table["Date"] < dt.datetime.now()
+        dr_table = dr_table.loc[maskTime].sort_values("Date", ascending=False)
+
+        dr_version = dr_table.iloc[0]["DR version"]
         return dr_version
     except Exception:
         logger.warning("check_DR_version failed: {e}")
@@ -247,7 +259,7 @@ def check_dr_version() -> int:
 def _post_fink(
     url: str,
     payload: dict,
-    max_retries: int = 10,
+    max_retries: int = 2,
     delay: float = 0.5,
 ) -> requests.Response:
     """Perform a POST request with retry logic.
@@ -259,7 +271,7 @@ def _post_fink(
     payload : dict
         Request payload.
     max_retries : int, optional
-        Maximum number of retries. Default is 10.
+        Maximum number of retries. Default is 2.
     delay : float, optional
         Delay (in seconds) between retries. Default is 0.5.
 
@@ -273,27 +285,29 @@ def _post_fink(
     ConnectionError
         If the request fails after all retries.
     """
-    for attempt in range(max_retries):
-        response = requests.post(url, json=payload, timeout=10)
-        if response.status_code == 200:
-            return response
-        else:
-            time.sleep(delay)
-            delay *= 2
-            logger.warning(f"_post_fink failed (attempt {attempt + 1})")
+    try:
+        for attempt in range(max_retries):
+            response = requests.post(url, json=payload, timeout=10)
+            if response.status_code == 200:
+                return response
+            else:
+                time.sleep(delay)
+                delay *= 2
+                logger.warning(f"_post_fink failed (attempt {attempt + 1})")
+    except Exception as e:
+        time.sleep(delay)
+        delay *= 2
+        logger.warning(f"_post_fink failed (attempt {attempt + 1}): {e}")
 
     # Error logger handling
-    if response.status_code != 200:
-        logger.error(f"Failed to connect to {url} after {max_retries} retries.")
-        raise ConnectionError(
-            f"Failed to connect to {url} after {max_retries} retries."
-        )
+    logger.error(f"Failed to connect to {url} after {max_retries} retries.")
+    return None
 
 
 def _get_snad(
     url: str,
     payload: dict,
-    max_retries: int = 10,
+    max_retries: int = 5,
     delay: float = 0.5,
 ) -> requests.Response:
     """Perform a POST request with retry logic.
@@ -305,7 +319,7 @@ def _get_snad(
     payload : dict
         Request payload.
     max_retries : int, optional
-        Maximum number of retries. Default is 10.
+        Maximum number of retries. Default is 5.
     delay : float, optional
         Delay (in seconds) between retries. Default is 0.5.
 
@@ -374,6 +388,45 @@ def get_simbad_coordinates(catalog: pd.DataFrame) -> pd.DataFrame:
     return catalog
 
 
+def get_4fgl_name(catalog: pd.DataFrame) -> pd.DataFrame:
+    """Find 4FGL name of the sources in the catalog.
+
+    Find the 4FGL corresponding name for each source in the catalog.
+    If no 4FGL name has been found, return '' instead.
+    Returns the updated catalog.
+
+    Parameters
+    ----------
+    catalog : pd.DataFrame
+        DataFrame containing the names of the sources.
+
+    Returns
+    -------
+    catalog : pd.DataFrame
+        Pandas DataFrame of the updated catalog with right ascension and
+        declination.
+
+    Raises
+    ------
+    NameError
+        If no sources has been found in the CDS SIMBAD database.
+    """
+    names = np.full(len(catalog), "                 ")
+    for index, row in catalog.iterrows():
+        simbad_results = Simbad.query_objectids(row["Source_name"]).to_pandas()
+
+        if simbad_results.empty:
+            logger.error("No sources found in CDS SIMBAD for the catalog.")
+            raise
+
+        mask_4FGL = simbad_results["id"].apply(str.startswith, args=("4FGL",))
+        if mask_4FGL.any():
+            names[index] = simbad_results.loc[mask_4FGL, "id"].iloc[0]
+
+    catalog["4FGL_name"] = names
+    return catalog
+
+
 def _get_fink_data(name: str) -> pd.DataFrame:
     """Get alert packet from Fink.
 
@@ -408,6 +461,7 @@ def _get_fink_data(name: str) -> pd.DataFrame:
     >>> df = get_Fink_data("ZTF19aapreis")
     >>> df[["i:mjd", "i:fid", "i:magpsf"]].head()
     """
+    logger.debug(f"Name of the source (objectId): {name}")
     response = _post_fink(
         f"{FINK_APIURL}/api/v1/objects",
         payload={
@@ -417,9 +471,13 @@ def _get_fink_data(name: str) -> pd.DataFrame:
         },
     )
 
-    lc = pd.read_json(io.BytesIO(response.content))
+    if response is None:
+        lc = pd.DataFrame(columns=["v:classification"])
+    else:
+        lc = pd.read_json(io.BytesIO(response.content))
     if lc.empty:
         logger.warning(f'Source "{name}" not found in Fink.')
+        return lc
 
     lc["i:mjd"] = lc["i:jd"] - 2400000.5
     lc["i:fid"] = lc["i:fid"].astype(int)
@@ -467,7 +525,10 @@ def _get_class_ztf_identifier(
         payload={"ra": ra, "dec": dec, "radius": radius, "columns": "i:objectId"},
     )
 
-    lc = pd.read_json(io.BytesIO(r.content))
+    if r is None:
+        lc = pd.DataFrame()
+    else:
+        lc = pd.read_json(io.BytesIO(r.content))
     if lc.empty:
         logger.debug(f"No found Fink correspondance for ra={ra:.6f}, dec={dec:.6f}.")
         return np.array([])
@@ -477,6 +538,12 @@ def _get_class_ztf_identifier(
 
     # Convert classifications into sets for faster intersection
     classifications = [set(lc["v:classification"].unique()) for lc in lcs]
+
+    # Step 0: no classification at all
+    tags = np.array([classes.issubset(set()) for classes in classifications])
+    if tags.all():
+        logger.debug("No classification found in Fink.")
+        return np.array([])
 
     # Step 1: confirmed blazars
     tags = np.array([bool(classes & source_classes) for classes in classifications])
@@ -494,8 +561,12 @@ def _get_class_ztf_identifier(
 
     # Step 3: unknown only if all classifications are unknown
     tags = np.array([classes.issubset(unknown_classes) for classes in classifications])
-    logger.debug("Source classification not known by Fink.")
-    return names[tags]
+    if tags.any():
+        logger.debug("Source classification not known by Fink.")
+        return names[tags]
+
+    # Step 4: no name found (should not happen but worst-case scenario handling)
+    return np.array([])
 
 
 def get_ztf_id(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
@@ -537,7 +608,9 @@ def get_ztf_id(catalog: pd.DataFrame, radius: float) -> pd.DataFrame:
 # DR download within 2"-cone search
 
 
-def _get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
+def _get_ztf_dr_data(
+    ra: float, dec: float, radius: float, retries: int = 10
+) -> pd.DataFrame:
     """Retrieve ZTF light curves from the latest Data Release via SNAD API.
 
     Parameters
@@ -548,6 +621,9 @@ def _get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
         Declination in degrees.
     radius : float
         Search radius in arcseconds.
+    retries : int, optional
+        Maximum number of retries to get hte DR lgiht curve.
+        Defalut is 10.
 
     Returns
     -------
@@ -555,10 +631,29 @@ def _get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
         Light curve data including fluxes,
         uncertainties, filters, and metadata.
     """
+    list_ra = str(ra).split(".")
+    ra = float(list_ra[0] + "." + list_ra[1][:10])
+    list_dec = str(dec).split(".")
+    dec = float(list_dec[0] + "." + list_dec[1][:10])
     response = _get_snad(
         f"{DR_APIURL}/api/v3/data/latest/circle/full/json",
         payload={"ra": ra, "dec": dec, "radius_arcsec": radius},
     )
+    response = _get_snad(
+        f"{DR_APIURL}/api/v3/data/latest/circle/full/json",
+        payload={"ra": ra, "dec": dec, "radius_arcsec": radius},
+    )
+
+    # Retry if needed
+    for n_retry in range(retries):
+        if not len(response.json().items()):
+            logger.debug(f"Failed retrieving DR at attempt {n_retry + 1}: retrying...")
+            response = _get_snad(
+                f"{DR_APIURL}/api/v3/data/latest/circle/full/json",
+                payload={"ra": ra, "dec": dec, "radius_arcsec": radius},
+            )
+        else:
+            break
 
     records = []
     for oid, entry in response.json().items():
@@ -597,6 +692,7 @@ def _get_ztf_dr_data(ra: float, dec: float, radius: float) -> pd.DataFrame:
     lc["filtercode"] = lc["filtercode"].map(filter_map).astype(int)
     lc = lc[(lc["mjd"] >= START_ZTF) & np.isin(lc["filtercode"], [1, 2])].copy()
     lc = lc.sort_values("mjd", ascending=True, ignore_index=True)
+    logger.debug(f"Number of entries: {len(lc)}")
 
     return lc
 
@@ -638,6 +734,34 @@ for source {name} ({index + 1}/{len(catalog)})"
 # ===================================
 
 
+def weighted_quantile_1d(
+    a: np.ndarray, q: np.ndarray, weights: np.ndarray = None
+) -> float:
+    """Utility function to compute the weighted quantile of an array.
+
+    Parameters
+    ----------
+    a : array like
+        Array form where to compute the quantile.
+    q : float
+        Quantile to compute (between 0 and 1).
+    weights : array like of shape a.shape; optional
+        Weights of each element of a.
+        Default is `None`, meaning same weight for each element.
+
+    Returns
+    -------
+    out : float
+        Corresponding quantile.
+    """
+    if weights is None:
+        weights = np.ones_like(a)
+    idxs = np.argsort(a)
+    a = a[idxs]
+    weights = np.cumsum(weights[idxs]) / np.sum(weights)
+    return float(a[weights <= q][-1])
+
+
 # 1 band standardisation
 
 
@@ -672,13 +796,8 @@ def _standardise_lc_1band(lc: pd.DataFrame) -> tuple[pd.DataFrame, float]:
     else:
         diff_time = np.diff(time)
         diff_time[diff_time > MAX_DT] = MAX_DT
-        median = float(
-            np.quantile(
-                flux[:-1],
-                0.5,
-                method="inverted_cdf",
-                weights=diff_time / (flux_error[:-1] ** 2),
-            )
+        median = weighted_quantile_1d(
+            flux[:-1], 0.5, weights=diff_time / (flux_error[:-1] ** 2)
         )
 
     lc.loc[:, "std_flux"] = flux / median
@@ -1180,7 +1299,7 @@ def main():
     catalog_filepath = args.catalog_path
     if catalog_filepath is None:
         version = check_dr_version()
-        now = datetime.datetime.now()
+        now = dt.datetime.now()
         date = f"{str(now.month).zfill(2)}_{now.year}"
         catalog_filepath = f"./CTAO_blazars_ztf_dr{version}.v{date}"
         catalog_filepath += ".parquet"
@@ -1200,6 +1319,10 @@ def main():
     # Retrieve Simbad coordinates
     logger.info("Retrieving source coordinates in SIMBAD database")
     catalog = get_simbad_coordinates(catalog)
+
+    # Get 4FGL corresponding names (when available)
+    logger.info("Get 4FGL corresponding names (when available)")
+    catalog = get_4fgl_name(catalog)
 
     # Search ZTF ids
     logger.info("Retrieving ZTF identifiers of the catalog sources")
