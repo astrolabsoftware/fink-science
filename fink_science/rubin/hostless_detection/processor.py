@@ -218,7 +218,7 @@ def run_potential_hostless(
     >>> df.filter(df.elephant_kstest.kstest_science.isNotNull()).count()
     0
     """
-    f_min_point = nDiaSources >= CONFIGS["minimum_number_of_alerts"] - 1  # N + 1
+    f_min_point = nDiaSources >= CONFIGS["minimum_number_of_alerts"]
     # FIXME: put the conversion formula in fink-utils
     f_not_in_simbad = simbad_otype.apply(lambda val: val in BAD_VALUES or pd.isna(val))
     f_not_in_gaia = gaiadr3_DR3Name.apply(lambda val: val in BAD_VALUES or pd.isna(val))
