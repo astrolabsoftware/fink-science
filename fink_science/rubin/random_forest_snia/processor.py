@@ -24,7 +24,6 @@ import pickle
 
 from fink_science import __file__
 
-from fink_utils.data.utils import load_scikit_model
 
 from actsnfink.rainbow import fit_rainbow
 
