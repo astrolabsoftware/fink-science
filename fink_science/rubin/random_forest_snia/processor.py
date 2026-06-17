@@ -213,8 +213,12 @@ def rfscore_rainbow_elasticc_nometa(
     100
     """
     _band_wave_aa = {
-        "u": 3671.0, "g": 4827.0, "r": 6223.0,
-        "i": 7546.0, "z": 8691.0, "y": 9712.0,
+        "u": 3671.0,
+        "g": 4827.0,
+        "r": 6223.0,
+        "i": 7546.0,
+        "z": 8691.0,
+        "y": 9712.0,
     }
 
     mask = np.repeat(True, len(midpointMjdTai))
@@ -223,7 +227,9 @@ def rfscore_rainbow_elasticc_nometa(
         return pd.Series(np.zeros(len(midpointMjdTai), dtype=float))
 
     curdir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(curdir, "data", "models", "elasticc_rainbow_earlyIa_nometa.pkl")
+    model_path = os.path.join(
+        curdir, "data", "models", "elasticc_rainbow_earlyIa_nometa.pkl"
+    )
     with open(model_path, "rb") as f:
         clf = pickle.load(f)
 

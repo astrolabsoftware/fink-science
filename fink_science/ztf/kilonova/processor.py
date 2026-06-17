@@ -152,13 +152,15 @@ def knscore(
     flux, error = np.transpose(data)
 
     # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict({
-        "SNID": df_tmp["SNID"],
-        "MJD": df_tmp["jd"],
-        "FLUXCAL": flux,
-        "FLUXCALERR": error,
-        "FLT": fid[mask].explode().replace({1: "g", 2: "r"}),
-    })
+    pdf = pd.DataFrame.from_dict(
+        {
+            "SNID": df_tmp["SNID"],
+            "MJD": df_tmp["jd"],
+            "FLUXCAL": flux,
+            "FLUXCALERR": error,
+            "FLT": fid[mask].explode().replace({1: "g", 2: "r"}),
+        }
+    )
 
     model = load_classifier("partial.pkl")
 
@@ -257,13 +259,15 @@ def extract_features_knscore(
     flux, error = np.transpose(data)
 
     # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict({
-        "SNID": df_tmp["SNID"],
-        "MJD": df_tmp["jd"],
-        "FLUXCAL": flux,
-        "FLUXCALERR": error,
-        "FLT": fid[mask].explode().replace({1: "g", 2: "r"}),
-    })
+    pdf = pd.DataFrame.from_dict(
+        {
+            "SNID": df_tmp["SNID"],
+            "MJD": df_tmp["jd"],
+            "FLUXCAL": flux,
+            "FLUXCALERR": error,
+            "FLT": fid[mask].explode().replace({1: "g", 2: "r"}),
+        }
+    )
 
     # Load pcs
     pcs = load_pcs()

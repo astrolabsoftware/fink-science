@@ -26,5 +26,5 @@ jobs:
         pip install ruff
     - name: utilities
       run: |
-        ruff check --preview --statistics . 
-        ruff format --preview --check .
+        ruff check --statistics .
+        ruff format --check .

@@ -140,11 +140,13 @@ def quiescent_state_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> np.ndarray
     c0 = not CTAO_blazar.loc[CTAO_blazar["ZTF Name"] == name].empty
     c1 = not pdf[:-1].empty
     if c0 and c1:
-        return np.array([
-            robustness_criterion(pdf[:-1], CTAO_blazar),
-            robustness_criterion(pdf, CTAO_blazar),
-            instantness_criterion(pdf, CTAO_blazar),
-        ])
+        return np.array(
+            [
+                robustness_criterion(pdf[:-1], CTAO_blazar),
+                robustness_criterion(pdf, CTAO_blazar),
+                instantness_criterion(pdf, CTAO_blazar),
+            ]
+        )
 
     else:
         return np.full(3, np.nan)

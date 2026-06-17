@@ -224,6 +224,5 @@ if __name__ == "__main__":
     )
     globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
 
-
     # Run the test suite
     spark_unit_tests(globs)

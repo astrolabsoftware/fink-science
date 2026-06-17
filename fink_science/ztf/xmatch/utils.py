@@ -57,10 +57,12 @@ def cross_match_astropy(pdf, catalog_ztf, catalog_other, radius_arcsec=None):
     catalog_matches = np.unique(pdf["candid"].to_numpy()[idx[sep_constraint]])
 
     # identify position of matches in the input dataframe
-    pdf_matches = pd.DataFrame({
-        "candid": np.array(catalog_matches, dtype=np.int64),
-        "match": True,
-    })
+    pdf_matches = pd.DataFrame(
+        {
+            "candid": np.array(catalog_matches, dtype=np.int64),
+            "match": True,
+        }
+    )
     pdf_merge = pdf.merge(pdf_matches, how="left", on="candid")
 
     mask = pdf_merge["match"].apply(lambda x: x is True)

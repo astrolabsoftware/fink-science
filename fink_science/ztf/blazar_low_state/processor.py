@@ -133,24 +133,28 @@ def quiescent_state(
     CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(CATALOG_TAG)
     CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
 
-    pdf = pd.DataFrame({
-        "candid": candid,
-        "objectId": objectId,
-        "cstd_flux": cstd_flux,
-        "cjd": cjd,
-    })
+    pdf = pd.DataFrame(
+        {
+            "candid": candid,
+            "objectId": objectId,
+            "cstd_flux": cstd_flux,
+            "cjd": cjd,
+        }
+    )
     out = []
     for candid_ in pdf["candid"]:
         tmp = pdf[pdf["candid"] == candid_]
         if len(tmp["cstd_flux"].to_numpy()[0]) == 0:
             out.append({k: -1 for k in BLAZAR_COLS})
             continue
-        sub = pd.DataFrame({
-            "candid": tmp["candid"].to_numpy()[0],
-            "objectId": tmp["objectId"].to_numpy()[0],
-            "cstd_flux": tmp["cstd_flux"].to_numpy()[0],
-            "cjd": tmp["cjd"].to_numpy()[0],
-        })
+        sub = pd.DataFrame(
+            {
+                "candid": tmp["candid"].to_numpy()[0],
+                "objectId": tmp["objectId"].to_numpy()[0],
+                "cstd_flux": tmp["cstd_flux"].to_numpy()[0],
+                "cjd": tmp["cjd"].to_numpy()[0],
+            }
+        )
         dic = {k: v for k, v in zip(BLAZAR_COLS, quiescent_state_(sub, CTAO_blazar))}  # noqa: C416
         out.append(dic)
 

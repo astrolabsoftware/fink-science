@@ -67,9 +67,9 @@ def compute_flux(pdf):
     >>> np.testing.assert_allclose(np.array([new["csigflux"][k] for k in range(2)]), true_err, rtol=1e-3)
     """
     conversion = pdf[["cmagpsf", "csigmapsf"]].apply(
-        lambda x: np.transpose([
-            mag2fluxcal_snana(*i) for i in zip(x["cmagpsf"], x["csigmapsf"])
-        ]),
+        lambda x: np.transpose(
+            [mag2fluxcal_snana(*i) for i in zip(x["cmagpsf"], x["csigmapsf"])]
+        ),
         axis=1,
     )
 
@@ -370,15 +370,17 @@ def remove_nan(pdf):
     for k in ["cjd", "cmagpsf", "csigmapsf", "cfid", "csigflux", "cflux"]:
         if k in pdf.columns:
             pdf.loc[:, k] = pdf.apply(
-                lambda row: np.array([
-                    a
-                    for a, b in zip(
-                        row[k],
-                        (np.array(row["cflux"]) == row["cflux"])
-                        & (np.array(row["cflux"]) != None),  # noqa: E711
-                    )
-                    if b
-                ]),
+                lambda row: np.array(
+                    [
+                        a
+                        for a, b in zip(
+                            row[k],
+                            (np.array(row["cflux"]) == row["cflux"])
+                            & (np.array(row["cflux"]) != None),  # noqa: E711
+                        )
+                        if b
+                    ]
+                ),
                 axis=1,
             )
 
@@ -410,14 +412,16 @@ def remove_bad_bands(pdf):
     for k in ["cjd", "cmagpsf", "csigmapsf", "csigflux", "cflux", "cfid"]:
         if k in pdf.columns:
             pdf.loc[:, k] = pdf.apply(
-                lambda row: np.array([
-                    a
-                    for a, b in zip(
-                        row[k],
-                        (np.isin(row["cfid"], list(kern.band_wave_aa.keys()))),  # noqa: E711
-                    )
-                    if b
-                ]),
+                lambda row: np.array(
+                    [
+                        a
+                        for a, b in zip(
+                            row[k],
+                            (np.isin(row["cfid"], list(kern.band_wave_aa.keys()))),  # noqa: E711
+                        )
+                        if b
+                    ]
+                ),
                 axis=1,
             )
 

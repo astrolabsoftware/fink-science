@@ -159,16 +159,18 @@ def mulens(
                 continue
 
             # Compute DC mag
-            mag, err = np.array([
-                dc_mag(i[0], i[1], i[2], i[3], i[4])
-                for i in zip(
-                    np.array(magpsf.to_numpy()[index])[m],
-                    np.array(sigmapsf.to_numpy()[index])[m],
-                    np.array(magnr.to_numpy()[index])[m],
-                    np.array(sigmagnr.to_numpy()[index])[m],
-                    np.array(isdiffpos.to_numpy()[index])[m],
-                )
-            ]).T
+            mag, err = np.array(
+                [
+                    dc_mag(i[0], i[1], i[2], i[3], i[4])
+                    for i in zip(
+                        np.array(magpsf.to_numpy()[index])[m],
+                        np.array(sigmapsf.to_numpy()[index])[m],
+                        np.array(magnr.to_numpy()[index])[m],
+                        np.array(sigmagnr.to_numpy()[index])[m],
+                        np.array(isdiffpos.to_numpy()[index])[m],
+                    )
+                ]
+            ).T
 
             # Run the classifier
             output = microlensing_classifier.predict(mag, err, rf, pca)
@@ -272,16 +274,18 @@ def extract_features_mulens(
                 continue
 
             # Compute DC mag
-            mag, err = np.array([
-                dc_mag(i[0], i[1], i[2], i[3], i[4])
-                for i in zip(
-                    np.array(magpsf.to_numpy()[index])[m],
-                    np.array(sigmapsf.to_numpy()[index])[m],
-                    np.array(magnr.to_numpy()[index])[m],
-                    np.array(sigmagnr.to_numpy()[index])[m],
-                    np.array(isdiffpos.to_numpy()[index])[m],
-                )
-            ]).T
+            mag, err = np.array(
+                [
+                    dc_mag(i[0], i[1], i[2], i[3], i[4])
+                    for i in zip(
+                        np.array(magpsf.to_numpy()[index])[m],
+                        np.array(sigmapsf.to_numpy()[index])[m],
+                        np.array(magnr.to_numpy()[index])[m],
+                        np.array(sigmagnr.to_numpy()[index])[m],
+                        np.array(isdiffpos.to_numpy()[index])[m],
+                    )
+                ]
+            ).T
 
             # Extract features
             output = _extract(mag, err)
