@@ -111,9 +111,9 @@ def predict_nn(
 
     # check size of output
     """
-    preds = pd.Series([
-        [0.0] * len(CATS_CLASS_DICT) for i in range(len(midpointMjdTai))
-    ])
+    preds = pd.Series(
+        [[0.0] * len(CATS_CLASS_DICT) for i in range(len(midpointMjdTai))]
+    )
     # at least 2 points.
     mask = midpointMjdTai.apply(lambda x: len(x) > 1)
 

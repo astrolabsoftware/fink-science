@@ -134,12 +134,14 @@ def extract_features_ad_rubin_raw(
     extractor = create_extractor()
 
     try:
-        df = pd.DataFrame({
-            "time": midpointMjdTai,
-            "flux": psfFlux,
-            "err": psfFluxErr,
-            "band": band,
-        })
+        df = pd.DataFrame(
+            {
+                "time": midpointMjdTai,
+                "flux": psfFlux,
+                "err": psfFluxErr,
+                "band": band,
+            }
+        )
     except ValueError:
         logger.error(f"Array length mismatch for object {diaObjectId}")
         return {}
@@ -199,9 +201,11 @@ def extract_features_ad_rubin_raw(
 
 RETURN_TYPE = MapType(
     StringType(),  # passband
-    StructType([  # features name -> value
-        StructField(name, DoubleType(), True) for name in FEATURES_COLS
-    ]),
+    StructType(
+        [  # features name -> value
+            StructField(name, DoubleType(), True) for name in FEATURES_COLS
+        ]
+    ),
 )
 
 # Register the UDF

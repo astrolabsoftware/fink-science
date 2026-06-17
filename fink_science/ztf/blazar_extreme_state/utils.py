@@ -375,10 +375,12 @@ def extreme_state_(
     _LOG.info(f"Extreme state determination of {name}.")
 
     if not CTAO_blazar.loc[CTAO_blazar["ZTF_name"] == name].empty:
-        return np.array([
-            _robustness_criterion(pdf, CTAO_blazar, state_key, integration_period),
-            _instantness_criterion(pdf, CTAO_blazar, state_key),
-        ])
+        return np.array(
+            [
+                _robustness_criterion(pdf, CTAO_blazar, state_key, integration_period),
+                _instantness_criterion(pdf, CTAO_blazar, state_key),
+            ]
+        )
 
     else:
         return np.full(2, -1)

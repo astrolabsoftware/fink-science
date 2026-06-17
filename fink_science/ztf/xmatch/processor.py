@@ -399,11 +399,13 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         # cross-match
         _, _, _ = catalog_tns.match_to_catalog_sky(catalog_ztf)
 
-        sub_pdf = pd.DataFrame({
-            "objectId": objectid.to_numpy(),
-            "ra": ra.to_numpy(),
-            "dec": dec.to_numpy(),
-        })
+        sub_pdf = pd.DataFrame(
+            {
+                "objectId": objectid.to_numpy(),
+                "ra": ra.to_numpy(),
+                "dec": dec.to_numpy(),
+            }
+        )
 
         # cross-match
         idx2, d2d2, _ = catalog_ztf.match_to_catalog_sky(catalog_tns)
@@ -550,11 +552,13 @@ def crossmatch_other_catalog(
     +---+-----------+-----------+-----------------+
     <BLANKLINE>
     """
-    pdf = pd.DataFrame({
-        "ra": ra.to_numpy(),
-        "dec": dec.to_numpy(),
-        "candid": range(len(ra)),
-    })
+    pdf = pd.DataFrame(
+        {
+            "ra": ra.to_numpy(),
+            "dec": dec.to_numpy(),
+            "candid": range(len(ra)),
+        }
+    )
 
     curdir = os.path.dirname(os.path.abspath(__file__))
     if catalog_name.to_numpy()[0] == "gcvs":
@@ -652,11 +656,13 @@ def crossmatch_mangrove(
     2  3    0.312600  47.685900  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
     3  4    0.318208  29.592778  {'HyperLEDA_name': 'None', '2MASS_name': 'None...
     """
-    pdf = pd.DataFrame({
-        "ra": ra.to_numpy(),
-        "dec": dec.to_numpy(),
-        "candid": range(len(ra)),
-    })
+    pdf = pd.DataFrame(
+        {
+            "ra": ra.to_numpy(),
+            "dec": dec.to_numpy(),
+            "candid": range(len(ra)),
+        }
+    )
 
     curdir = os.path.dirname(os.path.abspath(__file__))
     catalog = curdir + "/data/catalogs/mangrove_filtered.parquet"

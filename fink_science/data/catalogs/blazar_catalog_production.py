@@ -552,9 +552,9 @@ def _get_class_ztf_identifier(
         return names[tags]
 
     # Step 2: candidate classes
-    tags = np.array([
-        bool(classes & candidate_source_classes) for classes in classifications
-    ])
+    tags = np.array(
+        [bool(classes & candidate_source_classes) for classes in classifications]
+    )
     if tags.any():
         logger.debug("Source candidate blazar in Fink classification.")
         return names[tags]

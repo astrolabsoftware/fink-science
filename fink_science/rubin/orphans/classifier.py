@@ -55,34 +55,42 @@ def get_features(ctimemjd, cabmags, cabmagserr, cfilts, valid):
     )
 
     # duration between the first detection and the peak
-    duration = np.array([
-        compute_duration_between_first_and_peak(t, m)
-        for t, m, v in zip(times.values, mags.values, valid.values)
-        if v
-    ])
+    duration = np.array(
+        [
+            compute_duration_between_first_and_peak(t, m)
+            for t, m, v in zip(times.values, mags.values, valid.values)
+            if v
+        ]
+    )
 
     # increase rate and decrease rates (average, in the 1/3 and the 3/3 parts of the light curve)
-    rates = np.array([
-        compute_rates(t, m, f)
-        for t, m, f, v in zip(times.values, mags.values, filts.values, valid.values)
-        if v
-    ])
+    rates = np.array(
+        [
+            compute_rates(t, m, f)
+            for t, m, f, v in zip(times.values, mags.values, filts.values, valid.values)
+            if v
+        ]
+    )
 
     # colours for the pairs (g, r) and (r, i)
-    colours = np.array([
-        compute_colours(t, m, f)
-        for t, m, f, v in zip(times.values, mags.values, filts.values, valid.values)
-        if v
-    ])
+    colours = np.array(
+        [
+            compute_colours(t, m, f)
+            for t, m, f, v in zip(times.values, mags.values, filts.values, valid.values)
+            if v
+        ]
+    )
 
     # parameters of the fit A, B, C, D and chi2
-    fit_parameters = np.array([
-        fit_light_curve(t, m, e, f)
-        for t, m, e, f, v in zip(
-            times.values, mags.values, err.values, filts.values, valid.values
-        )
-        if v
-    ])
+    fit_parameters = np.array(
+        [
+            fit_light_curve(t, m, e, f)
+            for t, m, e, f, v in zip(
+                times.values, mags.values, err.values, filts.values, valid.values
+            )
+            if v
+        ]
+    )
 
     # gather all the features in one DataFrame
     features = {

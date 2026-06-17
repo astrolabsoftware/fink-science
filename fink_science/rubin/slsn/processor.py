@@ -76,15 +76,17 @@ def slsn_rubin(diaObjectId, cmidpointMjdTai, cpsfFlux, cpsfFluxErr, cband, ra, d
     >>> df.filter(df['preds'] == 0).count()
     50
     """
-    data = pd.DataFrame({
-        "diaObjectId": diaObjectId,
-        "cmidpointMjdTai": cmidpointMjdTai,
-        "cpsfFlux": cpsfFlux,
-        "cpsfFluxErr": cpsfFluxErr,
-        "cband": cband,
-        "ra": ra,
-        "dec": dec,
-    })
+    data = pd.DataFrame(
+        {
+            "diaObjectId": diaObjectId,
+            "cmidpointMjdTai": cmidpointMjdTai,
+            "cpsfFlux": cpsfFlux,
+            "cpsfFluxErr": cpsfFluxErr,
+            "cband": cband,
+            "ra": ra,
+            "dec": dec,
+        }
+    )
 
     proba = slsn_classifier(data, False)
     return pd.Series(proba)

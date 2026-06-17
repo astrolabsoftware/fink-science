@@ -33,16 +33,18 @@ def standardized_flux_(pdf: pd.DataFrame, CTAO_blazar: pd.DataFrame) -> tuple:
     name = pdf["objectId"].to_numpy()[0]
     CTAO_data = CTAO_blazar.loc[CTAO_blazar["ZTF_name"] == name]
     if not CTAO_data.empty:
-        flux_dc, sigma_flux_dc = np.transpose([
-            apparent_flux(*args)
-            for args in zip(
-                pdf["cmagpsf"].astype(float).to_numpy(),
-                pdf["csigmapsf"].astype(float).to_numpy(),
-                pdf["cmagnr"].astype(float).to_numpy(),
-                pdf["csigmagnr"].astype(float).to_numpy(),
-                pdf["cisdiffpos"].to_numpy(),
-            )
-        ])
+        flux_dc, sigma_flux_dc = np.transpose(
+            [
+                apparent_flux(*args)
+                for args in zip(
+                    pdf["cmagpsf"].astype(float).to_numpy(),
+                    pdf["csigmapsf"].astype(float).to_numpy(),
+                    pdf["cmagnr"].astype(float).to_numpy(),
+                    pdf["csigmagnr"].astype(float).to_numpy(),
+                    pdf["cisdiffpos"].to_numpy(),
+                )
+            ]
+        )
 
         # Loop over g & r only
         for filter_ in [1, 2]:

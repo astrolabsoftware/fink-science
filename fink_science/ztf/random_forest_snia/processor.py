@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType, StringType
 
 import pandas as pd
@@ -74,7 +74,7 @@ def apply_selection_cuts_ztf(
     return mask
 
 
-@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+@pandas_udf(DoubleType())
 @profile
 def rfscore_sigmoid_full(
     jd: pd.Series,
@@ -83,14 +83,12 @@ def rfscore_sigmoid_full(
     sigmapsf: pd.Series,
     cdsxmatch: pd.Series,
     ndethist: pd.Series,
-    min_rising_points=None,
-    min_data_points=None,
-    rising_criteria=None,
-    model=None,
 ) -> pd.Series:
     """Return the probability of an alert to be a SNe Ia using a Random Forest Classifier (sigmoid fit).
 
-    You need to run the SIMBAD crossmatch before.
+    You need to run the SIMBAD crossmatch before. Uses default parameters
+    (min_rising_points=2, min_data_points=4, rising_criteria="ewma") and the
+    bundled model `data/models/default-model_sigmoid.obj`.
 
     Parameters
     ----------
@@ -104,13 +102,6 @@ def rfscore_sigmoid_full(
         Type of object found in Simbad (string)
     ndethist: Spark DataFrame Column
         Column containing the number of detection by ZTF at 3 sigma (int)
-    min_rising_points, min_data_points: int
-        Parameters from fink_sn_activelearning.git
-    rising_criteria: str
-        How to compute derivatives: ewma (default), or diff.
-    model: Spark DataFrame Column, optional
-        Path to the trained model. Default is None, in which case the default
-        model `data/models/default-model.obj` is loaded.
 
     Returns
     -------
@@ -159,28 +150,6 @@ def rfscore_sigmoid_full(
     +----------------+-----+
     <BLANKLINE>
 
-    # We can also specify fink_sn_activelearning parameters
-    >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('cdsxmatch'), F.col('candidate.ndethist')]
-    >>> args += [F.lit(2), F.lit(4), F.lit('ewma')]
-    >>> df = df.withColumn('pIa', rfscore_sigmoid_full(*args))
-
-    >>> df.filter(df['pIa'] > 0.5).count()
-    6
-
-    # We can also specify a different model
-    >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('cdsxmatch'), F.col('candidate.ndethist')]
-    >>> args += [F.lit(1), F.lit(3), F.lit('diff')]
-    >>> args += [F.lit(model_path_al_loop)]
-    >>> df = df.withColumn('pIaAL', rfscore_sigmoid_full(*args))
-
-    >>> df.filter(df['pIaAL'] > 0.5).count()
-    5
-
-    >>> df.agg({"pIaAL": "max"}).collect()[0][0] < 1.0
-    True
-
     # check robustness wrt i-band
     >>> df = spark.read.load(ztf_alert_with_i_band)
 
@@ -202,12 +171,6 @@ def rfscore_sigmoid_full(
     >>> df.filter(df['pIa'] > 0.5).count()
     0
     """
-    if min_rising_points is None:
-        min_rising_points = pd.Series([2])
-    if min_data_points is None:
-        min_data_points = pd.Series([4])
-    if rising_criteria is None:
-        rising_criteria = pd.Series(["ewma"])
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
 
     if len(jd[mask]) == 0:
@@ -216,13 +179,8 @@ def rfscore_sigmoid_full(
     candid = pd.Series(range(len(jd)))
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
-    # Load pre-trained model `clf`
-    if model is not None:
-        clf = load_scikit_model(model.to_numpy()[0])
-    else:
-        curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + "/data/models/default-model_sigmoid.obj"
-        clf = load_scikit_model(model)
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    clf = load_scikit_model(curdir + "/data/models/default-model_sigmoid.obj")
 
     test_features = []
     flag = []
@@ -230,9 +188,9 @@ def rfscore_sigmoid_full(
     for _, pdf_sub in pdf.groupby("SNID"):
         features = get_sigmoid_features_dev_fast(
             pdf_sub,
-            min_rising_points=min_rising_points.to_numpy()[0],
-            min_data_points=min_data_points.to_numpy()[0],
-            rising_criteria=rising_criteria.to_numpy()[0],
+            min_rising_points=2,
+            min_data_points=4,
+            rising_criteria="ewma",
         )
         if (features[0] == 0) or (features[6] == 0):
             flag.append(False)
@@ -258,7 +216,7 @@ def rfscore_sigmoid_full(
     return pd.Series(to_return)
 
 
-@pandas_udf(StringType(), PandasUDFType.SCALAR)
+@pandas_udf(StringType())
 @profile
 def extract_features_rf_snia(
     jd: pd.Series,
@@ -267,15 +225,14 @@ def extract_features_rf_snia(
     sigmapsf: pd.Series,
     cdsxmatch: pd.Series,
     ndethist: pd.Series,
-    min_rising_points=None,
-    min_data_points=None,
-    rising_criteria=None,
 ) -> pd.Series:
     """Return the features used by the RF classifier.
 
     There are 12 features. Order is:
     a_g,b_g,c_g,snratio_g,chisq_g,nrise_g,
     a_r,b_r,c_r,snratio_r,chisq_r,nrise_r
+
+    Uses default parameters: min_rising_points=2, min_data_points=4, rising_criteria="ewma".
 
     Parameters
     ----------
@@ -289,10 +246,6 @@ def extract_features_rf_snia(
         Type of object found in Simbad (string)
     ndethist: Spark DataFrame Column
         Column containing the number of detection by ZTF at 3 sigma (int)
-    min_rising_points, min_data_points: int
-        Parameters from fink_sn_activelearning.git
-    rising_criteria: str
-        How to compute derivatives: ewma (default), or diff.
 
     Returns
     -------
@@ -332,13 +285,6 @@ def extract_features_rf_snia(
     >>> df.agg({RF_FEATURE_NAMES[0]: "min"}).collect()[0][0]
     0.0
     """
-    if min_rising_points is None:
-        min_rising_points = pd.Series([2])
-    if min_data_points is None:
-        min_data_points = pd.Series([4])
-    if rising_criteria is None:
-        rising_criteria = pd.Series(["ewma"])
-
     mask = apply_selection_cuts_ztf(magpsf, ndethist, cdsxmatch)
 
     if len(jd[mask]) == 0:
@@ -352,9 +298,9 @@ def extract_features_rf_snia(
     for _, pdf_sub in pdf.groupby("SNID"):
         features = get_sigmoid_features_dev_fast(
             pdf_sub,
-            min_rising_points=min_rising_points.to_numpy()[0],
-            min_data_points=min_data_points.to_numpy()[0],
-            rising_criteria=rising_criteria.to_numpy()[0],
+            min_rising_points=2,
+            min_data_points=4,
+            rising_criteria="ewma",
         )
         test_features.append(features)
 
