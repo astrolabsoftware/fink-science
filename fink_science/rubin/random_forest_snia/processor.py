@@ -224,7 +224,9 @@ def rfscore_rainbow_elasticc_nometa(
         return pd.Series(np.zeros(len(midpointMjdTai), dtype=float))
 
     curdir = os.path.dirname(os.path.abspath(__file__))
-    clf = pickle.load(open(curdir + "/data/models/elasticc_rainbow_earlyIa_nometa.pkl", "rb"))
+    model_path = os.path.join(curdir, "data", "models", "elasticc_rainbow_earlyIa_nometa.pkl")
+    with open(model_path, "rb") as f:
+        clf = pickle.load(f)
 
     candid = pd.Series(range(len(midpointMjdTai)))
     ids = candid[mask]
