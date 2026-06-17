@@ -285,10 +285,12 @@ def run_potential_hostless(
                         science_stamp, template_stamp
                     )
                 )
-                kstest_results.append({
-                    "kstest_science": kstest_science,
-                    "kstest_template": kstest_template,
-                })
+                kstest_results.append(
+                    {
+                        "kstest_science": kstest_science,
+                        "kstest_template": kstest_template,
+                    }
+                )
             else:
                 kstest_results.append(default_result)
         else:

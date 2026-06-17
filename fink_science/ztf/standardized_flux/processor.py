@@ -142,33 +142,37 @@ def standardized_flux(
     CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(CATALOG_TAG)
     CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
 
-    pdf = pd.DataFrame({
-        "candid": candid,
-        "objectId": objectId,
-        "cdistnr": cdistnr,
-        "cmagpsf": cmagpsf,
-        "csigmapsf": csigmapsf,
-        "cmagnr": cmagnr,
-        "csigmagnr": csigmagnr,
-        "cisdiffpos": cisdiffpos,
-        "cfid": cfid,
-        "cjd": cjd,
-    })
+    pdf = pd.DataFrame(
+        {
+            "candid": candid,
+            "objectId": objectId,
+            "cdistnr": cdistnr,
+            "cmagpsf": cmagpsf,
+            "csigmapsf": csigmapsf,
+            "cmagnr": cmagnr,
+            "csigmagnr": csigmagnr,
+            "cisdiffpos": cisdiffpos,
+            "cfid": cfid,
+            "cjd": cjd,
+        }
+    )
     out = []
     for candid_ in pdf["candid"]:
         tmp = pdf[pdf["candid"] == candid_]
-        sub = pd.DataFrame({
-            "candid": tmp["candid"].to_numpy()[0],
-            "objectId": tmp["objectId"].to_numpy()[0],
-            "cdistnr": tmp["cdistnr"].to_numpy()[0],
-            "cmagpsf": tmp["cmagpsf"].to_numpy()[0],
-            "csigmapsf": tmp["csigmapsf"].to_numpy()[0],
-            "cmagnr": tmp["cmagnr"].to_numpy()[0],
-            "csigmagnr": tmp["csigmagnr"].to_numpy()[0],
-            "cisdiffpos": tmp["cisdiffpos"].to_numpy()[0],
-            "cfid": tmp["cfid"].to_numpy()[0],
-            "cjd": tmp["cjd"].to_numpy()[0],
-        })
+        sub = pd.DataFrame(
+            {
+                "candid": tmp["candid"].to_numpy()[0],
+                "objectId": tmp["objectId"].to_numpy()[0],
+                "cdistnr": tmp["cdistnr"].to_numpy()[0],
+                "cmagpsf": tmp["cmagpsf"].to_numpy()[0],
+                "csigmapsf": tmp["csigmapsf"].to_numpy()[0],
+                "cmagnr": tmp["cmagnr"].to_numpy()[0],
+                "csigmagnr": tmp["csigmagnr"].to_numpy()[0],
+                "cisdiffpos": tmp["cisdiffpos"].to_numpy()[0],
+                "cfid": tmp["cfid"].to_numpy()[0],
+                "cjd": tmp["cjd"].to_numpy()[0],
+            }
+        )
         std_flux = standardized_flux_(sub, CTAO_blazar)
         out.append({"flux": std_flux[0], "sigma": std_flux[1]})
 

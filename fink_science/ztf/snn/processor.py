@@ -14,7 +14,7 @@
 # limitations under the License.
 from line_profiler import profile
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
 
 from supernnova.validation.validate_onthefly import classify_lcs
@@ -81,7 +81,7 @@ def apply_selection_cuts_ztf(
     return mask
 
 
-@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+@pandas_udf(DoubleType())
 @profile
 def snn_ia(
     candid: pd.Series,
@@ -93,7 +93,6 @@ def snn_ia(
     cdsxmatch: pd.Series,
     jdstarthist: pd.Series,
     model_name: pd.Series,
-    model_ext=None,
 ) -> pd.Series:
     """Compute probabilities of alerts to be SN Ia using SuperNNova
 
@@ -111,8 +110,6 @@ def snn_ia(
         SuperNNova pre-trained model. Currently available:
             * snn_snia_vs_nonia
             * snn_sn_vs_all
-    model_ext: Spark DataFrame Column, optional
-        Path to the trained model (overwrite `model`). Default is None
 
     Returns
     -------
@@ -157,15 +154,6 @@ def snn_ia(
     >>> df.filter(df['pIa'] > 0.5).count()
     6
 
-    # Note that we can also specify a model
-    >>> args = [F.col(i) for i in ['candid', 'cjd', 'cfid', 'cmagpsf', 'csigmapsf']]
-    >>> args += [F.col('roid'), F.col('cdsxmatch'), F.col('candidate.jdstarthist')]
-    >>> args += [F.lit(''), F.lit(model_path)]
-    >>> df = df.withColumn('pIa2', snn_ia(*args))
-
-    >>> df.filter(df['pIa2'] > 0.5).count()>5
-    True
-
     # Check robustness wrt i-band
     >>> df = spark.read.load(ztf_alert_with_i_band)
 
@@ -200,15 +188,10 @@ def snn_ia(
     candid = candid.apply(lambda x: str(x))
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
-    if model_ext is not None:
-        # take the first element of the Series
-        model = model_ext.to_numpy()[0]
-    else:
-        # Load pre-trained model
-        curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + "/data/models/snn_models/{}/model.pt".format(
-            model_name.to_numpy()[0]
-        )
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    model = curdir + "/data/models/snn_models/{}/model.pt".format(
+        model_name.to_numpy()[0]
+    )
 
     # Compute predictions
     pdf = pdf.dropna()
@@ -240,9 +223,6 @@ if __name__ == "__main__":
         "file://{}/data/alerts/20240606_iband_history.parquet".format(path)
     )
     globs["ztf_alert_with_i_band"] = ztf_alert_with_i_band
-
-    model_path = "{}/data/models/snn_models/snn_sn_vs_all/model.pt".format(path)
-    globs["model_path"] = model_path
 
     # Run the test suite
     spark_unit_tests(globs)

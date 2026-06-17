@@ -135,15 +135,17 @@ def superluminous_score(
     >>> sum(pdf['proba']==-1)
     121
     """
-    pdf = pd.DataFrame({
-        "is_transient": is_transient,
-        "objectId": objectId,
-        "jdstarthist": jdstarthist,
-        "cjd": cjd,
-        "cmagpsf": cmagpsf,
-        "csigmapsf": csigmapsf,
-        "cfid": cfid,
-    })
+    pdf = pd.DataFrame(
+        {
+            "is_transient": is_transient,
+            "objectId": objectId,
+            "jdstarthist": jdstarthist,
+            "cjd": cjd,
+            "cmagpsf": cmagpsf,
+            "csigmapsf": csigmapsf,
+            "cfid": cfid,
+        }
+    )
 
     pdf["jd"] = pdf["cjd"].apply(np.max)
 

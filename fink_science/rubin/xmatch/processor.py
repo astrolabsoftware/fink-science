@@ -417,9 +417,9 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
     spark = SparkSession.builder.getOrCreate()
     pdf_tns_b = spark.sparkContext.broadcast(pdf_tns)
 
-    tns_schema = StructType([
-        StructField(k, v, True) for k, v in TNS_SPARK_SCHEMA.items()
-    ])
+    tns_schema = StructType(
+        [StructField(k, v, True) for k, v in TNS_SPARK_SCHEMA.items()]
+    )
 
     @pandas_udf(tns_schema)
     def crossmatch_with_tns(
@@ -441,11 +441,13 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         to_return: pd.Series of dict
             TNS name and type for the alert. null if no match.
         """
-        pdf_lsst = pd.DataFrame({
-            "diaSourceId": range(len(ra)),
-            "ra": ra.to_numpy(),
-            "dec": dec.to_numpy(),
-        })
+        pdf_lsst = pd.DataFrame(
+            {
+                "diaSourceId": range(len(ra)),
+                "ra": ra.to_numpy(),
+                "dec": dec.to_numpy(),
+            }
+        )
 
         ra2, dec2, payload = extract_tns(pdf_tns_b.value)
 
@@ -480,9 +482,9 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
 
         default = [None] * len(TNS_SPARK_SCHEMA)
         pdf_merge["return"] = pd.Series([default for i in range(len(pdf_merge))])
-        pdf_merge.loc[mask, "return"] = pd.Series([
-            [None if pd.isna(x) else x for x in payload[i].tolist()] for i in idx2
-        ]).to_numpy()
+        pdf_merge.loc[mask, "return"] = pd.Series(
+            [[None if pd.isna(x) else x for x in payload[i].tolist()] for i in idx2]
+        ).to_numpy()
 
         out = pd.DataFrame.from_dict(
             dict(zip(pdf_merge["return"].index, pdf_merge["return"].values)),
@@ -643,11 +645,13 @@ def crossmatch_other_catalog(
     # set separation length
     radius_arcsec = float(radius_arcsec.to_numpy()[0])
 
-    pdf = pd.DataFrame({
-        "ra": ra.to_numpy(),
-        "dec": dec.to_numpy(),
-        "diaSourceId": range(len(ra)),
-    })
+    pdf = pd.DataFrame(
+        {
+            "ra": ra.to_numpy(),
+            "dec": dec.to_numpy(),
+            "diaSourceId": range(len(ra)),
+        }
+    )
 
     curdir = os.path.dirname(os.path.abspath(__file__))
     if catalog_name.to_numpy()[0] == "gcvs":
@@ -770,11 +774,13 @@ def crossmatch_mangrove(
     # set separation length
     radius_arcsec = float(radius_arcsec.to_numpy()[0])
 
-    pdf = pd.DataFrame({
-        "ra": ra.to_numpy(),
-        "dec": dec.to_numpy(),
-        "diaSourceId": range(len(ra)),
-    })
+    pdf = pd.DataFrame(
+        {
+            "ra": ra.to_numpy(),
+            "dec": dec.to_numpy(),
+            "diaSourceId": range(len(ra)),
+        }
+    )
 
     curdir = os.path.dirname(os.path.abspath(__file__))
     catalog = curdir + "/data/catalogs/mangrove_filtered.parquet"

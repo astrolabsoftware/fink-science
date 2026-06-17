@@ -14,7 +14,7 @@
 # limitations under the License.
 from line_profiler import profile
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType, StringType
 
 import pandas as pd
@@ -34,7 +34,7 @@ from kndetect.features import extract_features_all_lightcurves, get_feature_name
 from fink_science.tester import spark_unit_tests
 
 
-@pandas_udf(DoubleType(), PandasUDFType.SCALAR)
+@pandas_udf(DoubleType())
 @profile
 def knscore(
     jd: pd.Series,
@@ -44,11 +44,10 @@ def knscore(
     jdstarthist: pd.Series,
     cdsxmatch: pd.Series,
     ndethist: pd.Series,
-    model_name=None,
 ) -> pd.Series:
     """Return the probability of an alert to be a Kilonova using a Random Forest Classifier.
 
-    You need to run the SIMBAD crossmatch before.
+    You need to run the SIMBAD crossmatch before. Uses model "partial.pkl" from kndetect.
 
     Parameters
     ----------
@@ -64,10 +63,6 @@ def knscore(
         Column containing the number of detection by ZTF at 3 sigma (int)
     jdstarthist: Spark DataFrame Column
         Column containing first time variability has been seen
-    model_name: str
-        Nome of the model to be fetched from the kndetect package.
-        supported options: "complete.pkl", "partial.pkl"
-        deault is "partial.pkl" (model trained for complete light curves)
 
     Returns
     -------
@@ -110,15 +105,6 @@ def knscore(
     |           0.0|0.6333333333333333|
     +--------------+------------------+
     <BLANKLINE>
-
-    # Perform the fit + classification (another model)
-    >>> args = [F.col(i) for i in what_prefix]
-    >>> args += [F.col('candidate.jdstarthist'), F.col('cdsxmatch'), F.col('candidate.ndethist')]
-    >>> args += [F.lit('partial.pkl')]
-    >>> df = df.withColumn('pKNe', knscore(*args))
-
-    >>> df.filter(df['pKNe'] > 0.5).count()
-    1
 
     # check robustness wrt i-band
     >>> df = spark.read.load(ztf_alert_with_i_band)
@@ -166,19 +152,17 @@ def knscore(
     flux, error = np.transpose(data)
 
     # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict({
-        "SNID": df_tmp["SNID"],
-        "MJD": df_tmp["jd"],
-        "FLUXCAL": flux,
-        "FLUXCALERR": error,
-        "FLT": fid[mask].explode().replace({1: "g", 2: "r"}),
-    })
+    pdf = pd.DataFrame.from_dict(
+        {
+            "SNID": df_tmp["SNID"],
+            "MJD": df_tmp["jd"],
+            "FLUXCAL": flux,
+            "FLUXCALERR": error,
+            "FLT": fid[mask].explode().replace({1: "g", 2: "r"}),
+        }
+    )
 
-    # Load pre-trained model
-    if model_name is None:
-        model = load_classifier("partial.pkl")
-    else:
-        model = load_classifier(model_name.to_numpy()[0])
+    model = load_classifier("partial.pkl")
 
     # Load pcs
     pcs = load_pcs()
@@ -275,13 +259,15 @@ def extract_features_knscore(
     flux, error = np.transpose(data)
 
     # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict({
-        "SNID": df_tmp["SNID"],
-        "MJD": df_tmp["jd"],
-        "FLUXCAL": flux,
-        "FLUXCALERR": error,
-        "FLT": fid[mask].explode().replace({1: "g", 2: "r"}),
-    })
+    pdf = pd.DataFrame.from_dict(
+        {
+            "SNID": df_tmp["SNID"],
+            "MJD": df_tmp["jd"],
+            "FLUXCAL": flux,
+            "FLUXCALERR": error,
+            "FLT": fid[mask].explode().replace({1: "g", 2: "r"}),
+        }
+    )
 
     # Load pcs
     pcs = load_pcs()
@@ -311,9 +297,6 @@ if __name__ == "__main__":
 
     globs = globals()
     path = os.path.dirname(__file__)
-
-    model_name = "partial.pkl"
-    globs["model_name"] = model_name
 
     ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample

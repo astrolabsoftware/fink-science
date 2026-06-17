@@ -14,7 +14,7 @@
 # limitations under the License.
 from line_profiler import profile
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import FloatType, ArrayType
 
 from supernnova.validation.validate_onthefly import classify_lcs
@@ -32,7 +32,7 @@ from fink_utils.data.utils import format_data_as_snana
 from fink_science.tester import spark_unit_tests
 
 
-@pandas_udf(FloatType(), PandasUDFType.SCALAR)
+@pandas_udf(FloatType())
 @profile
 def snn_ia_elasticc(
     diaSourceId: pd.Series,
@@ -41,7 +41,6 @@ def snn_ia_elasticc(
     psfFlux: pd.Series,
     psfFluxErr: pd.Series,
     model_name: pd.Series,
-    model_ext=None,
 ) -> pd.Series:
     """Compute probabilities of alerts to be SN Ia using SuperNNova
 
@@ -60,8 +59,6 @@ def snn_ia_elasticc(
     model_name: Spark DataFrame Column
         SuperNNova pre-trained model. Currently available:
             * elasticc
-    model_ext: Spark DataFrame Column, optional
-        Path to the trained model (overwrite `model_name`). Default is None
 
     Returns
     -------
@@ -129,15 +126,10 @@ def snn_ia_elasticc(
         transform_to_flux=False,
     )
 
-    if model_ext is not None:
-        # take the first element of the Series
-        model = model_ext.to_numpy()[0]
-    else:
-        # Load pre-trained model
-        curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + "/data/models/snn_models/{}/model.pt".format(
-            model_name.to_numpy()[0]
-        )
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    model = curdir + "/data/models/snn_models/{}/model.pt".format(
+        model_name.to_numpy()[0]
+    )
 
     # Compute predictions
     if len(pdf) == 0:
@@ -165,7 +157,7 @@ def extract_max_prob(arr):
     return {"class": index, "prob": array[index]}
 
 
-@pandas_udf(ArrayType(FloatType()), PandasUDFType.SCALAR)
+@pandas_udf(ArrayType(FloatType()))
 @profile
 def snn_broad_elasticc(
     diaSourceId: pd.Series,
@@ -174,7 +166,6 @@ def snn_broad_elasticc(
     psfFlux: pd.Series,
     psfFluxErr: pd.Series,
     model_name: pd.Series,
-    model_ext=None,
 ) -> pd.Series:
     """Compute main class and associated probability for each alert
 
@@ -193,8 +184,6 @@ def snn_broad_elasticc(
     model_name: Spark DataFrame Column
         SuperNNova pre-trained model. Currently available:
             * elasticc
-    model_ext: Spark DataFrame Column, optional
-        Path to the trained model (overwrite `model_name`). Default is None
 
     Returns
     -------
@@ -224,15 +213,10 @@ def snn_broad_elasticc(
         transform_to_flux=False,
     )
 
-    if model_ext is not None:
-        # take the first element of the Series
-        model = model_ext.to_numpy()[0]
-    else:
-        # Load pre-trained model
-        curdir = os.path.dirname(os.path.abspath(__file__))
-        model = curdir + "/data/models/snn_models/{}/model.pt".format(
-            model_name.to_numpy()[0]
-        )
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    model = curdir + "/data/models/snn_models/{}/model.pt".format(
+        model_name.to_numpy()[0]
+    )
 
     # Compute predictions
     if len(pdf) == 0:

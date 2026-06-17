@@ -527,22 +527,24 @@ def extract_ssoft_parameters(
                 extract_array_from_series(jd, index, float),
                 extract_array_from_series(dobs, index, float),
             )
-            pdf = pd.DataFrame({
-                "cmred": magpsf_red,
-                "csigmapsf": extract_array_from_series(sigmapsf, index, float),
-                "Phase": extract_array_from_series(phase, index, float),
-                "cfid": extract_array_from_series(fid, index, int),
-                "ra": extract_array_from_series(raobs, index, float),
-                "dec": extract_array_from_series(decobs, index, float),
-                "cjd": jd_lt,
-                "i:raephem": extract_array_from_series(raephem, index, float),
-                "i:decephem": extract_array_from_series(decephem, index, float),
-                "ra_s": extract_array_from_series(raephem, index, float),
-                "dec_s": extract_array_from_series(decephem, index, float),
-                "cdx": extract_array_from_series(cdx, index, float),
-                "cdy": extract_array_from_series(cdy, index, float),
-                "Dhelio": extract_array_from_series(dhelio, index, float),
-            })
+            pdf = pd.DataFrame(
+                {
+                    "cmred": magpsf_red,
+                    "csigmapsf": extract_array_from_series(sigmapsf, index, float),
+                    "Phase": extract_array_from_series(phase, index, float),
+                    "cfid": extract_array_from_series(fid, index, int),
+                    "ra": extract_array_from_series(raobs, index, float),
+                    "dec": extract_array_from_series(decobs, index, float),
+                    "cjd": jd_lt,
+                    "i:raephem": extract_array_from_series(raephem, index, float),
+                    "i:decephem": extract_array_from_series(decephem, index, float),
+                    "ra_s": extract_array_from_series(raephem, index, float),
+                    "dec_s": extract_array_from_series(decephem, index, float),
+                    "cdx": extract_array_from_series(cdx, index, float),
+                    "cdy": extract_array_from_series(cdy, index, float),
+                    "Dhelio": extract_array_from_series(dhelio, index, float),
+                }
+            )
             pdf = pdf.sort_values("cjd")
 
             # Clean data in-place
@@ -565,9 +567,9 @@ def extract_ssoft_parameters(
             )
 
             # Wrap columns inplace
-            pdf_transposed = pd.DataFrame({
-                colname: [pdf[colname].to_numpy()] for colname in pdf.columns
-            })
+            pdf_transposed = pd.DataFrame(
+                {colname: [pdf[colname].to_numpy()] for colname in pdf.columns}
+            )
 
             base_kwargs = dict(
                 use_angles=True,
@@ -604,20 +606,22 @@ def extract_ssoft_parameters(
                 }
             )
         else:
-            pdf = pd.DataFrame({
-                "i:ssnamenr": [ssname] * len(raobs.to_numpy()[index]),
-                "i:magpsf": extract_array_from_series(magpsf, index, float),
-                "i:sigmapsf": extract_array_from_series(sigmapsf, index, float),
-                "i:jd": extract_array_from_series(jd, index, float),
-                "i:fid": extract_array_from_series(fid, index, int),
-                "i:ra": extract_array_from_series(raobs, index, float),
-                "i:dec": extract_array_from_series(decobs, index, float),
-                "i:raephem": extract_array_from_series(raephem, index, float),
-                "i:decephem": extract_array_from_series(decephem, index, float),
-                "i:magpsf_red": magpsf_red,
-                "Phase": extract_array_from_series(phase, index, float),
-                "Dobs": extract_array_from_series(dobs, index, float),
-            })
+            pdf = pd.DataFrame(
+                {
+                    "i:ssnamenr": [ssname] * len(raobs.to_numpy()[index]),
+                    "i:magpsf": extract_array_from_series(magpsf, index, float),
+                    "i:sigmapsf": extract_array_from_series(sigmapsf, index, float),
+                    "i:jd": extract_array_from_series(jd, index, float),
+                    "i:fid": extract_array_from_series(fid, index, int),
+                    "i:ra": extract_array_from_series(raobs, index, float),
+                    "i:dec": extract_array_from_series(decobs, index, float),
+                    "i:raephem": extract_array_from_series(raephem, index, float),
+                    "i:decephem": extract_array_from_series(decephem, index, float),
+                    "i:magpsf_red": magpsf_red,
+                    "Phase": extract_array_from_series(phase, index, float),
+                    "Dobs": extract_array_from_series(dobs, index, float),
+                }
+            )
 
             pdf = pdf.sort_values("i:jd")
 
@@ -788,8 +792,7 @@ def build_the_ssoft(
     # Note: we compute the size of Phase
     # because Phase can be null due to no ephemerides
     df = (
-        df
-        .withColumn("ephemmeasurements", F.size(df["Phase"]))
+        df.withColumn("ephemmeasurements", F.size(df["Phase"]))
         .filter(F.col("ephemmeasurements") >= nmin)
         .filter(F.size("cmagpsf") == F.size("Phase"))
         .repartition(nparts)
@@ -825,8 +828,7 @@ def build_the_ssoft(
     cols = ["ssnamenr", "params_str"]
     t0 = time.time()
     pdf = (
-        df
-        .withColumn(
+        df.withColumn(
             "params_str",
             extract_ssoft_parameters(
                 F.col("ssnamenr").astype("string"),
