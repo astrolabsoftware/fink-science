@@ -121,12 +121,14 @@ def _flaapluc_download(flaapluc_static_path: str) -> pd.DataFrame:
         )
         deviations.append(absolute_deviation / sigma_conversion)
 
-    dataset = pd.DataFrame({
-        "4FGL_name": source_names,
-        "mjd": times,
-        "sigma_deviation": deviations,
-        "gamma_flux": decoded["alert"]["flux"],
-    })
+    dataset = pd.DataFrame(
+        {
+            "4FGL_name": source_names,
+            "mjd": times,
+            "sigma_deviation": deviations,
+            "gamma_flux": decoded["alert"]["flux"],
+        }
+    )
     return dataset
 
 
