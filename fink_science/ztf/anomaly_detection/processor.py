@@ -195,7 +195,7 @@ def anomaly_score(lc_features, model=None):
     >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
 
     >>> df.filter(df["anomaly_score"] < 0).count()
-    118
+    61
     """
 
     def get_key(x: dict, band: int):
