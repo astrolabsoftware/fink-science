@@ -50,8 +50,6 @@ jobs:
 
     - name: ${{ matrix.survey }} test suite
       run: |
-        pip install fink-utils==0.69.0
-        pip install fink-tns==1.0
         rm -f /tmp/forest_*.onnx
         ./run_tests.sh -s ${{ matrix.survey }}
         curl -s https://codecov.io/bash | bash
