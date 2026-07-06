@@ -49,7 +49,7 @@ CDF_TAG = CDF_COL[0]
 # Integration periods for the computation
 # of the fluence in the robustness criterion
 INTEGRATION_PERIOD_LOW = 30
-INTEGRATION_PERIOD_HIGH = 30
+INTEGRATION_PERIOD_HIGH = 5
 
 # Radius for the cone search in the Data Release
 RADIUS = 2
