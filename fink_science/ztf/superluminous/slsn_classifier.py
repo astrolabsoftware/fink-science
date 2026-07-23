@@ -36,6 +36,7 @@ import io
 
 import warnings
 from light_curve.light_curve_py import warnings as rainbow_warnings
+
 warnings.filterwarnings("ignore", category=rainbow_warnings.ExperimentalWarning)
 
 
@@ -71,9 +72,9 @@ def compute_flux(pdf):
     >>> np.testing.assert_allclose(np.array([new["csigflux"][k] for k in range(2)]), true_err, rtol=1e-3)
     """
     conversion = pdf[["cmagpsf", "csigmapsf"]].apply(
-        lambda x: np.transpose(
-            [mag2fluxcal_snana(*i) for i in zip(x["cmagpsf"], x["csigmapsf"])]
-        ),
+        lambda x: np.transpose([
+            mag2fluxcal_snana(*i) for i in zip(x["cmagpsf"], x["csigmapsf"])
+        ]),
         axis=1,
     )
 
@@ -462,17 +463,15 @@ def remove_nan(pdf):
     for k in ["cjd", "cmagpsf", "csigmapsf", "cfid", "csigflux", "cflux"]:
         if k in pdf.columns:
             pdf.loc[:, k] = pdf.apply(
-                lambda row: np.array(
-                    [
-                        a
-                        for a, b in zip(
-                            row[k],
-                            (np.array(row["cflux"]) == row["cflux"])
-                            & (np.array(row["cflux"]) != None),  # noqa: E711
-                        )
-                        if b
-                    ]
-                ),
+                lambda row: np.array([
+                    a
+                    for a, b in zip(
+                        row[k],
+                        (np.array(row["cflux"]) == row["cflux"])
+                        & (np.array(row["cflux"]) != None),  # noqa: E711
+                    )
+                    if b
+                ]),
                 axis=1,
             )
 
@@ -504,16 +503,14 @@ def remove_bad_bands(pdf):
     for k in ["cjd", "cmagpsf", "csigmapsf", "csigflux", "cflux", "cfid"]:
         if k in pdf.columns:
             pdf.loc[:, k] = pdf.apply(
-                lambda row: np.array(
-                    [
-                        a
-                        for a, b in zip(
-                            row[k],
-                            (np.isin(row["cfid"], list(kern.band_wave_aa.keys()))),  # noqa: E711
-                        )
-                        if b
-                    ]
-                ),
+                lambda row: np.array([
+                    a
+                    for a, b in zip(
+                        row[k],
+                        (np.isin(row["cfid"], list(kern.band_wave_aa.keys()))),  # noqa: E711
+                    )
+                    if b
+                ]),
                 axis=1,
             )
 
@@ -752,7 +749,7 @@ def statistical_features(lc):
     std = np.std(normed_flux)
     q15 = np.quantile(shifted_time, 0.15)
     q85 = np.quantile(shifted_time, 0.85)
-    ntrends = ntrend_changes(lc['cflux'], lc['csigflux'], lc['cfid'])
+    ntrends = ntrend_changes(lc["cflux"], lc["csigflux"], lc["cfid"])
 
     return list(result) + [peak_mag_g, peak_mag_r, std, q15, q85, ntrends]
 
