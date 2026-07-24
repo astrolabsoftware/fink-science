@@ -244,26 +244,21 @@ def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
     if (z == z) and (zerr == zerr):
         cosmo = LambdaCDM(H0=67.8, Om0=0.308, Ode0=0.692)
 
-        Ms_lambda = []
+        # Distance modulus does not depend on band, so compute it once for all
+        # three redshifts (z-zerr, z, z+zerr) instead of once per band per k.
+        effective_z = np.maximum(z + np.array([-1, 0, 1]) * zerr, 1e-3)
+        D_L = cosmo.luminosity_distance(effective_z).to("pc").value
+        distmod = 5 * np.log10(D_L / 10) + 2.5 * np.log10(1 + effective_z)
 
-        for band in range(len(app_peak)):
-            Ms = []
-            for k in [-1, 0, 1]:
-                effective_z = max(z + k * zerr, 1e-3)
-                D_L = cosmo.luminosity_distance(effective_z).to("pc").value
-                M = (
-                    app_peak[band]
-                    - 5 * np.log10(D_L / 10)
-                    - 2.5 * np.log10(1 + effective_z)
-                    - compute_milky_way_extinction(ebv, lambda_angstrom[band])
-                )
-                Ms.append(M)
-            Ms_lambda.append(Ms)
+        Ms_lambda = np.array([
+            app_peak[band] - distmod - compute_milky_way_extinction(ebv, lambda_angstrom[band])
+            for band in range(len(app_peak))
+        ])
 
         # Find the band with the highest absolute magnitude
-        brightest = np.argmin(np.array(Ms_lambda)[:, 1])
+        brightest = np.argmin(Ms_lambda[:, 1])
 
-        return np.array(Ms_lambda[brightest])
+        return Ms_lambda[brightest]
 
     return np.array([np.nan, np.nan, np.nan])
 
