@@ -57,8 +57,9 @@ def superluminous_score(
        (`slsn_classifier.extract_features`).
     4. Runs the pre-trained classifier (`kernel.classifier_path`) to get a
        SLSN probability.
-    5. For alerts above the classifier's optimal threshold, queries an SDSS
-       photo-z (`slsn_classifier.add_all_photoz`) and computes the
+    5. For alerts above the classifier's optimal threshold, crossmatches
+       against the REGALADE galaxy catalog for a host photo-z
+       (`slsn_classifier.add_all_photoz`) and computes the
        brightest plausible peak absolute magnitude
        (`slsn_classifier.abs_peak`). Sources that cannot plausibly be as
        bright as `kernel.not_sl_threshold` even in the best case have their
@@ -256,7 +257,7 @@ def superluminous_score(
         # Mask only alerts classified as SLSN
         mask_is_SLSN = probas > clf.optimal_threshold
 
-        # Check the SDSS photo-z for these alerts
+        # Check the REGALADE host photo-z for these alerts
         SLSN_features = features[mask_is_SLSN].copy()
 
         if len(SLSN_features) > 0:

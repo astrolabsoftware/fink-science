@@ -31,6 +31,26 @@ curdir = os.path.dirname(os.path.abspath(__file__))
 # `feature_names_in_` and `optimal_threshold` attributes.
 classifier_path = curdir + "/data/models/superluminous_classifier.joblib"
 
+# Path to the REGALADE galaxy catalog (Tranin et al., see
+# https://github.com/htranin/regalade), reduced to the columns needed for
+# host crossmatch and photo-z (gal_ra, gal_dec, R1, R2, PA, z, z_err) and to
+# the ZTF-visible sky (dec > -30). Not distributed with the package (~1.5GB,
+# far above what can be committed to git or bundled in a pip package) --
+# see fink_science/data/catalogs/README.md for how to obtain it.
+regalade_path = curdir + "/data/catalogs/regalade_minimal_ZTF.fits"
+
+# Directional light radius (DLR) scale factor applied to the REGALADE
+# ellipses before host crossmatch (see `slsn_classifier.get_regalade_photoz`):
+# grows every galaxy's ellipse to avoid missing transients hosted with large
+# offsets. Same value used to build the training set, see
+# `create_photoz_table.py` in the training pipeline.
+regalade_dlr_factor = 1.25
+
+# Number of geomspace bins (by ellipse semi-major axis R1) used to speed up
+# the REGALADE host crossmatch on the ~56M-galaxy catalog. Same value used
+# to build the training set.
+regalade_nbins = 20
+
 # Effective wavelength (in Angstrom) of the ZTF filters, keyed by their
 # `fid`/`cfid` integer code (1=g, 2=r). Used both to fit the Rainbow model
 # (`fit_rainbow`) and to compute Milky Way extinction and absolute
