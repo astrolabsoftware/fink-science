@@ -250,10 +250,14 @@ def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
         D_L = cosmo.luminosity_distance(effective_z).to("pc").value
         distmod = 5 * np.log10(D_L / 10) + 2.5 * np.log10(1 + effective_z)
 
-        Ms_lambda = np.array([
-            app_peak[band] - distmod - compute_milky_way_extinction(ebv, lambda_angstrom[band])
-            for band in range(len(app_peak))
-        ])
+        Ms_lambda = np.array(
+            [
+                app_peak[band]
+                - distmod
+                - compute_milky_way_extinction(ebv, lambda_angstrom[band])
+                for band in range(len(app_peak))
+            ]
+        )
 
         # Find the band with the highest absolute magnitude
         brightest = np.argmin(Ms_lambda[:, 1])
