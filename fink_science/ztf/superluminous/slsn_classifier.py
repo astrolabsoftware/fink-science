@@ -29,8 +29,6 @@ from astropy.coordinates import SkyCoord
 from dustmaps.sfd import SFDQuery
 import os
 import contextlib
-import requests
-import urllib.parse
 from fink_science import __file__
 import io
 
@@ -267,73 +265,189 @@ def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
     return np.array([np.nan, np.nan, np.nan])
 
 
-def get_sdss_photoz(ra, dec, radius=0.2):
-    """Retrieve photoz from SDSS
+_regalade_table = None
+
+
+def _get_regalade_table():
+    """Lazily load and cache the REGALADE galaxy catalog.
+
+    Notes
+    -----
+    The catalog (~1.5GB) is not distributed with the package, see
+    `kernel.regalade_path` and `fink_science/data/catalogs/README.md`.
+    Cached at module level so a Spark worker only pays the FITS read once,
+    not once per micro-batch.
+    """
+    global _regalade_table
+    if _regalade_table is None:
+        _regalade_table = Table.read(kern.regalade_path)
+    return _regalade_table
+
+
+def _ellipse_separation(gal_c, pt_c, r1, r2, pa_deg):
+    """Normalized elliptical separation between paired galaxy/point coordinates.
+
+    Notes
+    -----
+    Same definition as `ellipse_xmatch.ellipse_separation`
+    (https://github.com/htranin/ellipse_xmatch), vendored here to avoid an
+    extra runtime dependency for ~30 lines of code: the angular distance
+    from `gal_c` to `pt_c`, divided by the galaxy ellipse's radius in that
+    same direction. 0 at the galaxy center, 1 on the ellipse boundary, >1
+    outside.
 
     Parameters
     ----------
-    ra: array
-        Right ascension of the source(s).
-    dec: array
-        Declination of the source(s).
-    radius: float
-        Maximum angular distance for association
-        with SDSS candidate.
-        Default is 0.2
+    gal_c, pt_c: SkyCoord
+        Equal-length arrays of paired candidate (galaxy, point) coordinates.
+    r1, r2: array-like
+        Semi-major / semi-minor axes, in arcsec.
+    pa_deg: array-like
+        Position angle in degrees, East of North.
 
     Returns
     -------
-    tuple
-        Photometric redshift and it"s uncertainty
+    np.array
+        Normalized elliptical separation for each pair.
+    """
+    dlon, dlat = gal_c.spherical_offsets_to(pt_c)
+    dE = dlon.to(u.arcsec).value
+    dN = dlat.to(u.arcsec).value
+
+    pa = np.deg2rad(np.asarray(pa_deg, dtype=float))
+    x_major = dE * np.sin(pa) + dN * np.cos(pa)
+    y_minor = dE * np.cos(pa) - dN * np.sin(pa)
+
+    return np.sqrt((x_major / r1) ** 2 + (y_minor / r2) ** 2)
+
+
+def get_regalade_photoz(ra, dec):
+    """Crossmatch coordinates against the REGALADE galaxy catalog for a host photo-z.
+
+    Notes
+    -----
+    For each point, every galaxy whose DLR-scaled ellipse (semi-major axis
+    R1, semi-minor R2, position angle PA, scaled by
+    `kernel.regalade_dlr_factor`) contains the point is a candidate host;
+    the closest one (smallest normalized ellipse separation, see
+    `_ellipse_separation`) is kept. Galaxies are binned by R1
+    (`kernel.regalade_nbins` geomspace bins) and matched with
+    `SkyCoord.search_around_sky` per bin, using that bin's max R1 as the
+    search radius -- this can't miss a true match (the ellipse is always
+    inscribed in a circle of radius R1) and is much faster than a single
+    search at the catalog's largest R1. Exactly the crossmatch used to
+    build the training set, see `create_photoz_table.py` in the training
+    pipeline and https://github.com/htranin/ellipse_xmatch.
+
+    Parameters
+    ----------
+    ra, dec: array
+        Right ascension and declination of the source(s), in degrees.
+
+    Returns
+    -------
+    tuple of np.array
+        Photometric redshift and its uncertainty, one pair per input
+        coordinate. NaN where no host galaxy is found.
 
     Examples
     --------
-    # We cannot check for a precise location in case SDSS servers are not responding
-    # After 5 sec, it will time out and output np.nan
-    >>> get_sdss_photoz(66, 66)
-    (nan, nan)
-
-    # A location within the main SDSS footprint, with a wide radius,
-    # should return a real match (DR16 is a frozen data release, so the
-    # values are stable over time).
-    >>> np.testing.assert_allclose(get_sdss_photoz(180.0, 30.0, radius=60.0),
-    ... [0.504143, 0.109665], rtol=1e-4)
+    # A location with no galaxy nearby: no match.
+    >>> photoz, photozerr = get_regalade_photoz(np.array([0.]), np.array([89.]))
+    >>> np.testing.assert_allclose(photoz, [np.nan], equal_nan=True)
     """
-    try:
-        query = f"""
-        SELECT TOP 1 p.objID, p.ra, p.dec, z.z AS photoz, z.zErr AS photozErr
-        FROM PhotoObj AS p
-        JOIN Photoz AS z ON p.objID = z.objID
-        JOIN dbo.fGetNearbyObjEq({ra}, {dec}, {radius}) AS n
-          ON p.objID = n.objID
-        ORDER BY n.distance
-        """
+    ra = np.asarray(ra, dtype=float)
+    dec = np.asarray(dec, dtype=float)
 
-        base_url = "https://skyserver.sdss.org/dr16/SkyServerWS/SearchTools/SqlSearch"
-        params = {"cmd": query, "format": "json"}
+    photoz = np.full(len(ra), np.nan)
+    photozerr = np.full(len(ra), np.nan)
 
-        url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    gal = _get_regalade_table()
 
-        response = requests.get(url, timeout=5)
+    # restrict to the sky patch actually covered by the points, to skip
+    # most of the ~56M galaxies
+    gal_ra = np.asarray(gal["gal_ra"])
+    gal_dec = np.asarray(gal["gal_dec"])
+    sel = np.ones(len(gal), dtype=bool)
+    if ra.min() > 10:
+        sel &= gal_ra > ra.min() - 10
+    if ra.max() < 350:
+        sel &= gal_ra < ra.max() + 10
+    if dec.min() > -80:
+        sel &= gal_dec > dec.min() - 10
+    if dec.max() < 80:
+        sel &= gal_dec < dec.max() + 10
+    gal = gal[sel]
 
-        # check we get a valid response
-        if response.status_code != 200:
-            return np.nan, np.nan
+    if len(gal) == 0:
+        return photoz, photozerr
 
-        payload = response.json()
+    gal_coord = SkyCoord(
+        ra=np.asarray(gal["gal_ra"]) * u.deg, dec=np.asarray(gal["gal_dec"]) * u.deg
+    )
+    pt_coord = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
 
-        # check the payload is not empty
-        if isinstance(payload, list) and len(payload) > 0:
-            table = payload[0].get("Rows", [])
+    R1 = np.asarray(gal["R1"], dtype=float) * kern.regalade_dlr_factor
+    R2 = np.asarray(gal["R2"], dtype=float) * kern.regalade_dlr_factor
+    PA = np.asarray(gal["PA"], dtype=float)
+
+    r1_pos = R1[R1 > 0]
+    if r1_pos.size == 0:
+        return photoz, photozerr
+
+    bin_edges = np.geomspace(r1_pos.min(), R1.max(), kern.regalade_nbins + 1)
+
+    match_pt, match_z, match_zerr, match_sep = [], [], [], []
+
+    for i in range(kern.regalade_nbins):
+        lo, hi = bin_edges[i], bin_edges[i + 1]
+        if i < kern.regalade_nbins - 1:
+            binsel = (R1 >= lo) & (R1 < hi)
         else:
-            return np.nan, np.nan
+            binsel = (R1 >= lo) & (R1 <= hi)
 
-        if len(table) > 0:
-            return table[0]["photoz"], table[0]["photozErr"]
+        if not np.any(binsel):
+            continue
 
-    except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
-        return np.nan, np.nan
-    return np.nan, np.nan
+        sub_idx = np.where(binsel)[0]
+        idx_p, idx_g, _, _ = gal_coord[sub_idx].search_around_sky(
+            pt_coord, hi * u.arcsec
+        )
+
+        if len(idx_g) == 0:
+            continue
+
+        gal_idx = sub_idx[idx_g]
+        sep = _ellipse_separation(
+            gal_coord[gal_idx], pt_coord[idx_p], R1[gal_idx], R2[gal_idx], PA[gal_idx]
+        )
+        keep = sep <= 1.0
+
+        match_pt.append(idx_p[keep])
+        match_z.append(np.asarray(gal["z"], dtype=float)[gal_idx[keep]])
+        match_zerr.append(np.asarray(gal["z_err"], dtype=float)[gal_idx[keep]])
+        match_sep.append(sep[keep])
+
+    if not match_pt:
+        return photoz, photozerr
+
+    match_pt = np.concatenate(match_pt)
+    match_z = np.concatenate(match_z)
+    match_zerr = np.concatenate(match_zerr)
+    match_sep = np.concatenate(match_sep)
+
+    # a point can fall inside more than one galaxy's ellipse -> keep the closest one
+    order = np.argsort(match_sep)
+    assigned = np.zeros(len(ra), dtype=bool)
+    for idx in order:
+        p = match_pt[idx]
+        if assigned[p]:
+            continue
+        assigned[p] = True
+        photoz[p] = match_z[idx]
+        photozerr[p] = match_zerr[idx]
+
+    return photoz, photozerr
 
 
 def add_all_photoz(pdf):
@@ -352,25 +466,27 @@ def add_all_photoz(pdf):
 
     Examples
     --------
-    # We cannot check for a precise location in case SDSS servers are not responding
-    # After 5 sec, it will time out and output np.nan
     >>> pdf = pd.DataFrame(data={"objectId":["a", "b"],
-    ... "ra": [66, 66], "dec": [66, 66]})
+    ... "ra": [0., 0.], "dec": [89., 89.]})
     >>> pdf = add_all_photoz(pdf)
     >>> np.testing.assert_allclose(pdf["photoz"].values, [np.nan, np.nan], equal_nan=True)
     >>> np.testing.assert_allclose(pdf["photozerr"].values, [np.nan, np.nan], equal_nan=True)
 
-    # Empty input: no SDSS query is made, columns are added empty.
+    # Empty input: no crossmatch is attempted, columns are added empty.
     >>> empty = pd.DataFrame(data={"objectId": [], "ra": [], "dec": []})
     >>> empty = add_all_photoz(empty)
     >>> list(empty.columns)
     ['objectId', 'ra', 'dec', 'photoz', 'photozerr']
     """
     if len(pdf) > 0:
-        unique_objs = pdf.drop_duplicates(subset="objectId")[["objectId", "ra", "dec"]]
-        unique_objs[["photoz", "photozerr"]] = unique_objs.apply(
-            lambda x: get_sdss_photoz(x["ra"], x["dec"]), axis=1, result_type="expand"
+        unique_objs = pdf.drop_duplicates(subset="objectId")[
+            ["objectId", "ra", "dec"]
+        ].reset_index(drop=True)
+        photoz, photozerr = get_regalade_photoz(
+            unique_objs["ra"].to_numpy(), unique_objs["dec"].to_numpy()
         )
+        unique_objs["photoz"] = photoz
+        unique_objs["photozerr"] = photozerr
         pdf = pdf.merge(
             unique_objs[["objectId", "photoz", "photozerr"]], on="objectId", how="left"
         )
