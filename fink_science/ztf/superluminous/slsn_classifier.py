@@ -27,6 +27,7 @@ from dust_extinction.parameter_averages import F99
 from astropy.cosmology import LambdaCDM
 from astropy.coordinates import SkyCoord
 from dustmaps.sfd import SFDQuery
+from ellipse_xmatch import crossmatch_ellipses
 import os
 import contextlib
 from fink_science import __file__
@@ -284,60 +285,18 @@ def _get_regalade_table():
     return _regalade_table
 
 
-def _ellipse_separation(gal_c, pt_c, r1, r2, pa_deg):
-    """Normalized elliptical separation between paired galaxy/point coordinates.
-
-    Notes
-    -----
-    Same definition as `ellipse_xmatch.ellipse_separation`
-    (https://github.com/htranin/ellipse_xmatch), vendored here to avoid an
-    extra runtime dependency for ~30 lines of code: the angular distance
-    from `gal_c` to `pt_c`, divided by the galaxy ellipse's radius in that
-    same direction. 0 at the galaxy center, 1 on the ellipse boundary, >1
-    outside.
-
-    Parameters
-    ----------
-    gal_c, pt_c: SkyCoord
-        Equal-length arrays of paired candidate (galaxy, point) coordinates.
-    r1, r2: array-like
-        Semi-major / semi-minor axes, in arcsec.
-    pa_deg: array-like
-        Position angle in degrees, East of North.
-
-    Returns
-    -------
-    np.array
-        Normalized elliptical separation for each pair.
-    """
-    dlon, dlat = gal_c.spherical_offsets_to(pt_c)
-    dE = dlon.to(u.arcsec).value
-    dN = dlat.to(u.arcsec).value
-
-    pa = np.deg2rad(np.asarray(pa_deg, dtype=float))
-    x_major = dE * np.sin(pa) + dN * np.cos(pa)
-    y_minor = dE * np.cos(pa) - dN * np.sin(pa)
-
-    return np.sqrt((x_major / r1) ** 2 + (y_minor / r2) ** 2)
-
-
 def get_regalade_photoz(ra, dec):
     """Crossmatch coordinates against the REGALADE galaxy catalog for a host photo-z.
 
     Notes
     -----
-    For each point, every galaxy whose DLR-scaled ellipse (semi-major axis
-    R1, semi-minor R2, position angle PA, scaled by
-    `kernel.regalade_dlr_factor`) contains the point is a candidate host;
-    the closest one (smallest normalized ellipse separation, see
-    `_ellipse_separation`) is kept. Galaxies are binned by R1
-    (`kernel.regalade_nbins` geomspace bins) and matched with
-    `SkyCoord.search_around_sky` per bin, using that bin's max R1 as the
-    search radius -- this can't miss a true match (the ellipse is always
-    inscribed in a circle of radius R1) and is much faster than a single
-    search at the catalog's largest R1. Exactly the crossmatch used to
-    build the training set, see `create_photoz_table.py` in the training
-    pipeline and https://github.com/htranin/ellipse_xmatch.
+    Uses `ellipse_xmatch.crossmatch_ellipses`
+    (https://github.com/htranin/ellipse_xmatch) to find, for each point,
+    every galaxy whose DLR-scaled ellipse (semi-major axis R1, semi-minor
+    R2, position angle PA, scaled by `kernel.regalade_dlr_factor`) contains
+    it; the closest one (smallest normalized ellipse separation) is kept.
+    Exactly the crossmatch used to build the training set, see
+    `create_photoz_table.py` in the training pipeline.
 
     Parameters
     ----------
@@ -387,65 +346,32 @@ def get_regalade_photoz(ra, dec):
     )
     pt_coord = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
 
-    R1 = np.asarray(gal["R1"], dtype=float) * kern.regalade_dlr_factor
-    R2 = np.asarray(gal["R2"], dtype=float) * kern.regalade_dlr_factor
-    PA = np.asarray(gal["PA"], dtype=float)
+    gal_idx, pt_idx, separation = crossmatch_ellipses(
+        gal_coord,
+        pt_coord,
+        np.asarray(gal["R1"], dtype=float),
+        np.asarray(gal["R2"], dtype=float),
+        np.asarray(gal["PA"], dtype=float),
+        dlr_factor=kern.regalade_dlr_factor,
+        nbins=kern.regalade_nbins,
+    )
 
-    r1_pos = R1[R1 > 0]
-    if r1_pos.size == 0:
+    if len(pt_idx) == 0:
         return photoz, photozerr
 
-    bin_edges = np.geomspace(r1_pos.min(), R1.max(), kern.regalade_nbins + 1)
-
-    match_pt, match_z, match_zerr, match_sep = [], [], [], []
-
-    for i in range(kern.regalade_nbins):
-        lo, hi = bin_edges[i], bin_edges[i + 1]
-        if i < kern.regalade_nbins - 1:
-            binsel = (R1 >= lo) & (R1 < hi)
-        else:
-            binsel = (R1 >= lo) & (R1 <= hi)
-
-        if not np.any(binsel):
-            continue
-
-        sub_idx = np.where(binsel)[0]
-        idx_p, idx_g, _, _ = gal_coord[sub_idx].search_around_sky(
-            pt_coord, hi * u.arcsec
-        )
-
-        if len(idx_g) == 0:
-            continue
-
-        gal_idx = sub_idx[idx_g]
-        sep = _ellipse_separation(
-            gal_coord[gal_idx], pt_coord[idx_p], R1[gal_idx], R2[gal_idx], PA[gal_idx]
-        )
-        keep = sep <= 1.0
-
-        match_pt.append(idx_p[keep])
-        match_z.append(np.asarray(gal["z"], dtype=float)[gal_idx[keep]])
-        match_zerr.append(np.asarray(gal["z_err"], dtype=float)[gal_idx[keep]])
-        match_sep.append(sep[keep])
-
-    if not match_pt:
-        return photoz, photozerr
-
-    match_pt = np.concatenate(match_pt)
-    match_z = np.concatenate(match_z)
-    match_zerr = np.concatenate(match_zerr)
-    match_sep = np.concatenate(match_sep)
+    z = np.asarray(gal["z"], dtype=float)[gal_idx]
+    zerr = np.asarray(gal["z_err"], dtype=float)[gal_idx]
 
     # a point can fall inside more than one galaxy's ellipse -> keep the closest one
-    order = np.argsort(match_sep)
+    order = np.argsort(separation)
     assigned = np.zeros(len(ra), dtype=bool)
     for idx in order:
-        p = match_pt[idx]
+        p = pt_idx[idx]
         if assigned[p]:
             continue
         assigned[p] = True
-        photoz[p] = match_z[idx]
-        photozerr[p] = match_zerr[idx]
+        photoz[p] = z[idx]
+        photozerr[p] = zerr[idx]
 
     return photoz, photozerr
 
