@@ -29,7 +29,7 @@ curdir = os.path.dirname(os.path.abspath(__file__))
 # Path to the pre-trained classifier (scikit-learn compatible pipeline,
 # pickled with joblib). It is expected to expose `predict_proba`,
 # `feature_names_in_` and `optimal_threshold` attributes.
-classifier_path = curdir + "/data/models/superluminous_classifier.joblib"
+classifier_path = curdir + "/data/models/NOMAI.joblib"
 
 # Path to the REGALADE galaxy catalog (Tranin et al., see
 # https://github.com/htranin/regalade), reduced to the columns needed for
