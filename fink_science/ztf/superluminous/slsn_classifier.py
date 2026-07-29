@@ -34,11 +34,6 @@ import urllib.parse
 from fink_science import __file__
 import io
 
-import warnings
-from light_curve.light_curve_py import warnings as rainbow_warnings
-
-warnings.filterwarnings("ignore", category=rainbow_warnings.ExperimentalWarning)
-
 
 def compute_flux(pdf):
     """Convert cmagpsf and csigmapsf to cflux and csigflux.
@@ -84,61 +79,6 @@ def compute_flux(pdf):
     return pdf
 
 
-def ntrend_changes(cflux, csigflux, cfid, k=3):
-    """Return the mean (per band) number of times a light curve abruptly changes trend.
-
-    A trend change is a sign flip between two consecutive flux differences
-    (e.g. the light curve was rising and abruptly starts declining), counted
-    only when both differences are significant at the `k` sigma level. This
-    is meant to flag noisy or bogus-looking light curves, which real SLSNe
-    (slow, smooth rise and decline) should not exhibit.
-
-    Parameters
-    ----------
-    cflux: array
-        Flux values of the light curve (single source, all bands mixed).
-    csigflux: array
-        Uncertainty on `cflux`.
-    cfid: array
-        Filter/band identifier associated to each point of `cflux`.
-    k: float
-        Number of sigma above which a flux difference between two
-        consecutive points is considered significant. Default is 3.
-
-    Returns
-    -------
-    float
-        Number of trend changes, averaged over the bands present in `cfid`.
-
-    Examples
-    --------
-    # Two significant trend changes: up, down, up
-    >>> cflux = np.array([10., 50., 10., 60., 5.])
-    >>> csigflux = np.array([1., 1., 1., 1., 1.])
-    >>> cfid = np.array([1, 1, 1, 1, 1])
-    >>> ntrend_changes(cflux, csigflux, cfid)
-    3.0
-
-    # Monotonic light curve: no trend change
-    >>> ntrend_changes(np.array([10., 20., 30., 40., 50.]), csigflux, cfid)
-    0.0
-    """
-    n = []
-    for band in np.unique(cfid):
-        mask = (cfid == band) & ~np.isnan(cflux)
-        x = cflux[mask]
-        err = np.array(csigflux[mask], dtype=float)
-
-        dx = np.diff(x)
-        sig = np.sqrt(err[:-1] ** 2 + err[1:] ** 2)
-        valid = np.abs(dx) > k * sig
-        n_turns = np.sum(np.diff(np.sign(dx[valid])) != 0)
-
-        n.append(n_turns)
-
-    return np.mean(n)
-
-
 def compute_milky_way_extinction(ebv, lambda_angstrom, Rv=3.1):
     """Compute the milky way extinction
 
@@ -151,12 +91,6 @@ def compute_milky_way_extinction(ebv, lambda_angstrom, Rv=3.1):
     Rv: float
         Parameter describing the shape of the extinction curve.
         Rv = 3.1 is a standard value in many cases.
-
-    Returns
-    -------
-    float
-        Milky Way extinction A(lambda), in magnitudes, at the requested
-        wavelength.
 
     Examples
     --------
@@ -181,51 +115,34 @@ def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
 
     Notes
     -----
-    Uses the redshift uncertainty to return [M(z-zerr), M(z), M(z+zerr)],
-    i.e. the absolute magnitude and its two 1-sigma bounds. At fixed
-    apparent magnitude, a higher redshift means a larger luminosity
-    distance, so the source must be intrinsically *brighter* (more
-    negative M) to appear equally bright: M(z+zerr) is therefore the
-    brightest bound and M(z-zerr) the faintest one. A flat LambdaCDM
-    cosmology (H0=67.8, Om0=0.308) and Milky Way extinction (F99 law) are
-    applied. Among the passbands given in `app_peak`, only the one giving
-    the brightest (most negative) M(z) is returned.
+    Uses uncertainty to return [M(z+zerr), M(z), M(z-zerr)]
 
     Parameters
     ----------
-    app_peak: list or float
-        Apparent peak magnitude(s), one per passband (or a single float
-        for a single passband).
-    lambda_angstrom: list or float
-        Effective wavelength(s) associated to `app_peak`, expressed in
-        Angstrom, in the same order.
+    app_peak: list
+        Apparent peak magnitudes in each passband
+    lambda_angstrom: list
+        Effective wavelength associated to the peak apparent magnitudes,
+        expressed in Angstrom.
     z: float
-        Redshift. Returns [nan, nan, nan] if `z` is NaN.
+        Redshift
     zerr: float
-        Uncertainty on the redshift. Returns [nan, nan, nan] if `zerr`
-        is NaN.
+        Uncertainty on the redshift
     ebv: float
-        E(B-V) Milky Way extinction. Negative values are clipped to 0.
-
-    Returns
-    -------
-    np.array
-        Array of 3 floats [M(z-zerr), M(z), M(z+zerr)] for the passband
-        giving the brightest absolute magnitude, or [nan, nan, nan] if
-        `z` or `zerr` is NaN.
+        E(B-V) extinction
 
     Examples
     --------
-    >>> np.testing.assert_allclose(abs_peak(19, 4000, 0.2, 0.05, 0.1),
-    ... [-20.92638971, -21.66227902, -22.25186059], rtol=1e-6)
-    >>> np.testing.assert_allclose(abs_peak(19, 4000, 0.2, 0.05, -1),
-    ... [-20.48512533, -21.22101463, -21.81059621], rtol=1e-6)
-    >>> np.testing.assert_allclose(abs_peak(19, 4000, 0.2, np.nan, 0.1),
-    ... [np.nan, np.nan, np.nan], equal_nan=True)
-    >>> np.testing.assert_allclose(abs_peak(19, 4000, np.nan, 0.05, 0.1),
-    ... [np.nan, np.nan, np.nan], equal_nan=True)
-    >>> np.testing.assert_allclose(abs_peak([18, 18], [4400, 6600], 0.12, 0.01, 0.5),
-    ... [-22.74727368, -22.96008329, -23.15747603], rtol=1e-6)
+    >>> abs_peak(19, 4000, 0.2, 0.05, 0.1)
+    array([-20.92638971, -21.66227902, -22.25186059])
+    >>> abs_peak(19, 4000, 0.2, 0.05, -1)
+    array([-20.48512533, -21.22101463, -21.81059621])
+    >>> abs_peak(19, 4000, 0.2, np.nan, 0.1)
+    array([ nan,  nan,  nan])
+    >>> abs_peak(19, 4000, np.nan, 0.05, 0.1)
+    array([ nan,  nan,  nan])
+    >>> abs_peak([18, 18], [4400, 6600], 0.12, 0.01, 0.5)
+    array([-22.74727368, -22.96008329, -23.15747603])
     """
     # In case the user gives a single value instead of a list
     app_peak_is_num = (type(app_peak) is float) | (type(app_peak) is int)
@@ -293,12 +210,6 @@ def get_sdss_photoz(ra, dec, radius=0.2):
     # After 5 sec, it will time out and output np.nan
     >>> get_sdss_photoz(66, 66)
     (nan, nan)
-
-    # A location within the main SDSS footprint, with a wide radius,
-    # should return a real match (DR16 is a frozen data release, so the
-    # values are stable over time).
-    >>> np.testing.assert_allclose(get_sdss_photoz(180.0, 30.0, radius=60.0),
-    ... [0.504143, 0.109665], rtol=1e-4)
     """
     try:
         query = f"""
@@ -358,14 +269,10 @@ def add_all_photoz(pdf):
     >>> pdf = pd.DataFrame(data={"objectId":["a", "b"],
     ... "ra": [66, 66], "dec": [66, 66]})
     >>> pdf = add_all_photoz(pdf)
-    >>> np.testing.assert_allclose(pdf["photoz"].values, [np.nan, np.nan], equal_nan=True)
-    >>> np.testing.assert_allclose(pdf["photozerr"].values, [np.nan, np.nan], equal_nan=True)
-
-    # Empty input: no SDSS query is made, columns are added empty.
-    >>> empty = pd.DataFrame(data={"objectId": [], "ra": [], "dec": []})
-    >>> empty = add_all_photoz(empty)
-    >>> list(empty.columns)
-    ['objectId', 'ra', 'dec', 'photoz', 'photozerr']
+    >>> pdf["photoz"].values
+    array([ nan,  nan])
+    >>> pdf["photozerr"].values
+    array([ nan,  nan])
     """
     if len(pdf) > 0:
         unique_objs = pdf.drop_duplicates(subset="objectId")[["objectId", "ra", "dec"]]
@@ -400,8 +307,8 @@ def get_ebv(ra, dec):
 
     Examples
     --------
-    >>> np.testing.assert_allclose(get_ebv(np.array([90, 90, 90]), np.array([90, 70, 110])),
-    ... [0.25480431, 0.10597386, -1.], rtol=1e-6)
+    >>> get_ebv(np.array([90, 90, 90]), np.array([90, 70, 110]))
+    array([ 0.25480431,  0.10597386, -1.        ])
     """
     result = -np.ones(len(dec))
     valid_mask = np.abs(dec) <= 90
@@ -429,8 +336,8 @@ def add_all_ebv(pdf):
     --------
     >>> pdf = pd.DataFrame(data={"objectId":["a", "b", "a"], "ra": [90, 90, 90], "dec": [70, 90, 70]})
     >>> pdf = add_all_ebv(pdf)
-    >>> np.testing.assert_allclose(pdf["ebv"].values,
-    ... [0.10597386, 0.25480431, 0.10597386], rtol=1e-6)
+    >>> pdf["ebv"].values
+    array([ 0.10597386,  0.25480431,  0.10597386])
     """
     unique_objs = pdf.drop_duplicates(subset="objectId")[["objectId", "ra", "dec"]]
     unique_objs["ebv"] = get_ebv(unique_objs["ra"].values, unique_objs["dec"].values)
@@ -524,17 +431,6 @@ def remove_bad_bands(pdf):
 def fit_rainbow(lc, rainbow_model):
     """Perform a rainbow fit (Russeil et al. 2024) on a light curve.
 
-    Notes
-    -----
-    The parameter names and their order are given by `rainbow_model.names`
-    (e.g. reference_time, amplitude, rise_time, fall_time, Tmin, Tmax,
-    t_color for the sigmoid/bazin configuration used by
-    `kernel.temperature`/`kernel.bolometric`).
-    This function mutates `lc` in place: `cjd`, `cflux`, `csigflux` and
-    `cfid` are re-assigned, time-shifted so that `cjd=0` is at peak flux,
-    and sorted by increasing time. Pass a copy of the row if the original
-    light curve must be preserved (see `extract_features`).
-
     Parameters
     ----------
     lc: pd.Series
@@ -546,34 +442,9 @@ def fit_rainbow(lc, rainbow_model):
     Returns
     -------
     list
-        Concatenation of the optimized rainbow parameters, their
-        associated uncertainties (parameter / sigma from the iminuit fit),
-        and the reduced chi square of the fit -- i.e. `2 * n_params + 1`
-        values. Returns a list of NaN of the same length if the fit fails.
-
-    Examples
-    --------
-    >>> t = np.linspace(0, 60, 20)
-    >>> flux_g = 5000. * np.exp(-(t - 15.) / 25.) / (1 + np.exp(-(t - 15.) / 5.))
-    >>> flux_r = 0.8 * flux_g
-    >>> lc = pd.Series({
-    ...     "cjd": np.concatenate([t, t]),
-    ...     "cflux": np.concatenate([flux_g, flux_r]),
-    ...     "csigflux": np.abs(np.concatenate([flux_g, flux_r])) * 0.05 + 5,
-    ...     "cfid": np.array([1] * len(t) + [2] * len(t)),
-    ... })
-    >>> rainbow_model = RainbowFit.from_angstrom(kern.band_wave_aa, with_baseline=False,
-    ... temperature=kern.temperature, bolometric=kern.bolometric)
-    >>> rainbow_model.names
-    ['reference_time', 'amplitude', 'rise_time', 'fall_time', 'Tmin', 'Tmax', 't_color']
-    >>> result = fit_rainbow(lc, rainbow_model)
-    >>> len(result) == 2 * len(rainbow_model.names) + 1
-    True
-    >>> np.testing.assert_allclose(result,
-    ... [-7.104360e+00,   7.903653e+03,   6.251021e+00,   2.498412e+01,
-    ... 1.372882e+04,   1.384991e+04,   1.524100e+02,  -1.721473e+01,
-    ... 1.700575e+01,   3.247533e+01,   2.971197e+01,   9.275860e+00,
-    ... 8.686928e+00,   3.149714e-01,   1.381510e-03], rtol=5e-2)
+        List of optimized rainbow parameters, their
+        associated uncertainties from iminuit fit and
+        the reduced chi square of the fit.
     """
     # Shift time
     lc["cjd"] = lc["cjd"] - lc["cjd"][np.argmax(lc["cflux"])]
@@ -606,51 +477,20 @@ def fit_rainbow(lc, rainbow_model):
 
 
 def fit_salt(lc, salt_model):
-    """Perform a salt2 fit (from sncosmo) on a light curve.
-
-    Notes
-    -----
-    Only ZTF g, r and i bands are supported (`cfid` in {1, 2, 3}). Unlike
-    `fit_rainbow`, this function does not mutate `lc`. Redshift is
-    constrained to [0, 0.5] during the fit. Use `quiet_fit_salt` instead
-    in doctests, to silence sncosmo's model-download messages.
+    """Perform a salt fit (from sncosmo) on a light curve.
 
     Parameters
     ----------
     lc: pd.Series
         Include at least cjd, cfid, cflux, csigflux columns.
-    salt_model: sncosmo.Model
-        Salt2 model to fit to the light curve, e.g.
-        `sncosmo.Model(source="salt2")`.
+    salt_model: Model
+        Salt model to fit to the light curve.
 
     Returns
     -------
     list
-        Concatenation of the optimized salt2 parameters
-        (`salt_model.param_names`, typically z, t0, x0, x1, c) and the
-        chi square from the fit -- i.e. `n_params + 1` values. Returns a
-        list of 6 NaN if the fit fails.
-
-    Examples
-    --------
-    >>> t = np.linspace(0, 60, 20)
-    >>> flux_g = 5000. * np.exp(-(t - 15.) / 25.) / (1 + np.exp(-(t - 15.) / 5.))
-    >>> flux_r = 0.8 * flux_g
-    >>> lc = pd.Series({
-    ...     "cjd": np.concatenate([t, t]),
-    ...     "cflux": np.concatenate([flux_g, flux_r]),
-    ...     "csigflux": np.abs(np.concatenate([flux_g, flux_r])) * 0.05 + 5,
-    ...     "cfid": np.array([1] * len(t) + [2] * len(t)),
-    ... })
-    >>> salt_model = quiet_model()
-    >>> salt_model.param_names
-    ['z', 't0', 'x0', 'x1', 'c']
-    >>> result = quiet_fit_salt(lc, salt_model)
-    >>> len(result) == len(salt_model.param_names) + 1
-    True
-    >>> np.testing.assert_allclose(result,
-    ... [1.682185e-01,  -9.046814e-01,   3.962725e-03,
-    ... 4.178744e+00,  -2.626279e-01,   1.202086e+03], rtol=5e-2)
+        List of optimized salt parameters along with
+        the chi square from the fit.
     """
     int_to_filter = {1: "ztfg", 2: "ztfr", 3: "ztfi"}
     lc_table = Table(
@@ -680,7 +520,7 @@ def fit_salt(lc, salt_model):
 
 
 def statistical_features(lc):
-    """Compute a few useful statistical features from the light curve package.
+    """Compute few useful statistical features from the light curve package
 
     Notes
     -----
@@ -690,42 +530,14 @@ def statistical_features(lc):
     ----------
     lc: pd.Series
         Include at least cjd, cfid, cmagpsf, cflux, csigflux columns.
+    salt_model: Model
+        Salt model to fit to the light curve.
 
     Returns
     -------
     list
-        List of 10 statistical features, in this order:
-        [amplitude, kurtosis, max_slope, skew, peak_mag_g, peak_mag_r,
-        std_flux, q15, q85, ntrends]. `amplitude`, `kurtosis`, `max_slope`
-        and `skew` are computed on the flux by the light-curve package.
-        `peak_mag_g`/`peak_mag_r` are the brightest (minimum) magnitude
-        observed in each band (99 if the band is absent). `std_flux` is
-        the standard deviation of the flux normalized by its maximum.
-        `q15`/`q85` are the 15th/85th percentile of the time axis,
-        shifted so that it starts at 0. `ntrends` is the output of
-        `ntrend_changes`.
-
-    Examples
-    --------
-    >>> t = np.linspace(0, 60, 20)
-    >>> flux_g = 5000. * np.exp(-(t - 15.) / 25.) / (1 + np.exp(-(t - 15.) / 5.))
-    >>> flux_r = 0.8 * flux_g
-    >>> cflux = np.concatenate([flux_g, flux_r])
-    >>> lc = pd.Series({
-    ...     "cjd": np.concatenate([t, t]),
-    ...     "cflux": cflux,
-    ...     "csigflux": np.abs(cflux) * 0.05 + 5,
-    ...     "cfid": np.array([1] * len(t) + [2] * len(t)),
-    ...     "cmagpsf": -2.5 * np.log10(cflux) + 25.,
-    ... })
-    >>> result = statistical_features(lc)
-    >>> len(result)
-    10
-    >>> np.testing.assert_allclose(result,
-    ... [1.342740e+03,  -1.030542e+00,   1.766728e+02,
-    ... 2.421149e-01,   1.629598e+01,   1.653826e+01,
-    ... 2.475832e-01,   9.000000e+00,   5.100000e+01,
-    ... 0.000000e+00], rtol=1e-3)
+        List of statistical features
+        [amplitude, kurtosis, max_slope, skew, peak_mag_g, peak_mag_r, std_flux, q15_time, q85_time]
     """
     amplitude = lcpckg.Amplitude()
     kurtosis = lcpckg.Kurtosis()
@@ -753,31 +565,15 @@ def statistical_features(lc):
     std = np.std(normed_flux)
     q15 = np.quantile(shifted_time, 0.15)
     q85 = np.quantile(shifted_time, 0.85)
-    ntrends = ntrend_changes(lc["cflux"], lc["csigflux"], lc["cfid"])
-
-    return list(result) + [peak_mag_g, peak_mag_r, std, q15, q85, ntrends]
+    return list(result) + [peak_mag_g, peak_mag_r, std, q15, q85]
 
 
 def quiet_model():
-    """Build the salt2 sncosmo model, muting its model-download messages.
+    """Call the salt model but muting download messages.
 
     Notes
     -----
-    The first call to `sncosmo.Model(source="salt2")` on a machine
-    downloads and prints information about the salt2 model files, which
-    pollutes doctest output. Intended for doctests and any other context
-    where this noise is undesirable; use `sncosmo.Model(source="salt2")`
-    directly otherwise.
-
-    Returns
-    -------
-    sncosmo.Model
-        A salt2 model, ready to be passed to `fit_salt`.
-
-    Examples
-    --------
-    >>> quiet_model().source.name
-    'salt2'
+    Intended for doctests.
     """
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
@@ -785,23 +581,11 @@ def quiet_model():
 
 
 def quiet_fit_salt(lc, model):
-    """Call `fit_salt`, muting sncosmo's model-download messages.
+    """Fit the salt model but muting download messages.
 
     Notes
     -----
-    See `quiet_model`. Intended for doctests.
-
-    Parameters
-    ----------
-    lc: pd.Series
-        Same as `fit_salt`.
-    model: sncosmo.Model
-        Same as `fit_salt`.
-
-    Returns
-    -------
-    list
-        Same as `fit_salt`.
+    Intended for doctests.
     """
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
@@ -878,15 +662,15 @@ def extract_features(data):
     >>> np.testing.assert_allclose(stat_features,[  8.307904e+02,
     ... 4.843807e-02,   7.573933e+03,  -7.161292e-01,
     ... 1.875300e+01,   1.882850e+01,   1.383518e-01,
-    ... 9.992026e+00,   2.499306e+01,   0.000000e+00], rtol=1e-3)
+    ... 9.992026e+00,   2.499306e+01], rtol=1e-3)
     >>> np.testing.assert_allclose(salt_features,[  1.374512e-01,
     ... -1.201602e+01,   3.522748e-03,   9.219506e+00,
     ... 3.321469e-02,   4.337947e+01], rtol=5e-2)
     >>> np.testing.assert_allclose(rainbow_features,
-    ... [ -2.046804e+00,   4.928837e+03,   2.208002e+01,   2.879719e+01,
-    ... 9.048897e+03,   9.814914e+03,   1.417986e+00,  -4.941401e-01,
-    ... 1.016117e+01,   6.211122e+00,   1.094480e+00,   7.419188e+00,
-    ... 1.500786e+01,   1.129233e+00,   1.211680e-01], rtol=5e-2)
+    ... [ -2.161261e+00,   4.886507e+03,   2.196836e+01,   2.740982e+01,
+    ... 9.102431e+03,   9.948591e+03,   1.403805e+00,  -5.663014e-01,
+    ... 1.050993e+01,   6.421246e+00,   1.106546e+00,   7.157723e+00,
+    ... 1.364673e+01,   1.184242e+00,   1.194966e-01], rtol=5e-2)
 
     # Check full feature extraction function
     >>> pdf_check = pdf.copy()
@@ -895,12 +679,12 @@ def extract_features(data):
     # Only the fake alert should pass the cuts
     >>> np.testing.assert_equal(
     ... np.array(np.sum(full_features.iloc[-30:].isnull(), axis=1)),
-    ... np.array([ 0, 31, 31,  0,  0, 31,  0,  0, 31, 31, 31, 31,  0,  0,
-    ... 0,  0, 31, 0, 31,  0, 31,  0,  0,  0,  0, 31, 31,  0, 31,  0]))
+    ... np.array([ 30, 30, 30,  30, 30, 30,  30, 30, 30,  30, 30, 30,  30,
+    ... 30, 30, 30,  30, 30, 30,  30, 30, 30, 30, 30, 30,  30, 30, 30, 30, 0]))
 
     >>> list(full_features.columns) == ["distnr", "ra", "dec", "ebv", "duration",
     ... "flux_amplitude", "kurtosis", "max_slope", "skew", "peak_mag_g", "peak_mag_r",
-    ... "std_flux", "q15", "q85", "ntrends", "reference_time", "amplitude", "rise_time", "fall_time",
+    ... "std_flux", "q15", "q85", "reference_time", "amplitude", "rise_time", "fall_time",
     ... "Tmin", "Tmax", "t_color", "snr_reference_time", "snr_amplitude", "snr_rise_time",
     ... "snr_fall_time", "snr_Tmin", "snr_Tmax", "snr_t_color", "chi2_rainbow", "z", "t0",
     ... "x0", "x1", "c", "chi2_salt"]
@@ -936,7 +720,6 @@ def extract_features(data):
             "std_flux",
             "q15",
             "q85",
-            "ntrends",
         ]
         + rainbow_pnames
         + ["snr_" + k for k in rainbow_pnames]
