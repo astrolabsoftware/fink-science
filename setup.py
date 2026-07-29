@@ -28,9 +28,6 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://fink-broker.readthedocs.io/en/latest/",
     packages=setuptools.find_packages(),
-    install_requires=[
-        "ellipse-xmatch @ git+https://github.com/htranin/ellipse_xmatch.git",
-    ],
     package_data={
         "fink_science": [
             "data/models/*.obj",

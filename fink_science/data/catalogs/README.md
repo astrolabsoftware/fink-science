@@ -39,24 +39,3 @@ pdf = pd.DataFrame(table)
 pdf[["RAdeg", "DEdeg", "SPICY", "class"]].to_parquet("spicy.parquet")
 ```
 
-## REGALADE (`regalade_minimal_ZTF.fits`)
-
-Used by `ztf.superluminous.slsn_classifier.get_regalade_photoz` for host
-galaxy crossmatch and photo-z. Source: REGALADE v2
-(https://github.com/htranin/regalade), reduced to the 7 columns needed
-(`gal_ra`, `gal_dec`, `R1`, `R2`, `PA`, `z`, `z_err`) and to the
-ZTF-visible sky (`dec > -30`).
-
-**Not committed to git or bundled in the pip package** -- unlike the other
-catalogs here, it is ~1.5GB, far above GitHub's 100MB push limit and
-impractical to ship in a wheel/sdist. It must be placed manually at
-`kernel.regalade_path` (`fink_science/data/catalogs/regalade_minimal_ZTF.fits`)
-before running anything that imports `slsn_classifier` in production
-(`get_regalade_photoz` reads it lazily on first use, so import itself
-does not require the file to be present).
-
-TODO: distribution story not finalized yet (external host + download
-link, git-lfs, or something else) -- see the training pipeline's
-`create_photoz_table.py` for how the file itself is built from the full
-REGALADE catalog.
-

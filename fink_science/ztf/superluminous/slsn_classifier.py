@@ -27,9 +27,10 @@ from dust_extinction.parameter_averages import F99
 from astropy.cosmology import LambdaCDM
 from astropy.coordinates import SkyCoord
 from dustmaps.sfd import SFDQuery
-from ellipse_xmatch import crossmatch_ellipses
 import os
 import contextlib
+import requests
+import urllib.parse
 from fink_science import __file__
 import io
 
@@ -243,137 +244,97 @@ def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
     if (z == z) and (zerr == zerr):
         cosmo = LambdaCDM(H0=67.8, Om0=0.308, Ode0=0.692)
 
-        # Distance modulus does not depend on band, so compute it once for all
-        # three redshifts (z-zerr, z, z+zerr) instead of once per band per k.
-        effective_z = np.maximum(z + np.array([-1, 0, 1]) * zerr, 1e-3)
-        D_L = cosmo.luminosity_distance(effective_z).to("pc").value
-        distmod = 5 * np.log10(D_L / 10) + 2.5 * np.log10(1 + effective_z)
+        Ms_lambda = []
 
-        Ms_lambda = np.array(
-            [
-                app_peak[band]
-                - distmod
-                - compute_milky_way_extinction(ebv, lambda_angstrom[band])
-                for band in range(len(app_peak))
-            ]
-        )
+        for band in range(len(app_peak)):
+            Ms = []
+            for k in [-1, 0, 1]:
+                effective_z = max(z + k * zerr, 1e-3)
+                D_L = cosmo.luminosity_distance(effective_z).to("pc").value
+                M = (
+                    app_peak[band]
+                    - 5 * np.log10(D_L / 10)
+                    - 2.5 * np.log10(1 + effective_z)
+                    - compute_milky_way_extinction(ebv, lambda_angstrom[band])
+                )
+                Ms.append(M)
+            Ms_lambda.append(Ms)
 
         # Find the band with the highest absolute magnitude
-        brightest = np.argmin(Ms_lambda[:, 1])
+        brightest = np.argmin(np.array(Ms_lambda)[:, 1])
 
-        return Ms_lambda[brightest]
+        return np.array(Ms_lambda[brightest])
 
     return np.array([np.nan, np.nan, np.nan])
 
 
-_regalade_table = None
-
-
-def _get_regalade_table():
-    """Lazily load and cache the REGALADE galaxy catalog.
-
-    Notes
-    -----
-    The catalog (~1.5GB) is not distributed with the package, see
-    `kernel.regalade_path` and `fink_science/data/catalogs/README.md`.
-    Cached at module level so a Spark worker only pays the FITS read once,
-    not once per micro-batch.
-    """
-    global _regalade_table
-    if _regalade_table is None:
-        _regalade_table = Table.read(kern.regalade_path)
-    return _regalade_table
-
-
-def get_regalade_photoz(ra, dec):
-    """Crossmatch coordinates against the REGALADE galaxy catalog for a host photo-z.
-
-    Notes
-    -----
-    Uses `ellipse_xmatch.crossmatch_ellipses`
-    (https://github.com/htranin/ellipse_xmatch) to find, for each point,
-    every galaxy whose DLR-scaled ellipse (semi-major axis R1, semi-minor
-    R2, position angle PA, scaled by `kernel.regalade_dlr_factor`) contains
-    it; the closest one (smallest normalized ellipse separation) is kept.
-    Exactly the crossmatch used to build the training set, see
-    `create_photoz_table.py` in the training pipeline.
+def get_sdss_photoz(ra, dec, radius=0.2):
+    """Retrieve photoz from SDSS
 
     Parameters
     ----------
-    ra, dec: array
-        Right ascension and declination of the source(s), in degrees.
+    ra: array
+        Right ascension of the source(s).
+    dec: array
+        Declination of the source(s).
+    radius: float
+        Maximum angular distance for association
+        with SDSS candidate.
+        Default is 0.2
 
     Returns
     -------
-    tuple of np.array
-        Photometric redshift and its uncertainty, one pair per input
-        coordinate. NaN where no host galaxy is found.
+    tuple
+        Photometric redshift and it"s uncertainty
 
     Examples
     --------
-    # A location with no galaxy nearby: no match.
-    >>> photoz, photozerr = get_regalade_photoz(np.array([0.]), np.array([89.]))
-    >>> np.testing.assert_allclose(photoz, [np.nan], equal_nan=True)
+    # We cannot check for a precise location in case SDSS servers are not responding
+    # After 5 sec, it will time out and output np.nan
+    >>> get_sdss_photoz(66, 66)
+    (nan, nan)
+
+    # A location within the main SDSS footprint, with a wide radius,
+    # should return a real match (DR16 is a frozen data release, so the
+    # values are stable over time).
+    >>> np.testing.assert_allclose(get_sdss_photoz(180.0, 30.0, radius=60.0),
+    ... [0.504143, 0.109665], rtol=1e-4)
     """
-    ra = np.asarray(ra, dtype=float)
-    dec = np.asarray(dec, dtype=float)
+    try:
+        query = f"""
+        SELECT TOP 1 p.objID, p.ra, p.dec, z.z AS photoz, z.zErr AS photozErr
+        FROM PhotoObj AS p
+        JOIN Photoz AS z ON p.objID = z.objID
+        JOIN dbo.fGetNearbyObjEq({ra}, {dec}, {radius}) AS n
+          ON p.objID = n.objID
+        ORDER BY n.distance
+        """
 
-    photoz = np.full(len(ra), np.nan)
-    photozerr = np.full(len(ra), np.nan)
+        base_url = "https://skyserver.sdss.org/dr16/SkyServerWS/SearchTools/SqlSearch"
+        params = {"cmd": query, "format": "json"}
 
-    gal = _get_regalade_table()
+        url = f"{base_url}?{urllib.parse.urlencode(params)}"
 
-    # restrict to the sky patch actually covered by the points, to skip
-    # most of the ~56M galaxies
-    gal_ra = np.asarray(gal["gal_ra"])
-    gal_dec = np.asarray(gal["gal_dec"])
-    sel = np.ones(len(gal), dtype=bool)
-    if ra.min() > 10:
-        sel &= gal_ra > ra.min() - 10
-    if ra.max() < 350:
-        sel &= gal_ra < ra.max() + 10
-    if dec.min() > -80:
-        sel &= gal_dec > dec.min() - 10
-    if dec.max() < 80:
-        sel &= gal_dec < dec.max() + 10
-    gal = gal[sel]
+        response = requests.get(url, timeout=5)
 
-    if len(gal) == 0:
-        return photoz, photozerr
+        # check we get a valid response
+        if response.status_code != 200:
+            return np.nan, np.nan
 
-    gal_coord = SkyCoord(
-        ra=np.asarray(gal["gal_ra"]) * u.deg, dec=np.asarray(gal["gal_dec"]) * u.deg
-    )
-    pt_coord = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
+        payload = response.json()
 
-    gal_idx, pt_idx, separation = crossmatch_ellipses(
-        gal_coord,
-        pt_coord,
-        np.asarray(gal["R1"], dtype=float),
-        np.asarray(gal["R2"], dtype=float),
-        np.asarray(gal["PA"], dtype=float),
-        dlr_factor=kern.regalade_dlr_factor,
-        nbins=kern.regalade_nbins,
-    )
+        # check the payload is not empty
+        if isinstance(payload, list) and len(payload) > 0:
+            table = payload[0].get("Rows", [])
+        else:
+            return np.nan, np.nan
 
-    if len(pt_idx) == 0:
-        return photoz, photozerr
+        if len(table) > 0:
+            return table[0]["photoz"], table[0]["photozErr"]
 
-    z = np.asarray(gal["z"], dtype=float)[gal_idx]
-    zerr = np.asarray(gal["z_err"], dtype=float)[gal_idx]
-
-    # a point can fall inside more than one galaxy's ellipse -> keep the closest one
-    order = np.argsort(separation)
-    assigned = np.zeros(len(ra), dtype=bool)
-    for idx in order:
-        p = pt_idx[idx]
-        if assigned[p]:
-            continue
-        assigned[p] = True
-        photoz[p] = z[idx]
-        photozerr[p] = zerr[idx]
-
-    return photoz, photozerr
+    except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
+        return np.nan, np.nan
+    return np.nan, np.nan
 
 
 def add_all_photoz(pdf):
@@ -392,27 +353,25 @@ def add_all_photoz(pdf):
 
     Examples
     --------
+    # We cannot check for a precise location in case SDSS servers are not responding
+    # After 5 sec, it will time out and output np.nan
     >>> pdf = pd.DataFrame(data={"objectId":["a", "b"],
-    ... "ra": [0., 0.], "dec": [89., 89.]})
+    ... "ra": [66, 66], "dec": [66, 66]})
     >>> pdf = add_all_photoz(pdf)
     >>> np.testing.assert_allclose(pdf["photoz"].values, [np.nan, np.nan], equal_nan=True)
     >>> np.testing.assert_allclose(pdf["photozerr"].values, [np.nan, np.nan], equal_nan=True)
 
-    # Empty input: no crossmatch is attempted, columns are added empty.
+    # Empty input: no SDSS query is made, columns are added empty.
     >>> empty = pd.DataFrame(data={"objectId": [], "ra": [], "dec": []})
     >>> empty = add_all_photoz(empty)
     >>> list(empty.columns)
     ['objectId', 'ra', 'dec', 'photoz', 'photozerr']
     """
     if len(pdf) > 0:
-        unique_objs = pdf.drop_duplicates(subset="objectId")[
-            ["objectId", "ra", "dec"]
-        ].reset_index(drop=True)
-        photoz, photozerr = get_regalade_photoz(
-            unique_objs["ra"].to_numpy(), unique_objs["dec"].to_numpy()
+        unique_objs = pdf.drop_duplicates(subset="objectId")[["objectId", "ra", "dec"]]
+        unique_objs[["photoz", "photozerr"]] = unique_objs.apply(
+            lambda x: get_sdss_photoz(x["ra"], x["dec"]), axis=1, result_type="expand"
         )
-        unique_objs["photoz"] = photoz
-        unique_objs["photozerr"] = photozerr
         pdf = pdf.merge(
             unique_objs[["objectId", "photoz", "photozerr"]], on="objectId", how="left"
         )

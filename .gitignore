@@ -13,7 +13,3 @@ fink_science/cbpf_clssifier/.ipynb_checkpoints
 fink_science/cbpf_clssifier/*.ipynb
 src/*
 fink_science/cbpf_clssifier/data/*
-
-# ~1.5GB, far above GitHub's 100MB push limit -- see
-# fink_science/data/catalogs/README.md for how to obtain it
-fink_science/data/catalogs/regalade_minimal_ZTF.fits
