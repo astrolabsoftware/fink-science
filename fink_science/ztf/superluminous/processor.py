@@ -54,7 +54,8 @@ def superluminous_score(
        the g/r bands used at training time (`slsn_classifier.compute_flux`,
        `remove_nan`, `remove_bad_bands`).
     3. Extracts Rainbow, salt and statistical features
-       (`slsn_classifier.extract_features`).
+       (`slsn_classifier.extract_features`), after correcting the light
+       curve for Milky Way extinction (`slsn_classifier.deredden_lightcurve`).
     4. Runs the pre-trained classifier (`kernel.classifier_path`) to get a
        SLSN probability.
     5. For alerts above the classifier's optimal threshold, crossmatches
@@ -266,7 +267,9 @@ def superluminous_score(
 
             # Most favorable (brightest, i.e. most negative) plausible peak
             # absolute magnitude given the photo-z uncertainty: index [2]
-            # of abs_peak's output is M(z+zerr), see its docstring.
+            # of abs_peak's output is M(z+zerr), see its docstring. peak_mag_g/r
+            # are already corrected for Milky Way extinction (see
+            # slsn_classifier.deredden_lightcurve), hence ebv=0 here.
             upper_M = np.array(
                 SLSN_features.apply(
                     lambda x: slsn.abs_peak(
@@ -274,7 +277,7 @@ def superluminous_score(
                         [kern.band_wave_aa[1], kern.band_wave_aa[2]],
                         x["photoz"],
                         x["photozerr"],
-                        x["ebv"],
+                        0,
                     )[2],
                     axis=1,
                 )

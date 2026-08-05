@@ -175,6 +175,60 @@ def compute_milky_way_extinction(ebv, lambda_angstrom, Rv=3.1):
     return A_lambda
 
 
+def deredden_lightcurve(lc, ebv):
+    """Correct cflux, csigflux and cmagpsf for Milky Way extinction, band by band.
+
+    Notes
+    -----
+    Applied once per light curve during feature extraction, so that
+    Rainbow/salt fits and statistical features (colors, temperature, peak
+    magnitude) are computed on the intrinsic light curve rather than
+    requiring the classifier to learn extinction effects from a raw `ebv`
+    feature. Since `peak_mag_g`/`peak_mag_r` (see `statistical_features`)
+    are already corrected by the time they reach `abs_peak`, callers that
+    use them should pass `ebv=0` to `abs_peak` to avoid double-correcting.
+
+    Parameters
+    ----------
+    lc: pd.Series
+        Include at least cflux, csigflux, cmagpsf, cfid columns (as
+        produced by `compute_flux`/`remove_nan`/`remove_bad_bands`).
+    ebv: float
+        E(B-V) Milky Way extinction. Negative values are clipped to 0.
+
+    Returns
+    -------
+    pd.Series
+        `lc` with cflux, csigflux and cmagpsf corrected.
+
+    Examples
+    --------
+    >>> lc = pd.Series({
+    ...     "cflux": np.array([100., 200.]),
+    ...     "csigflux": np.array([5., 10.]),
+    ...     "cmagpsf": np.array([18., 17.]),
+    ...     "cfid": np.array([1, 2]),
+    ... })
+    >>> lc = deredden_lightcurve(lc, 0.5)
+    >>> A_g = compute_milky_way_extinction(0.5, kern.band_wave_aa[1])
+    >>> A_r = compute_milky_way_extinction(0.5, kern.band_wave_aa[2])
+    >>> np.testing.assert_allclose(lc["cmagpsf"], [18. - A_g, 17. - A_r])
+    >>> np.testing.assert_allclose(
+    ... lc["cflux"], [100. * 10 ** (A_g / 2.5), 200. * 10 ** (A_r / 2.5)])
+    """
+    ebv = max(ebv, 0)
+    A = np.array(
+        [
+            compute_milky_way_extinction(ebv, kern.band_wave_aa[fid])
+            for fid in lc["cfid"]
+        ]
+    )
+    lc["cflux"] = lc["cflux"] * 10 ** (A / 2.5)
+    lc["csigflux"] = lc["csigflux"] * 10 ** (A / 2.5)
+    lc["cmagpsf"] = lc["cmagpsf"] - A
+    return lc
+
+
 def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
     """Compute the peak absolute magnitude based on redshift, assuming a cosmology
 
@@ -188,7 +242,9 @@ def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
     brightest bound and M(z-zerr) the faintest one. A flat LambdaCDM
     cosmology (H0=67.8, Om0=0.308) and Milky Way extinction (F99 law) are
     applied. Among the passbands given in `app_peak`, only the one giving
-    the brightest (most negative) M(z) is returned.
+    the brightest (most negative) M(z) is returned. Pass `ebv=0` if
+    `app_peak` is already corrected for Milky Way extinction (see
+    `deredden_lightcurve`), to avoid double-correcting.
 
     Parameters
     ----------
@@ -939,7 +995,7 @@ def extract_features(data):
     ... np.array([ 0, 31, 31,  0,  0, 31,  0,  0, 31, 31, 31, 31,  0,  0,
     ... 0,  0, 31, 0, 31,  0, 31,  0,  0,  0,  0, 31, 31,  0, 31,  0]))
 
-    >>> list(full_features.columns) == ["distnr", "ra", "dec", "ebv", "duration",
+    >>> list(full_features.columns) == ["distnr", "ra", "dec", "duration",
     ... "flux_amplitude", "kurtosis", "max_slope", "skew", "peak_mag_g", "peak_mag_r",
     ... "std_flux", "q15", "q85", "ntrends", "reference_time", "amplitude", "rise_time", "fall_time",
     ... "Tmin", "Tmax", "t_color", "snr_reference_time", "snr_amplitude", "snr_rise_time",
@@ -966,7 +1022,6 @@ def extract_features(data):
             "distnr",
             "ra",
             "dec",
-            "ebv",
             "duration",
             "flux_amplitude",
             "kurtosis",
@@ -1000,7 +1055,11 @@ def extract_features(data):
         distnr = lc["distnr"]
         ra = lc["ra"]
         dec = lc["dec"]
-        ebv = lc["ebv"]
+
+        # Correct the light curve for Milky Way extinction before fitting, so
+        # the classifier sees intrinsic light curve shape/colors/magnitudes
+        # instead of having to learn extinction effects from a raw ebv feature.
+        lc = deredden_lightcurve(lc, lc["ebv"])
 
         if all_valid_bands & enough_total_points & enough_duration:
             rainbow_features = fit_rainbow(lc, rainbow_model)
@@ -1008,7 +1067,7 @@ def extract_features(data):
             stat_features = statistical_features(lc)
 
             row = (
-                [distnr, ra, dec, ebv, duration]
+                [distnr, ra, dec, duration]
                 + stat_features
                 + rainbow_features
                 + salt_features
@@ -1016,8 +1075,8 @@ def extract_features(data):
             pdf.loc[pdf_idx] = row
 
         else:
-            pdf.loc[pdf_idx] = [distnr, ra, dec, ebv, duration] + [np.nan] * (
-                np.shape(pdf)[1] - 5
+            pdf.loc[pdf_idx] = [distnr, ra, dec, duration] + [np.nan] * (
+                np.shape(pdf)[1] - 4
             )
 
     return pdf
