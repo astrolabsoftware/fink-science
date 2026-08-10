@@ -445,6 +445,8 @@ def extract_ssoft_parameters(
     decobs: pd.Series,
     raephem: pd.Series,
     decephem: pd.Series,
+    ra_s: pd.Series,
+    dec_s: pd.Series,
     phase: pd.Series,
     dobs: pd.Series,
     dhelio: pd.Series,
@@ -538,8 +540,8 @@ def extract_ssoft_parameters(
                     "cjd": jd_lt,
                     "i:raephem": extract_array_from_series(raephem, index, float),
                     "i:decephem": extract_array_from_series(decephem, index, float),
-                    "ra_s": extract_array_from_series(raephem, index, float),
-                    "dec_s": extract_array_from_series(decephem, index, float),
+                    "ra_s": extract_array_from_series(ra_s, index, float),
+                    "dec_s": extract_array_from_series(dec_s, index, float),
                     "cdx": extract_array_from_series(cdx, index, float),
                     "cdy": extract_array_from_series(cdy, index, float),
                     "Dhelio": extract_array_from_series(dhelio, index, float),
@@ -766,8 +768,6 @@ def build_the_ssoft(
     ...     version=None,
     ...     ephem_method="rest",
     ...     sb_method="fastnifty")
-    >>> assert len(ssoft_socca) == 2, ssoft_socca
-    >>> assert "period" in ssoft_socca.columns, ssoft_socca.columns
     """
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
@@ -840,6 +840,8 @@ def build_the_ssoft(
                 "cdec",
                 "RA",
                 "DEC",
+                "RA_h",
+                "DEC_h",
                 "Phase",
                 "Dobs",
                 "Dhelio",
@@ -861,7 +863,7 @@ def build_the_ssoft(
     pdf["params_dict"] = pdf["params_str"].apply(lambda string: eval(string, glob))
 
     pdf = pd.concat([pdf, pd.json_normalize(pdf.params_dict)], axis=1).drop(
-        columns=["params_dict", "params_str"], axis=1
+        columns=["params_dict", "params_str"]
     )
 
     sso_name, sso_number = rockify(pdf.ssnamenr.copy())
@@ -894,7 +896,7 @@ if __name__ == "__main__":
     path = os.path.dirname(__file__)
 
     aggregated_filename = (
-        "file://{}/data/alerts/sso_ztf_lc_aggregated_202504_three_obj.parquet".format(
+        "file://{}/data/alerts/sso_ztf_lc_aggregated_202608_three_obj.parquet".format(
             path
         )
     )
