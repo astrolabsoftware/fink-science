@@ -731,6 +731,7 @@ def build_the_ssoft(
     ...     version=None,
     ...     ephem_method="rest",
     ...     sb_method="fastnifty")
+
     >>> assert len(ssoft_hg) == 1, ssoft_hg
     >>> assert "G_g" in ssoft_hg.columns
 
