@@ -30,6 +30,7 @@ from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.spins import extract_obliquity
 from fink_utils.sso.utils import rockify, extract_array_from_series
 from fink_utils.sso.utils import compute_light_travel_correction
+from fink_utils.sso.ssoft import get_ssoft_columns
 from fink_utils.sso.cleaning import dxy_cleaning, iterative_cleaning
 
 from fink_science import __file__
