@@ -828,6 +828,7 @@ def build_the_ssoft(
 
     glob = globals()
     glob["nan"] = np.nan
+    glob["inf"] = np.inf
 
     pdf["params_dict"] = pdf["params_str"].apply(lambda string: eval(string, glob))
 
