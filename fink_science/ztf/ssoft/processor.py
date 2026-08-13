@@ -30,7 +30,6 @@ from fink_utils.sso.spins import estimate_sso_params
 from fink_utils.sso.spins import extract_obliquity
 from fink_utils.sso.utils import rockify, extract_array_from_series
 from fink_utils.sso.utils import compute_light_travel_correction
-from fink_utils.sso.ssoft import get_ssoft_columns
 from fink_utils.sso.cleaning import dxy_cleaning, iterative_cleaning
 
 from fink_science import __file__
@@ -347,6 +346,7 @@ def build_the_ssoft(
 
     Examples
     --------
+    >>> from fink_utils.sso.ssoft import get_ssoft_columns
     >>> COLUMNS, COLUMNS_HG, COLUMNS_HG1G2, COLUMNS_SHG1G2, COLUMNS_SOCCA = get_ssoft_columns('ztf')
     >>> ssoft_hg = build_the_ssoft(
     ...     aggregated_filename=aggregated_filename,
