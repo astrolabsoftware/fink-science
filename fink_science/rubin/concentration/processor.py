@@ -91,6 +91,7 @@ def calculate_concentration(
     out: dict
         cScience: concentration from the Science cutout
         cDifference: concentration from the Difference cutout
+        cSizePixel: cutout size in pixel
 
     Examples
     --------
@@ -99,7 +100,8 @@ def calculate_concentration(
     >>> df = df.withColumn('concentrations', calculate_concentration(*args))
     >>> df = df.withColumn('cScience', df['concentrations'].getItem('cScience'))
     >>> df = df.withColumn('cDifference', df['concentrations'].getItem('cDifference'))
-    >>> df.select(['diaObject.diaObjectId', 'cScience', 'cDifference']).show()
+    >>> df = df.withColumn('cSizePixel', df['concentrations'].getItem('cSizePixel'))
+    >>> df.select(['diaObject.diaObjectId', 'cScience', 'cDifference', 'cSizePixel']).show()
     """
     radii = np.arange(1, 14)
     out = []
@@ -113,7 +115,7 @@ def calculate_concentration(
         cScience = concentration(sci, center, radii)
         cDifference = concentration(dif, center, radii)
 
-        out.append({"cScience": cScience, "cDifference": cDifference})
+        out.append({"cScience": cScience, "cDifference": cDifference, 'cSizePixel': len(sci)})
 
     return pd.Series(out)
 
