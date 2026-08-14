@@ -30,6 +30,7 @@ from dustmaps.sfd import SFDQuery
 from ellipse_xmatch import crossmatch_ellipses
 import os
 import contextlib
+import functools
 from fink_science import __file__
 import io
 
@@ -138,6 +139,16 @@ def ntrend_changes(cflux, csigflux, cfid, k=3):
     return np.mean(n)
 
 
+@functools.lru_cache(maxsize=None)
+def _extinction_curve_ratio(lambda_angstrom, Rv=3.1):
+    """R(lambda) = F99(lambda) * Rv, the extinction curve shape at a given
+    wavelength
+    """
+    lambda_eff = lambda_angstrom * u.AA
+    ext = F99(Rv=Rv)
+    return ext(lambda_eff) * Rv
+
+
 def compute_milky_way_extinction(ebv, lambda_angstrom, Rv=3.1):
     """Compute the milky way extinction
 
@@ -162,14 +173,7 @@ def compute_milky_way_extinction(ebv, lambda_angstrom, Rv=3.1):
     >>> round(compute_milky_way_extinction(0.5, 6000), 2)
     1.34
     """
-    # Filter effective wavelength
-    lambda_eff = lambda_angstrom * u.AA
-
-    # Extinction law
-    ext = F99(Rv=Rv)
-
-    # Total extinction
-    R_lambda = ext(lambda_eff) * Rv
+    R_lambda = _extinction_curve_ratio(lambda_angstrom, Rv)
     A_lambda = R_lambda * ebv
 
     return A_lambda
@@ -217,12 +221,13 @@ def deredden_lightcurve(lc, ebv):
     ... lc["cflux"], [100. * 10 ** (A_g / 2.5), 200. * 10 ** (A_r / 2.5)])
     """
     ebv = max(ebv, 0)
-    A = np.array(
-        [
-            compute_milky_way_extinction(ebv, kern.band_wave_aa[fid])
-            for fid in lc["cfid"]
-        ]
-    )
+    # A only takes as many distinct values as there are passbands in the
+    # light curve -- compute it once per band, not once per point.
+    A_per_band = {
+        fid: compute_milky_way_extinction(ebv, kern.band_wave_aa[fid])
+        for fid in np.unique(lc["cfid"])
+    }
+    A = np.array([A_per_band[fid] for fid in lc["cfid"]])
     lc["cflux"] = lc["cflux"] * 10 ** (A / 2.5)
     lc["csigflux"] = lc["csigflux"] * 10 ** (A / 2.5)
     lc["cmagpsf"] = lc["cmagpsf"] - A
@@ -791,9 +796,10 @@ def statistical_features(lc):
     Returns
     -------
     list
-        List of 10 statistical features, in this order:
+        List of 12 statistical features, in this order:
         [amplitude, kurtosis, max_slope, skew, peak_mag_g, peak_mag_r,
-        std_flux, q15, q85, ntrends]. `amplitude`, `kurtosis`, `max_slope`
+        std_flux, q15, q85, ntrends, brightness_persistence,
+        shape_irregularity]. `amplitude`, `kurtosis`, `max_slope`
         and `skew` are computed on the flux by the light-curve package.
         `peak_mag_g`/`peak_mag_r` are the brightest (minimum) magnitude
         observed in each band (99 if the band is absent). `std_flux` is
@@ -801,6 +807,18 @@ def statistical_features(lc):
         `q15`/`q85` are the 15th/85th percentile of the time axis,
         shifted so that it starts at 0. `ntrends` is the output of
         `ntrend_changes`.
+
+        `brightness_persistence` is the minimum, over all points, of
+        (wavelength / peak-normalized flux) / (days since first detection,
+        offset by 1 so the denominator is never zero). A small value flags
+        objects that stay bright long after discovery -- characteristic of
+        SLSNe's unusually slow decline compared to ordinary supernovae.
+
+        `shape_irregularity` is the standard deviation, over all points, of
+        the absolute difference between peak-normalized flux and time
+        normalized to its own maximum (so it does not depend on the light
+        curve's absolute duration). It measures how much the brightness
+        evolution deviates from a simple, steady rise-and-fall shape.
 
     Examples
     --------
@@ -817,12 +835,12 @@ def statistical_features(lc):
     ... })
     >>> result = statistical_features(lc)
     >>> len(result)
-    10
+    12
     >>> np.testing.assert_allclose(result,
     ... [1.342740e+03,  -1.030542e+00,   1.766728e+02,
     ... 2.421149e-01,   1.629598e+01,   1.653826e+01,
     ... 2.475832e-01,   9.000000e+00,   5.100000e+01,
-    ... 0.000000e+00], rtol=1e-3)
+    ... 0.000000e+00,   1.776497e+02,   4.088199e-05], rtol=1e-3)
     """
     amplitude = lcpckg.Amplitude()
     kurtosis = lcpckg.Kurtosis()
@@ -852,7 +870,25 @@ def statistical_features(lc):
     q85 = np.quantile(shifted_time, 0.85)
     ntrends = ntrend_changes(lc["cflux"], lc["csigflux"], lc["cfid"])
 
-    return list(result) + [peak_mag_g, peak_mag_r, std, q15, q85, ntrends]
+    # brightness_persistence / shape_irregularity: found by symbolic-regression
+    # search to help separate SLSNe from other transients. Defined relative to
+    # the first detection, so recompute t from cjd fresh here (see Returns).
+    t = lc["cjd"] - np.min(lc["cjd"]) + 1
+    wavelength = np.array([kern.band_wave_aa[fid] for fid in lc["cfid"]])
+    brightness_persistence = np.min((wavelength / normed_flux) / t)
+    t_norm = t / np.max(t)
+    shape_irregularity = np.std(np.abs(normed_flux - t_norm) / wavelength)
+
+    return list(result) + [
+        peak_mag_g,
+        peak_mag_r,
+        std,
+        q15,
+        q85,
+        ntrends,
+        brightness_persistence,
+        shape_irregularity,
+    ]
 
 
 def quiet_model():
@@ -975,7 +1011,8 @@ def extract_features(data):
     >>> np.testing.assert_allclose(stat_features,[  8.307904e+02,
     ... 4.843807e-02,   7.573933e+03,  -7.161292e-01,
     ... 1.875300e+01,   1.882850e+01,   1.383518e-01,
-    ... 9.992026e+00,   2.499306e+01,   0.000000e+00], rtol=1e-3)
+    ... 9.992026e+00,   2.499306e+01,   0.000000e+00,
+    ... 1.693994e+02,   2.475778e-05], rtol=1e-3)
     >>> np.testing.assert_allclose(salt_features,[  1.374512e-01,
     ... -1.201602e+01,   3.522748e-03,   9.219506e+00,
     ... 3.321469e-02,   4.337947e+01], rtol=5e-2)
@@ -992,12 +1029,13 @@ def extract_features(data):
     # Only the fake alert should pass the cuts
     >>> np.testing.assert_equal(
     ... np.array(np.sum(full_features.iloc[-30:].isnull(), axis=1)),
-    ... np.array([ 0, 31, 31,  0,  0, 31,  0,  0, 31, 31, 31, 31,  0,  0,
-    ... 0,  0, 31, 0, 31,  0, 31,  0,  0,  0,  0, 31, 31,  0, 31,  0]))
+    ... np.array([ 0, 33, 33,  0,  0, 33,  0,  0, 33, 33, 33, 33,  0,  0,
+    ... 0,  0, 33, 0, 33,  0, 33,  0,  0,  0,  0, 33, 33,  0, 33,  0]))
 
     >>> list(full_features.columns) == ["distnr", "ra", "dec", "duration",
     ... "flux_amplitude", "kurtosis", "max_slope", "skew", "peak_mag_g", "peak_mag_r",
-    ... "std_flux", "q15", "q85", "ntrends", "reference_time", "amplitude", "rise_time", "fall_time",
+    ... "std_flux", "q15", "q85", "ntrends", "brightness_persistence", "shape_irregularity",
+    ... "reference_time", "amplitude", "rise_time", "fall_time",
     ... "Tmin", "Tmax", "t_color", "snr_reference_time", "snr_amplitude", "snr_rise_time",
     ... "snr_fall_time", "snr_Tmin", "snr_Tmax", "snr_t_color", "chi2_rainbow", "z", "t0",
     ... "x0", "x1", "c", "chi2_salt"]
@@ -1033,6 +1071,8 @@ def extract_features(data):
             "q15",
             "q85",
             "ntrends",
+            "brightness_persistence",
+            "shape_irregularity",
         ]
         + rainbow_pnames
         + ["snr_" + k for k in rainbow_pnames]
