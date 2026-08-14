@@ -346,6 +346,7 @@ def build_the_ssoft(
 
     Examples
     --------
+    >>> from fink_utils.sso.ssoft import get_ssoft_columns
     >>> COLUMNS, COLUMNS_HG, COLUMNS_HG1G2, COLUMNS_SHG1G2, COLUMNS_SOCCA = get_ssoft_columns('ztf')
     >>> ssoft_hg = build_the_ssoft(
     ...     aggregated_filename=aggregated_filename,
