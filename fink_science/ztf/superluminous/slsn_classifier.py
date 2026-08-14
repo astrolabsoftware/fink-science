@@ -142,6 +142,7 @@ def ntrend_changes(cflux, csigflux, cfid, k=3):
 @functools.lru_cache(maxsize=None)
 def _extinction_curve_ratio(lambda_angstrom, Rv=3.1):
     """R(lambda) = F99(lambda) * Rv, the extinction curve shape at a given
+
     wavelength
     """
     lambda_eff = lambda_angstrom * u.AA
