@@ -1,4 +1,4 @@
-# Copyright 2019-2025 AstroLab Software
+# Copyright 2019-2026 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,10 @@ from fink_science.rubin.xmatch.utils import (
     TNS_COLS,
     TNS_TYPES,
     TNS_SPARK_SCHEMA,
+)
+from fink_science.rubin.xmatch.utils import (
+    extract_milliquas,
+    MILLIQUAS_COLS,
 )
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
@@ -724,14 +728,13 @@ def crossmatch_mangrove(
         Rubin Right ascension
     dec: float
         Rubin declinations
-    radius_arcsec: float, optional
     radius_arcsec: float
        Crossmatch radius in arcsecond.
 
     Returns
     -------
-    type: str
-        Object type from the catalog. null if no match.
+    type: map
+        Object names and redshift from the catalog. null if no match.
 
     Examples
     --------
@@ -817,6 +820,119 @@ def crossmatch_mangrove(
     )
 
     default = {name: None for name in MANGROVE_COLS}
+    pdf_merge["Type"] = [default for i in range(len(pdf_merge))]
+    pdf_merge.loc[mask, "Type"] = [payload[i] for i in idx2]
+
+    return pdf_merge["Type"]
+
+
+@pandas_udf(MapType(StringType(), StringType()))
+@profile
+def crossmatch_milliquas(
+    diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series, radius_arcsec: pd.Series
+) -> pd.Series:
+    """Crossmatch alerts with the Milliquas catalog
+
+    Parameters
+    ----------
+    diaSourceId: long
+        Rubin diaSourceId
+    ra: float
+        Rubin Right ascension
+    dec: float
+        Rubin declinations
+    radius_arcsec: float
+       Crossmatch radius in arcsecond.
+
+    Returns
+    -------
+    type: map
+        Object type & redshift from the catalog. null if no match.
+
+    Examples
+    --------
+    >>> from pyspark.sql.functions import lit
+
+    Simulate fake data
+    >>> ra = [0.0006286, 101.3520545, 0.3126, 0.31820833]
+    >>> dec = [35.5178439, 24.5421872, 47.6859, 29.59277778]
+    >>> id = ["1", "2", "3", "4"]
+
+    Wrap data into a Spark DataFrame
+    >>> rdd = spark.sparkContext.parallelize(zip(id, ra, dec))
+    >>> df = rdd.toDF(['id', 'ra', 'dec'])
+    >>> df.show() # doctest: +NORMALIZE_WHITESPACE
+    +---+-----------+-----------+
+    | id|         ra|        dec|
+    +---+-----------+-----------+
+    |  1|   6.286E-4| 35.5178439|
+    |  2|101.3520545| 24.5421872|
+    |  3|     0.3126|    47.6859|
+    |  4| 0.31820833|29.59277778|
+    +---+-----------+-----------+
+    <BLANKLINE>
+
+    Test the processor by adding a new column with the result of the xmatch
+    >>> df.withColumn(
+    ...     'milliquas',
+    ...     crossmatch_milliquas(df['id'], df['ra'], df['dec'], lit(1.2))
+    ... ).select("milliquas.type").show()
+    +----+
+    |type|
+    +----+
+    |   Q|
+    |null|
+    |null|
+    |  BR|
+    +----+
+    <BLANKLINE>
+    """
+    # set separation length
+    radius_arcsec = float(radius_arcsec.to_numpy()[0])
+
+    pdf = pd.DataFrame(
+        {
+            "ra": ra.to_numpy(),
+            "dec": dec.to_numpy(),
+            "diaSourceId": range(len(ra)),
+        }
+    )
+
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    catalog = curdir + "/data/catalogs/milliquas.parquet"
+    ra2, dec2, payload = extract_milliquas(catalog)
+
+    # limit the catalog
+    dec_min, dec_max = dec.min(), dec.max()
+
+    # Extend the box for safety
+    pad = 2 * radius_arcsec / 3600
+    mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
+    if mask.sum() == 0:
+        # No error, but no overlap, return None (null values for Spark)
+        out = [{name: None for name in MILLIQUAS_COLS}] * len(ra)
+        return pd.Series(out)
+
+    ra2 = ra2[mask]
+    dec2 = dec2[mask]
+    payload = payload[mask.to_numpy()]
+
+    # create catalogs
+    catalog_rubin = SkyCoord(
+        ra=np.array(ra.to_numpy(), dtype=float) * u.degree,
+        dec=np.array(dec.to_numpy(), dtype=float) * u.degree,
+    )
+
+    catalog_other = SkyCoord(
+        ra=np.array(ra2.to_numpy(), dtype=float) * u.degree,
+        dec=np.array(dec2.to_numpy(), dtype=float) * u.degree,
+    )
+
+    pdf_merge, mask, idx2 = cross_match_astropy(
+        pdf, catalog_rubin, catalog_other, radius_arcsec=radius_arcsec
+    )
+
+    default = {name: None for name in MILLIQUAS_COLS}
     pdf_merge["Type"] = [default for i in range(len(pdf_merge))]
     pdf_merge.loc[mask, "Type"] = [payload[i] for i in idx2]
 

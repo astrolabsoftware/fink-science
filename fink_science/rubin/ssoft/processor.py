@@ -1,4 +1,4 @@
-# Copyright 2023-2025 AstroLab Software
+# Copyright 2019-2026 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""file contains scripts and definition for the SSO Fink Table"""
+"""file contains scripts and definition for the Rubin SSO Fink Table"""
 
 import os
 import sys
@@ -45,6 +45,7 @@ from asteroid_spinprops.ssolib import modelfit
 
 import logging
 
+
 _LOG = logging.getLogger(__name__)
 
 
@@ -72,11 +73,11 @@ def randn(cmagpsf: pd.Series) -> pd.Series:
 @pandas_udf(StringType())
 @profile
 def extract_ssoft_parameters(
-    ssnamenr: pd.Series,
+    designation: pd.Series,
     magpsf: pd.Series,
     sigmapsf: pd.Series,
     jd: pd.Series,
-    fid: pd.Series,
+    band: pd.Series,
     raobs: pd.Series,
     decobs: pd.Series,
     raephem: pd.Series,
@@ -100,25 +101,30 @@ def extract_ssoft_parameters(
 
     Parameters
     ----------
-    ssnamenr: str
-        SSO name from ZTF alert packet
+    designation: str
+        SSO designation from Rubin alert packet
     magpsf: float
-        Magnitude from ZTF
+        Difference magnitude infered from psfFlux in Rubin
     sigmapsf: float
         Error estimate on magnitude
     jd: double
-        Time of exposition (UTC)
-    fid: int
-        Filter ID (1=g, 2=r)
+        Time of exposition (JD/UTC)
+    band: str
+        Filter name
     raobs: double
         Observation RAs
     decobs: double
         Observation declinations
     phase:
+        Phase in degree
     dobs:
+        Topocentric distance
     dhelio:
+        Heliocentric distance
     cdx:
+        Difference raobs, raephem
     cdy:
+        Difference decobs, decephem
     method: str
         Method to compute ephemerides: `ephemcc` or `rest`.
         Use only the former on the Spark Cluster (local installation of ephemcc),
@@ -154,7 +160,7 @@ def extract_ssoft_parameters(
 
     # loop over SSO
     out = []
-    for index, ssname in enumerate(ssnamenr.to_numpy()):
+    for index, _ in enumerate(designation.to_numpy()):
         # Construct the dataframe
         magpsf_red = extract_array_from_series(magpsf, index, float) - 5 * np.log10(
             extract_array_from_series(dobs, index, float)
@@ -170,12 +176,12 @@ def extract_ssoft_parameters(
                     "cmred": magpsf_red,
                     "csigmapsf": extract_array_from_series(sigmapsf, index, float),
                     "Phase": extract_array_from_series(phase, index, float),
-                    "cfid": extract_array_from_series(fid, index, int),
+                    "cfid": extract_array_from_series(band, index, str),
                     "ra": extract_array_from_series(raobs, index, float),
                     "dec": extract_array_from_series(decobs, index, float),
                     "cjd": jd_lt,
-                    "i:raephem": extract_array_from_series(raephem, index, float),
-                    "i:decephem": extract_array_from_series(decephem, index, float),
+                    "r:raephem": extract_array_from_series(raephem, index, float),
+                    "r:decephem": extract_array_from_series(decephem, index, float),
                     "ra_s": extract_array_from_series(ra_s, index, float),
                     "dec_s": extract_array_from_series(dec_s, index, float),
                     "cdx": extract_array_from_series(cdx, index, float),
@@ -237,40 +243,38 @@ def extract_ssoft_parameters(
             # replace names inplace for the remaning computation
             pdf = pdf.rename(
                 columns={
-                    "ra": "i:ra",
-                    "dec": "i:dec",
-                    "cfid": "i:fid",
-                    "cjd": "i:jd",  # FIXME: this is lighttime corrected
+                    "ra": "r:ra",
+                    "dec": "r:dec",
+                    "cband": "r:band",
+                    "cjd": "r:jd",  # FIXME: this is lighttime corrected
                 }
             )
         else:
             pdf = pd.DataFrame(
                 {
-                    "i:ssnamenr": [ssname] * len(raobs.to_numpy()[index]),
-                    "i:magpsf": extract_array_from_series(magpsf, index, float),
-                    "i:sigmapsf": extract_array_from_series(sigmapsf, index, float),
-                    "i:jd": extract_array_from_series(jd, index, float),
-                    "i:fid": extract_array_from_series(fid, index, int),
-                    "i:ra": extract_array_from_series(raobs, index, float),
-                    "i:dec": extract_array_from_series(decobs, index, float),
-                    "i:raephem": extract_array_from_series(raephem, index, float),
-                    "i:decephem": extract_array_from_series(decephem, index, float),
-                    "i:magpsf_red": magpsf_red,
+                    "r:sigmapsf": extract_array_from_series(sigmapsf, index, float),
+                    "r:jd": extract_array_from_series(jd, index, float),
+                    "r:band": extract_array_from_series(band, index, str),
+                    "r:ra": extract_array_from_series(raobs, index, float),
+                    "r:dec": extract_array_from_series(decobs, index, float),
+                    "r:raephem": extract_array_from_series(raephem, index, float),
+                    "r:decephem": extract_array_from_series(decephem, index, float),
+                    "r:magpsf_red": magpsf_red,
                     "Phase": extract_array_from_series(phase, index, float),
                     "Dobs": extract_array_from_series(dobs, index, float),
                 }
             )
 
-            pdf = pdf.sort_values("i:jd")
+            pdf = pdf.sort_values("r:jd")
 
             outdic = estimate_sso_params(
-                pdf["i:magpsf_red"].to_numpy(),
-                pdf["i:sigmapsf"].to_numpy(),
+                pdf["r:magpsf_red"].to_numpy(),
+                pdf["r:sigmapsf"].to_numpy(),
                 np.deg2rad(pdf["Phase"].to_numpy()),
-                pdf["i:fid"].to_numpy(),
-                np.deg2rad(pdf["i:ra"].to_numpy()),
-                np.deg2rad(pdf["i:dec"].to_numpy()),
-                jd=pdf["i:jd"].to_numpy(),
+                pdf["r:band"].to_numpy(),
+                np.deg2rad(pdf["r:ra"].to_numpy()),
+                np.deg2rad(pdf["r:dec"].to_numpy()),
+                jd=pdf["r:jd"].to_numpy(),
                 p0=MODELS[model_name]["p0"],
                 bounds=MODELS[model_name]["bounds"],
                 model=model_name,
@@ -280,11 +284,11 @@ def extract_ssoft_parameters(
 
         # Add astrometry
         fink_coord = SkyCoord(
-            ra=pdf["i:ra"].to_numpy() * u.deg, dec=pdf["i:dec"].to_numpy() * u.deg
+            ra=pdf["r:ra"].to_numpy() * u.deg, dec=pdf["r:dec"].to_numpy() * u.deg
         )
         ephem_coord = SkyCoord(
-            ra=pdf["i:raephem"].to_numpy() * u.deg,
-            dec=pdf["i:decephem"].to_numpy() * u.deg,
+            ra=pdf["r:raephem"].to_numpy() * u.deg,
+            dec=pdf["r:decephem"].to_numpy() * u.deg,
         )
 
         separation = fink_coord.separation(ephem_coord).arcsecond
@@ -295,15 +299,15 @@ def extract_ssoft_parameters(
         outdic["kurt_astrometry"] = kurtosis(separation)
 
         # Time lapse
-        outdic["n_days"] = pdf["i:jd"].max() - pdf["i:jd"].min()
-        ufilters = np.unique(pdf["i:fid"].to_numpy())
+        outdic["n_days"] = pdf["r:jd"].max() - pdf["r:jd"].min()
+        ufilters = np.unique(pdf["r:band"].to_numpy())
         for filt in ufilters:
-            mask = pdf["i:fid"].to_numpy() == filt
+            mask = pdf["r:band"].to_numpy() == filt
             outdic["n_days_{}".format(filt)] = (
-                pdf["i:jd"][mask].max() - pdf["i:jd"][mask].min()
+                pdf["r:jd"][mask].max() - pdf["r:jd"][mask].min()
             )
 
-        outdic["last_jd"] = pdf["i:jd"].max()
+        outdic["last_jd"] = pdf["r:jd"].max()
 
         out.append(str(outdic))
     return pd.Series(out)
@@ -312,7 +316,7 @@ def extract_ssoft_parameters(
 def build_the_ssoft(
     aggregated_filename,
     nparts=400,
-    nmin=50,
+    nmin=10,
     frac=None,
     model="SHG1G2",
     version=None,
@@ -339,6 +343,10 @@ def build_the_ssoft(
     ephem_method: str
         Method to compute ephemerides: `ephemcc` (default), or `rest`.
 
+    Notes
+    -----
+    Only HG is tested on early operations. Other models might work at your own risk.
+
     Returns
     -------
     pdf: pd.DataFrame
@@ -347,65 +355,23 @@ def build_the_ssoft(
     Examples
     --------
     >>> from fink_utils.sso.ssoft import get_ssoft_columns
-    >>> COLUMNS, COLUMNS_HG, COLUMNS_HG1G2, COLUMNS_SHG1G2, COLUMNS_SOCCA = get_ssoft_columns('ztf')
+    >>> COLUMNS, COLUMNS_HG, COLUMNS_HG1G2, COLUMNS_SHG1G2, COLUMNS_SOCCA = get_ssoft_columns('lsst')
     >>> ssoft_hg = build_the_ssoft(
     ...     aggregated_filename=aggregated_filename,
     ...     nparts=1,
-    ...     nmin=50,
+    ...     nmin=10,
     ...     frac=None,
     ...     model='HG',
     ...     version=None,
     ...     ephem_method="rest",
     ...     sb_method="fastnifty")
-    >>> assert len(ssoft_hg) == 2, ssoft_hg
-    >>> assert "G_1" in ssoft_hg.columns
+    <BLANKLINE>
+    >>> assert len(ssoft_hg) == 1, ssoft_hg
+    >>> assert "G_g" in ssoft_hg.columns
 
     >>> col_ssoft_hg = sorted(ssoft_hg.columns)
     >>> expected_cols = sorted({**COLUMNS, **COLUMNS_HG}.keys())
     >>> assert col_ssoft_hg == expected_cols, (col_ssoft_hg, expected_cols)
-
-    >>> ssoft_hg1g2 = build_the_ssoft(
-    ...     aggregated_filename=aggregated_filename,
-    ...     nparts=1,
-    ...     nmin=50,
-    ...     frac=None,
-    ...     model='HG1G2',
-    ...     version=None,
-    ...     ephem_method="rest",
-    ...     sb_method="fastnifty")
-    >>> assert len(ssoft_hg1g2) == 2, ssoft_hg12
-    >>> assert "G1_1" in ssoft_hg1g2.columns
-
-    >>> col_ssoft_hg1g2 = sorted(ssoft_hg1g2.columns)
-    >>> expected_cols = sorted({**COLUMNS, **COLUMNS_HG1G2}.keys())
-    >>> assert col_ssoft_hg1g2 == expected_cols, (col_ssoft_hg1g2, expected_cols)
-
-    >>> ssoft_shg1g2 = build_the_ssoft(
-    ...     aggregated_filename=aggregated_filename,
-    ...     nparts=1,
-    ...     nmin=50,
-    ...     frac=None,
-    ...     model='SHG1G2',
-    ...     version=None,
-    ...     ephem_method="rest",
-    ...     sb_method="fastnifty")
-    >>> assert len(ssoft_shg1g2) == 2, ssoft_shg1g2
-    >>> assert "R" in ssoft_shg1g2.columns
-    >>> assert "a_b" in ssoft_shg1g2.columns
-
-    >>> col_ssoft_shg1g2 = sorted(ssoft_shg1g2.columns)
-    >>> expected_cols = sorted({**COLUMNS, **COLUMNS_SHG1G2}.keys())
-    >>> assert col_ssoft_shg1g2 == expected_cols, (col_ssoft_shg1g2, expected_cols)
-
-    >>> ssoft_socca = build_the_ssoft(
-    ...     aggregated_filename=aggregated_filename,
-    ...     nparts=1,
-    ...     nmin=50,
-    ...     frac=None,
-    ...     model='SOCCA',
-    ...     version=None,
-    ...     ephem_method="rest",
-    ...     sb_method="fastnifty")
     """
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
@@ -430,9 +396,9 @@ def build_the_ssoft(
     # Note: we compute the size of Phase
     # because Phase can be null due to no ephemerides
     df = (
-        df.withColumn("ephemmeasurements", F.size(df["Phase"]))
+        df.withColumn("ephemmeasurements", F.size(df["cphaseAngle"]))
         .filter(F.col("ephemmeasurements") >= nmin)
-        .filter(F.size("cmagpsf") == F.size("Phase"))
+        .filter(F.size("cmagpsf") == F.size("cphaseAngle"))
         .repartition(nparts)
         .cache()
     )
@@ -455,36 +421,35 @@ def build_the_ssoft(
         )
 
     # cdx, cdy only required for SOCCA
-    if ("cdx" not in df.columns) or ("cdy" not in df.columns):
+    if ("cephOffsetRa" not in df.columns) or ("cephOffsetDec" not in df.columns):
         _LOG.warning(
-            "cdx or cdy not found in columns. Drawing from standard normal distribution"
+            "cephOffsetRa or cephOffsetDec not found in columns. Drawing from standard normal distribution"
         )
-        df = df.withColumn("cdx", randn("cmagpsf"))
-        df = df.withColumn("cdy", randn("cmagpsf"))
+        df = df.withColumn("cephOffsetRa", randn("cmagpsf"))
+        df = df.withColumn("cephOffsetDec", randn("cmagpsf"))
 
-    # FIXME: ssnamenr is not defined for ATLAS data
-    cols = ["ssnamenr", "params_str"]
+    cols = ["designation", "params_str"]
     t0 = time.time()
     pdf = (
         df.withColumn(
             "params_str",
             extract_ssoft_parameters(
-                F.col("ssnamenr").astype("string"),
+                F.col("designation").astype("string"),
                 "cmagpsf",
                 "csigmapsf",
-                "cjd",
-                "cfid",
+                "cjdUtc",
+                "cband",
                 "cra",
                 "cdec",
-                "RA",
-                "DEC",
-                "RA_h",
-                "DEC_h",
-                "Phase",
-                "Dobs",
-                "Dhelio",
-                "cdx",
-                "cdy",
+                "cephRa",
+                "cephDec",
+                "chelioRa",
+                "chelioDec",
+                "cphaseAngle",
+                "ctopoRange",
+                "chelioRange",
+                "cephOffsetRa",
+                "cephOffsetDec",
                 F.lit(ephem_method),
                 F.lit(model),
             ),
@@ -505,7 +470,7 @@ def build_the_ssoft(
         columns=["params_dict", "params_str"]
     )
 
-    sso_name, sso_number = rockify(pdf.ssnamenr.copy())
+    sso_name, sso_number = rockify(pdf.designation.copy(), prune=False)
     pdf["sso_name"] = sso_name
     pdf["sso_number"] = sso_number
 
@@ -535,7 +500,7 @@ if __name__ == "__main__":
     path = os.path.dirname(__file__)
 
     aggregated_filename = (
-        "file://{}/data/alerts/sso_ztf_lc_aggregated_202608_three_obj.parquet".format(
+        "file://{}/data/alerts/sso_rubin_lc_aggregated_202608_one_obj.parquet".format(
             path
         )
     )

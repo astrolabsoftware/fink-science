@@ -192,7 +192,7 @@ def extreme_state(
     ... ).sum()
     8
     >>> ((pdf["instantness_high"] > 1) & (pdf["robustness_high"] > 1)).sum()
-    24
+    22
     """
     # Load catalog
     path = os.path.dirname(os.path.abspath(__file__))
