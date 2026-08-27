@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import pandas as pd
 import numpy as np
 from light_curve.light_curve_py import RainbowFit
@@ -26,13 +27,27 @@ import astropy.units as u
 from dust_extinction.parameter_averages import F99
 from astropy.cosmology import LambdaCDM
 from astropy.coordinates import SkyCoord
-from dustmaps.sfd import SFDQuery
+import dustmaps.sfd
 import os
 import contextlib
 import requests
 import urllib.parse
 from fink_science import __file__
 import io
+
+_LOG = logging.getLogger(__name__)
+
+# https://github.com/IQSS/dataverse.harvard.edu/issues/479
+requests.utils.default_user_agent = lambda: "Mozilla/5.0"
+
+
+def prepare_sfd_data():
+    path = dustmaps.sfd.data_dir()
+    path = os.path.join(path, "sfd")
+
+    if not os.path.exists(path):
+        _LOG.warning("No SFD data for dustmaps, downloading it")
+        dustmaps.sfd.fetch()
 
 
 def compute_flux(pdf):
@@ -312,7 +327,10 @@ def get_ebv(ra, dec):
     """
     result = -np.ones(len(dec))
     valid_mask = np.abs(dec) <= 90
-    sfd = SFDQuery()
+
+    prepare_sfd_data()
+    sfd = dustmaps.sfd.SFDQuery()
+
     coord = SkyCoord(ra=ra[valid_mask] * u.deg, dec=dec[valid_mask] * u.deg)
     ebv = sfd(coord)
     result[valid_mask] = ebv
