@@ -36,7 +36,7 @@ def deltamaglatest(magpsf: pd.Series) -> pd.Series:
 
     Examples
     --------
-    >>> from fink_science.utilities import concat_col
+    >>> from fink_utils.spark.utils import concat_col
     >>> df = spark.read.format('parquet').load(ztf_alert_sample)
 
     # Required alert columns
