@@ -48,7 +48,7 @@ def knscore(
 ) -> pd.Series:
     """Return the probability of an alert to be a Kilonova using a Random Forest Classifier.
 
-    You need to run the SIMBAD crossmatch before. Uses model "partial.pkl" from kndetect.
+    You need to run the SIMBAD crossmatch before. Initially uses model "partial.pkl" from kndetect.
 
     Parameters
     ----------
