@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pickle
+import joblib
 import os
 
 import numpy as np
@@ -58,6 +58,6 @@ def load_external_model(model_path):
     -------
     rf, pca: RandomForestClassifiers
     """
-    rf = pickle.load(open(os.path.join(model_path, "rf.sav"), "rb"))
-    pca = pickle.load(open(os.path.join(model_path, "pca.sav"), "rb"))
+    rf = joblib.load(open(os.path.join(model_path, "rf-1-1.7.2.obj"), "rb"))
+    pca = joblib.load(open(os.path.join(model_path, "pca-1-1.7.2.obj"), "rb"))
     return rf, pca
