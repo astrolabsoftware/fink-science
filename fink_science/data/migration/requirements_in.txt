@@ -1,4 +1,4 @@
-scikit-learn==1.0.2
+scikit-learn==1.5.0
 numpy==1.23.5
 sklearn_migrator
 xgboost==2.1.4
