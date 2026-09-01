@@ -14,7 +14,13 @@ cp ~/codes/fink-science/fink_science/data/models/superluminous_classifier.joblib
 Then install miniconda with targeted Python version (in/out):
 
 ```bash
+# ZTF
 ./install_miniconda.sh --version py39_25.9.1-3
+
+# Rubin
+./install_miniconda.sh --version py311_25.1.1-2
+
+# Output
 ./install_miniconda.sh --version py313_26.7.1-0
 ```
 

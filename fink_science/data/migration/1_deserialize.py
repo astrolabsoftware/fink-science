@@ -21,6 +21,9 @@ import sklearn
 from sklearn_migrator.classification.random_forest_clf import (
     deserialize_random_forest_clf,
 )
+from sklearn_migrator.classification.gradient_boosting_clf import (
+    deserialize_gradient_boosting_clf,
+)
 from sklearn_migrator.dimension.pca import deserialize_pca
 
 import argparse
@@ -41,6 +44,8 @@ def main():
 
     if args.modelfn.startswith("pca"):
         new_model = deserialize_pca(all_data, version_sklearn_out)
+    elif args.modelfn.startswith("model_orphans.pkl"):
+        new_model = deserialize_gradient_boosting_clf(all_data, version_sklearn_out)
     else:
         new_model = deserialize_random_forest_clf(all_data, version_sklearn_out)
 
