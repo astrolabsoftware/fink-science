@@ -21,6 +21,9 @@ from joblib import load
 from sklearn_migrator.classification.random_forest_clf import (
     serialize_random_forest_clf,
 )
+from sklearn_migrator.classification.gradient_boosting_clf import (
+    serialize_gradient_boosting_clf,
+)
 from sklearn_migrator.dimension.pca import serialize_pca
 
 import argparse
@@ -37,9 +40,12 @@ def main():
     version_sklearn_in = sklearn.__version__
 
     model = load("input_{}/".format(version_sklearn_in) + args.modelfn)
+    print(model)
 
     if args.modelfn.startswith("pca"):
         all_data = serialize_pca(model, version_sklearn_in)
+    elif args.modelfn.startswith("model_orphans.pkl"):
+        all_data = serialize_gradient_boosting_clf(model, version_sklearn_in)
     else:
         all_data = serialize_random_forest_clf(model, version_sklearn_in)
 
