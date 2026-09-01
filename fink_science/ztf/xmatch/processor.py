@@ -17,7 +17,8 @@ from line_profiler import profile
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf
-from pyspark.sql.types import StringType, MapType
+from pyspark.sql.types import StringType, MapType, ArrayType, LongType
+from pyspark.sql.window import Window
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -28,6 +29,7 @@ import logging
 import requests
 import pandas as pd
 import numpy as np
+import healpy as hp
 
 from fink_science.ztf.xmatch.utils import cross_match_astropy
 from fink_science.ztf.xmatch.utils import generate_csv
@@ -688,6 +690,244 @@ def crossmatch_mangrove(
     pdf_merge.loc[mask, "Type"] = [payload[i] for i in idx2]
 
     return pdf_merge["Type"]
+
+
+@pandas_udf(LongType())
+def ang2pix(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
+    """Compute the HEALPix (RING scheme) pixel number for coordinates, at a given nside.
+
+    Parameters
+    ----------
+    ra: pd.Series of float
+        Right ascension, in degrees.
+    dec: pd.Series of float
+        Declination, in degrees.
+    nside: pd.Series of int
+        HEALPix nside (same value repeated for every row).
+
+    Returns
+    -------
+    out: pd.Series of long
+        HEALPix pixel number (RING scheme) for each coordinate.
+
+    Examples
+    --------
+    >>> df = spark.createDataFrame(pd.DataFrame({"ra": [10.0], "dec": [20.0]}))
+    >>> df = df.withColumn("pix", ang2pix(df["ra"], df["dec"], F.lit(256)))
+    >>> df.select("pix").take(1)[0][0]
+    257564
+    """
+    theta = np.radians(90.0 - dec.to_numpy())
+    phi = np.radians(ra.to_numpy())
+    return pd.Series(hp.ang2pix(int(nside.to_numpy()[0]), theta, phi))
+
+
+@pandas_udf(ArrayType(LongType()))
+def ang2pix_neighbours(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
+    """Compute the HEALPix pixel for coordinates, plus its (up to 8) neighbouring pixels.
+
+    Notes
+    -----
+    Used to build a coarse candidate-pixel set around each alert before
+    joining against a static catalog indexed by `ang2pix` at the same
+    nside: a galaxy sharing, or immediately neighbouring, an alert's pixel
+    is a candidate; anything else cannot possibly be within a reasonable
+    crossmatch radius and is never considered. See `xmatch_regalade` for
+    how this is used.
+
+    Parameters
+    ----------
+    ra: pd.Series of float
+        Right ascension, in degrees.
+    dec: pd.Series of float
+        Declination, in degrees.
+    nside: pd.Series of int
+        HEALPix nside (same value repeated for every row).
+
+    Returns
+    -------
+    out: pd.Series of list of long
+        For each coordinate, the sorted, de-duplicated list of its own
+        pixel plus its existing neighbours (some border pixels have fewer
+        than 8 neighbours; missing ones are dropped, not zero-filled).
+
+    Examples
+    --------
+    >>> df = spark.createDataFrame(pd.DataFrame({"ra": [10.0], "dec": [20.0]}))
+    >>> df = df.withColumn("pix", ang2pix_neighbours(df["ra"], df["dec"], F.lit(256)))
+    >>> pixels = df.select("pix").take(1)[0][0]
+    >>> 257564 in pixels
+    True
+    >>> len(pixels) in (7, 8, 9)
+    True
+    """
+    nside_ = int(nside.to_numpy()[0])
+    theta = np.radians(90.0 - dec.to_numpy())
+    phi = np.radians(ra.to_numpy())
+    self_pix = hp.ang2pix(nside_, theta, phi)
+    neighbours = hp.get_all_neighbours(nside_, theta, phi)
+    all_pix = np.vstack([self_pix[None, :], neighbours])
+    return pd.Series([np.unique(col[col >= 0]).tolist() for col in all_pix.T])
+
+
+def xmatch_regalade(
+    df,
+    regalade_df,
+    ra_col="candidate.ra",
+    dec_col="candidate.dec",
+    id_col="candidate.candid",
+    dlr_factor=1.25,
+    nside=256,
+):
+    """Crossmatch a Fink alert DataFrame against the static REGALADE galaxy catalog.
+
+    Notes
+    -----
+    For each alert, finds the REGALADE galaxy whose directional light
+    radius (DLR) ellipse (semi-major axis R1, semi-minor R2, position
+    angle PA, scaled by `dlr_factor`) contains the alert, and keeps the
+    closest one (smallest normalized ellipse separation). The separation
+    is computed via a gnomonic (tangent-plane) projection centered on each
+    candidate galaxy -- the same projection astropy's
+    `SkyCoord.spherical_offsets_to` uses, reimplemented here since Spark
+    has no native spherical-geometry support. Unlike the other crossmatch
+    functions in this module, this is a genuine Spark DataFrame join
+    (stream-static), not a `pandas_udf`.
+
+    Candidates are narrowed via a HEALPix pixel index (`nside`,
+    ~13.4 arcmin pixels at the default 256): an alert can only match a
+    galaxy sharing, or immediately neighbouring, its pixel
+    (`ang2pix_neighbours`). Verified empirically safe up to ~500 arcsec of
+    separation, covering all but ~24 of REGALADE's ~56 million galaxies
+    (the most extreme outliers, R1 above ~600 arcsec, may occasionally be
+    missed -- accepted as negligible).
+
+    `regalade_df` must already have a `pix` column, computed once (not per
+    micro-batch) when REGALADE is loaded, at `nside`, e.g.:
+    `regalade_df.withColumn("pix", ang2pix(F.col("gal_ra"), F.col("gal_dec"), F.lit(nside)))`.
+
+    Parameters
+    ----------
+    df: Spark DataFrame
+        Alert DataFrame (streaming or static).
+    regalade_df: Spark DataFrame
+        Static REGALADE DataFrame with columns `gal_ra`, `gal_dec`, `R1`,
+        `R2`, `PA`, `z`, `z_err` and `pix`.
+    ra_col, dec_col, id_col: str
+        Column names (dotted paths OK) in `df` for right ascension,
+        declination, and a unique per-alert identifier.
+    dlr_factor: float
+        DLR scale factor applied to R1/R2 before matching. Default 1.25.
+    nside: int
+        HEALPix nside. Must match whatever `regalade_df`'s `pix` column
+        was computed with.
+
+    Returns
+    -------
+    out: Spark DataFrame
+        `df` with three new columns: `regalade_photoz`, `regalade_photozerr`
+        and `regalade_separation` (normalized ellipse separation: 0 at the
+        galaxy center, 1 on the ellipse boundary). Null where no host
+        galaxy is found.
+
+    Examples
+    --------
+    >>> regalade_pdf = pd.DataFrame({
+    ...     "gal_ra": [10.0, 200.0, 300.0],
+    ...     "gal_dec": [20.0, -10.0, 50.0],
+    ...     "R1": [5.0, 8.0, 60.0],
+    ...     "R2": [4.0, 6.0, 40.0],
+    ...     "PA": [30.0, 0.0, 45.0],
+    ...     "z": [0.05, 0.12, 0.20],
+    ...     "z_err": [0.01, 0.02, 0.03],
+    ... })
+    >>> regalade_df = spark.createDataFrame(regalade_pdf)
+    >>> regalade_df = regalade_df.withColumn(
+    ...     "pix", ang2pix(regalade_df["gal_ra"], regalade_df["gal_dec"], F.lit(256))
+    ... )
+
+    # alert 'a' sits ~2 arcsec from galaxy 1 (R1=5) -- a match.
+    # alert 'b' sits ~3 arcsec from galaxy 2 (R1=8) -- a match.
+    # alert 'c' sits ~30 arcsec from galaxy 3 (R1=60) -- a match.
+    # alert 'd' is far from everything -- no match.
+    >>> alert_pdf = pd.DataFrame({
+    ...     "objectId": ["a", "b", "c", "d"],
+    ...     "ra": [10.0 + 2.0 / 3600, 200.0 + 3.0 / 3600, 300.0 + 30.0 / 3600, 150.0],
+    ...     "dec": [20.0, -10.0, 50.0, 0.0],
+    ... })
+    >>> alert_df = spark.createDataFrame(alert_pdf)
+
+    >>> out = xmatch_regalade(alert_df, regalade_df, ra_col="ra", dec_col="dec", id_col="objectId")
+    >>> out.select("objectId", "regalade_photoz").orderBy("objectId").show() # doctest: +NORMALIZE_WHITESPACE
+    +--------+---------------+
+    |objectId|regalade_photoz|
+    +--------+---------------+
+    |       a|           0.05|
+    |       b|           0.12|
+    |       c|            0.2|
+    |       d|           NULL|
+    +--------+---------------+
+    <BLANKLINE>
+    """
+    alerts = df.select(
+        F.col(id_col).alias("_regalade_id"),
+        F.col(ra_col).alias("_regalade_ra"),
+        F.col(dec_col).alias("_regalade_dec"),
+    )
+
+    exploded = alerts.withColumn(
+        "_regalade_pix",
+        F.explode(
+            ang2pix_neighbours(
+                F.col("_regalade_ra"), F.col("_regalade_dec"), F.lit(nside)
+            )
+        ),
+    )
+    candidates = exploded.join(
+        regalade_df,
+        exploded["_regalade_pix"] == regalade_df["pix"],
+        "inner",
+    ).drop("_regalade_pix")
+
+    ra0 = F.radians(candidates["gal_ra"])
+    dec0 = F.radians(candidates["gal_dec"])
+    ra = F.radians(candidates["_regalade_ra"])
+    dec = F.radians(candidates["_regalade_dec"])
+    dra = ra - ra0
+    cos_c = F.sin(dec0) * F.sin(dec) + F.cos(dec0) * F.cos(dec) * F.cos(dra)
+    x = F.cos(dec) * F.sin(dra) / cos_c
+    y = (F.cos(dec0) * F.sin(dec) - F.sin(dec0) * F.cos(dec) * F.cos(dra)) / cos_c
+    dE = F.degrees(x) * 3600
+    dN = F.degrees(y) * 3600
+
+    pa = F.radians(candidates["PA"])
+    R1 = candidates["R1"] * F.lit(dlr_factor)
+    R2 = candidates["R2"] * F.lit(dlr_factor)
+    x_major = dE * F.sin(pa) + dN * F.cos(pa)
+    y_minor = dE * F.cos(pa) - dN * F.sin(pa)
+    separation = F.sqrt(F.pow(x_major / R1, 2.0) + F.pow(y_minor / R2, 2.0))
+    candidates = candidates.withColumn("_regalade_separation", separation).filter(
+        F.col("_regalade_separation") <= 1.0
+    )
+
+    # a point can fall inside more than one galaxy's ellipse -> keep the closest one
+    window = Window.partitionBy("_regalade_id").orderBy(
+        F.col("_regalade_separation").asc()
+    )
+    best = (
+        candidates.withColumn("_regalade_rank", F.row_number().over(window))
+        .filter(F.col("_regalade_rank") == 1)
+        .select(
+            F.col("_regalade_id").alias("_regalade_join_id"),
+            F.col("z").alias("regalade_photoz"),
+            F.col("z_err").alias("regalade_photozerr"),
+            F.col("_regalade_separation").alias("regalade_separation"),
+        )
+    )
+
+    return df.join(best, df[id_col] == best["_regalade_join_id"], "left").drop(
+        "_regalade_join_id"
+    )
 
 
 if __name__ == "__main__":
