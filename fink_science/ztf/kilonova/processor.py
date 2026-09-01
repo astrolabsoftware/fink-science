@@ -28,8 +28,9 @@ from fink_utils.xmatch.simbad import return_list_of_eg_host
 from fink_science import __file__
 
 from kndetect.utils import load_pcs
-from kndetect.predict import load_classifier, predict_kn_score
+from kndetect.predict import predict_kn_score
 from kndetect.features import extract_features_all_lightcurves, get_feature_names
+import joblib
 
 from fink_science.tester import spark_unit_tests
 
@@ -47,7 +48,7 @@ def knscore(
 ) -> pd.Series:
     """Return the probability of an alert to be a Kilonova using a Random Forest Classifier.
 
-    You need to run the SIMBAD crossmatch before. Uses model "partial.pkl" from kndetect.
+    You need to run the SIMBAD crossmatch before. Initially uses model "partial.pkl" from kndetect.
 
     Parameters
     ----------
@@ -162,7 +163,8 @@ def knscore(
         }
     )
 
-    model = load_classifier("partial.pkl")
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    model = joblib.load(curdir + "/data/models/sklearn_1.7.2/partial-1.7.2.obj")
 
     # Load pcs
     pcs = load_pcs()
