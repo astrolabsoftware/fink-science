@@ -1,4 +1,4 @@
-# Copyright 2025 AstroLab Software
+# Copyright 2025-2026 AstroLab Software
 # Author: Etienne Russeil
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,7 @@ from fink_science import __file__
 
 curdir = os.path.dirname(os.path.abspath(__file__))
 
-classifier_path = curdir + "/data/models/superluminous_classifier.joblib"
+classifier_path = curdir + "/data/models/xgboost_3.4.1/superluminous_classifier.joblib"
 band_wave_aa = {1: 4770.0, 2: 6231.0}
 temperature = "sigmoid"
 bolometric = "bazin"
