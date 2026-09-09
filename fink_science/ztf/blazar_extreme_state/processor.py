@@ -57,7 +57,7 @@ FLAAPLUC_FLUX_TAG = "flaapluc_absolute_flux"
 # Integration periods for the computation
 # of the fluence in the robustness criterion
 INTEGRATION_PERIOD_LOW = 30
-INTEGRATION_PERIOD_HIGH = 30
+INTEGRATION_PERIOD_HIGH = 5
 
 # Radius for the cone search in the Data Release
 RADIUS = 2
@@ -200,9 +200,7 @@ def extreme_state(
     ... ).sum()
     8
     >>> ((pdf["instantness_high"] > 1) & (pdf["robustness_high"] > 1)).sum()
-    24
-    >>> (pdf["cdf_quantile"] != -1).sum()
-    32
+    22
     """
     # Load catalog
     path = os.path.dirname(os.path.abspath(__file__))

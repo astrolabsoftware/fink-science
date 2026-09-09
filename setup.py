@@ -51,6 +51,8 @@ setuptools.setup(
             "data/models/anomaly_detection/*.csv",
             "data/models/anomaly_detection/*.zip",
             "data/models/for_al_loop/*.pkl",
+            "data/models/sklearn_1.7.2/*.obj",
+            "data/models/xgboost_3.4.1/*.joblib",
             "data/catalogs/*.parquet",
             "data/catalogs/*.fits",
             "data/catalogs/*.csv",

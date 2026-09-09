@@ -1,4 +1,4 @@
-# Copyright 2019-2025 AstroLab Software
+# Copyright 2019-2026 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,10 @@ from fink_science.rubin.xmatch.utils import (
     TNS_COLS,
     TNS_TYPES,
     TNS_SPARK_SCHEMA,
+)
+from fink_science.rubin.xmatch.utils import (
+    extract_milliquas,
+    MILLIQUAS_COLS,
 )
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
@@ -94,7 +98,7 @@ def cdsxmatch(
         Return Pandas DataFrame with a new single column
         containing comma-separated values of extra-columns.
         If the object is not found in Simbad, the type is
-        marked as null. In the case several objects match
+        marked as NULL. In the case several objects match
         the centroid of the alert, only the closest is returned.
         If the request Failed (no match at all), return Column of Fails.
 
@@ -131,8 +135,8 @@ def cdsxmatch(
     +---+----------+-----------+------------+
     |  a|26.8566983|-26.9677112|         LP*|
     |  b|  26.24497|-26.7569436|           *|
-    |  c|       1.0|        0.0|        null|
-    |  d|       0.0|      -90.0|        null|
+    |  c|       1.0|        0.0|        NULL|
+    |  d|       0.0|      -90.0|        NULL|
     +---+----------+-----------+------------+
     <BLANKLINE>
     """
@@ -182,10 +186,10 @@ def cdsxmatch(
             pdf = pd.read_csv(io.BytesIO(r.content))
 
             if pdf.empty:
-                # null values
+                # NULL values
                 name = None
                 names = [name] * len(diaSourceId)
-                # No error, but no match, return None (null values for Spark)
+                # No error, but no match, return None (NULL values for Spark)
                 return pd.Series(names)
 
             # join
@@ -198,7 +202,7 @@ def cdsxmatch(
 
             pdf_out = pdf_in.join(pdf_nodedup)
 
-            # To get null values in Spark
+            # To get NULL values in Spark
             pdf_out = pdf_out.replace(np.nan, None)
 
             if len(col_list) > 1:
@@ -404,7 +408,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
                 "TNS_API_MARKER and TNS_API_KEY are not defined as env var in the master."
             )
             _LOG.warning(
-                "Skipping crossmatch with TNS. Creating columns with null values."
+                "Skipping crossmatch with TNS. Creating columns with NULL values."
             )
             for col_name, col_type in zip(TNS_COLS, TNS_TYPES):
                 df = df.withColumn(
@@ -439,7 +443,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         Returns
         -------
         to_return: pd.Series of dict
-            TNS name and type for the alert. null if no match.
+            TNS name and type for the alert. NULL if no match.
         """
         pdf_lsst = pd.DataFrame(
             {
@@ -458,7 +462,7 @@ def xmatch_tns(df, distmaxarcsec=1.5, tns_raw_output=""):
         pad = 2 * distmaxarcsec / 3600
         mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
         if mask.sum() == 0:
-            # No error, but no overlap, return None (null values for Spark)
+            # No error, but no overlap, return None (NULL values for Spark)
             out = [[None] * len(TNS_SPARK_SCHEMA)] * len(ra)
             return pd.DataFrame(out)
 
@@ -546,7 +550,7 @@ def crossmatch_other_catalog(
     Returns
     -------
     type: str
-        Object type from the catalog. null if no match.
+        Object type from the catalog. NULL if no match.
 
     Examples
     --------
@@ -579,10 +583,10 @@ def crossmatch_other_catalog(
     +---+-----------+-----------+----+
     | id|         ra|        dec|gcvs|
     +---+-----------+-----------+----+
-    |  1| 26.8566983|-26.9677112|null|
+    |  1| 26.8566983|-26.9677112|NULL|
     |  2|101.3520545| 24.5421872|  RR|
-    |  3|     0.3126|    47.6859|null|
-    |  4| 0.31820833|29.59277778|null|
+    |  3|     0.3126|    47.6859|NULL|
+    |  4| 0.31820833|29.59277778|NULL|
     +---+-----------+-----------+----+
     <BLANKLINE>
 
@@ -595,8 +599,8 @@ def crossmatch_other_catalog(
     +---+-----------+-----------+----+
     |  1| 26.8566983|-26.9677112|MISC|
     |  2|101.3520545| 24.5421872|RRAB|
-    |  3|     0.3126|    47.6859|null|
-    |  4| 0.31820833|29.59277778|null|
+    |  3|     0.3126|    47.6859|NULL|
+    |  4| 0.31820833|29.59277778|NULL|
     +---+-----------+-----------+----+
     <BLANKLINE>
 
@@ -607,9 +611,9 @@ def crossmatch_other_catalog(
     +---+-----------+-----------+--------------------+
     | id|         ra|        dec|                3hsp|
     +---+-----------+-----------+--------------------+
-    |  1| 26.8566983|-26.9677112|                null|
-    |  2|101.3520545| 24.5421872|                null|
-    |  3|     0.3126|    47.6859|                null|
+    |  1| 26.8566983|-26.9677112|                NULL|
+    |  2|101.3520545| 24.5421872|                NULL|
+    |  3|     0.3126|    47.6859|                NULL|
     |  4| 0.31820833|29.59277778|3HSPJ000116.4+293534|
     +---+-----------+-----------+--------------------+
     <BLANKLINE>
@@ -621,10 +625,10 @@ def crossmatch_other_catalog(
     +---+-----------+-----------+-----------------+
     | id|         ra|        dec|             4lac|
     +---+-----------+-----------+-----------------+
-    |  1| 26.8566983|-26.9677112|             null|
-    |  2|101.3520545| 24.5421872|             null|
+    |  1| 26.8566983|-26.9677112|             NULL|
+    |  2|101.3520545| 24.5421872|             NULL|
     |  3|     0.3126|    47.6859|4FGL J0001.2+4741|
-    |  4| 0.31820833|29.59277778|             null|
+    |  4| 0.31820833|29.59277778|             NULL|
     +---+-----------+-----------+-----------------+
     <BLANKLINE>
 
@@ -635,10 +639,10 @@ def crossmatch_other_catalog(
     +---+-----------+-----------+-----+
     | id|         ra|        dec|spicy|
     +---+-----------+-----------+-----+
-    |  1| 26.8566983|-26.9677112| null|
-    |  2|101.3520545| 24.5421872| null|
-    |  3|     0.3126|    47.6859| null|
-    |  4| 0.31820833|29.59277778| null|
+    |  1| 26.8566983|-26.9677112| NULL|
+    |  2|101.3520545| 24.5421872| NULL|
+    |  3|     0.3126|    47.6859| NULL|
+    |  4| 0.31820833|29.59277778| NULL|
     +---+-----------+-----------+-----+
     <BLANKLINE>
     """
@@ -678,7 +682,7 @@ def crossmatch_other_catalog(
     pad = 2 * radius_arcsec / 3600
     mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
     if mask.sum() == 0:
-        # No error, but no overlap, return None (null values for Spark)
+        # No error, but no overlap, return None (NULL values for Spark)
         out = [None] * len(ra)
         return pd.Series(out)
 
@@ -724,14 +728,13 @@ def crossmatch_mangrove(
         Rubin Right ascension
     dec: float
         Rubin declinations
-    radius_arcsec: float, optional
     radius_arcsec: float
        Crossmatch radius in arcsecond.
 
     Returns
     -------
-    type: str
-        Object type from the catalog. null if no match.
+    type: map
+        Object names and redshift from the catalog. NULL if no match.
 
     Examples
     --------
@@ -765,9 +768,9 @@ def crossmatch_mangrove(
     |HyperLEDA_name|
     +--------------+
     |       NGC5055|
-    |          null|
-    |          null|
-    |          null|
+    |          NULL|
+    |          NULL|
+    |          NULL|
     +--------------+
     <BLANKLINE>
     """
@@ -793,7 +796,7 @@ def crossmatch_mangrove(
     pad = 2 * radius_arcsec / 3600
     mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
     if mask.sum() == 0:
-        # No error, but no overlap, return None (null values for Spark)
+        # No error, but no overlap, return None (NULL values for Spark)
         out = [{name: None for name in MANGROVE_COLS}] * len(ra)
         return pd.Series(out)
 
@@ -817,6 +820,119 @@ def crossmatch_mangrove(
     )
 
     default = {name: None for name in MANGROVE_COLS}
+    pdf_merge["Type"] = [default for i in range(len(pdf_merge))]
+    pdf_merge.loc[mask, "Type"] = [payload[i] for i in idx2]
+
+    return pdf_merge["Type"]
+
+
+@pandas_udf(MapType(StringType(), StringType()))
+@profile
+def crossmatch_milliquas(
+    diaSourceId: pd.Series, ra: pd.Series, dec: pd.Series, radius_arcsec: pd.Series
+) -> pd.Series:
+    """Crossmatch alerts with the Milliquas catalog
+
+    Parameters
+    ----------
+    diaSourceId: long
+        Rubin diaSourceId
+    ra: float
+        Rubin Right ascension
+    dec: float
+        Rubin declinations
+    radius_arcsec: float
+       Crossmatch radius in arcsecond.
+
+    Returns
+    -------
+    type: map
+        Object type & redshift from the catalog. NULL if no match.
+
+    Examples
+    --------
+    >>> from pyspark.sql.functions import lit
+
+    Simulate fake data
+    >>> ra = [0.0006286, 101.3520545, 0.3126, 0.31820833]
+    >>> dec = [35.5178439, 24.5421872, 47.6859, 29.59277778]
+    >>> id = ["1", "2", "3", "4"]
+
+    Wrap data into a Spark DataFrame
+    >>> rdd = spark.sparkContext.parallelize(zip(id, ra, dec))
+    >>> df = rdd.toDF(['id', 'ra', 'dec'])
+    >>> df.show() # doctest: +NORMALIZE_WHITESPACE
+    +---+-----------+-----------+
+    | id|         ra|        dec|
+    +---+-----------+-----------+
+    |  1|   6.286E-4| 35.5178439|
+    |  2|101.3520545| 24.5421872|
+    |  3|     0.3126|    47.6859|
+    |  4| 0.31820833|29.59277778|
+    +---+-----------+-----------+
+    <BLANKLINE>
+
+    Test the processor by adding a new column with the result of the xmatch
+    >>> df.withColumn(
+    ...     'milliquas',
+    ...     crossmatch_milliquas(df['id'], df['ra'], df['dec'], lit(1.2))
+    ... ).select("milliquas.type").show()
+    +----+
+    |type|
+    +----+
+    |   Q|
+    |NULL|
+    |NULL|
+    |  BR|
+    +----+
+    <BLANKLINE>
+    """
+    # set separation length
+    radius_arcsec = float(radius_arcsec.to_numpy()[0])
+
+    pdf = pd.DataFrame(
+        {
+            "ra": ra.to_numpy(),
+            "dec": dec.to_numpy(),
+            "diaSourceId": range(len(ra)),
+        }
+    )
+
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    catalog = curdir + "/data/catalogs/milliquas.parquet"
+    ra2, dec2, payload = extract_milliquas(catalog)
+
+    # limit the catalog
+    dec_min, dec_max = dec.min(), dec.max()
+
+    # Extend the box for safety
+    pad = 2 * radius_arcsec / 3600
+    mask = (dec2 >= dec_min - pad) & (dec2 <= dec_max + pad)
+    if mask.sum() == 0:
+        # No error, but no overlap, return None (NULL values for Spark)
+        out = [{name: None for name in MILLIQUAS_COLS}] * len(ra)
+        return pd.Series(out)
+
+    ra2 = ra2[mask]
+    dec2 = dec2[mask]
+    payload = payload[mask.to_numpy()]
+
+    # create catalogs
+    catalog_rubin = SkyCoord(
+        ra=np.array(ra.to_numpy(), dtype=float) * u.degree,
+        dec=np.array(dec.to_numpy(), dtype=float) * u.degree,
+    )
+
+    catalog_other = SkyCoord(
+        ra=np.array(ra2.to_numpy(), dtype=float) * u.degree,
+        dec=np.array(dec2.to_numpy(), dtype=float) * u.degree,
+    )
+
+    pdf_merge, mask, idx2 = cross_match_astropy(
+        pdf, catalog_rubin, catalog_other, radius_arcsec=radius_arcsec
+    )
+
+    default = {name: None for name in MILLIQUAS_COLS}
     pdf_merge["Type"] = [default for i in range(len(pdf_merge))]
     pdf_merge.loc[mask, "Type"] = [payload[i] for i in idx2]
 

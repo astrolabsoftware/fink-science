@@ -30,6 +30,9 @@ from fink_science.tester import regular_unit_tests
 MANGROVE_COLS = ["HyperLEDA_name", "2MASS_name", "lum_dist", "ang_dist"]
 MANGROVE_TYPES = ["string", "string", "float", "float"]
 
+MILLIQUAS_COLS = ["type", "redshift"]
+MILLIQUAS_TYPES = ["string", "float"]
+
 TNS_SPARK_SCHEMA = {
     "fullname": StringType(),
     "type": StringType(),
@@ -143,6 +146,37 @@ def extract_tns(pdf):
     payload = pdf[TNS_COLS].to_numpy()
 
     return pdf["ra"], pdf["declination"], payload
+
+
+def extract_milliquas(filename):
+    """Read the Milliquas catalog and extract useful columns
+
+    Parameters
+    ----------
+    filename: str
+        Path to the Milliquas catalog (parquet file)
+
+    Returns
+    -------
+    out: pd.Series, pd.Series, pd.Series
+        (ra, dec, payload) from the catalog
+
+    Examples
+    --------
+    >>> import os
+    >>> curdir = os.path.dirname(os.path.abspath(__file__))
+    >>> filename = curdir + '/../../data/catalogs/milliquas.parquet'
+    >>> ra, dec, payload = extract_milliquas(filename)
+    """
+    pdf = pd.read_parquet(filename)
+
+    for col_ in MILLIQUAS_COLS:
+        # stringify
+        pdf[col_] = pdf[col_].astype(str)
+
+    payload = pdf[MILLIQUAS_COLS].to_dict(orient="records")
+
+    return pdf["ra"], pdf["dec"], np.array(payload)
 
 
 def extract_4lac(filename_h, filename_l):

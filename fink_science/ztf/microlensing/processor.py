@@ -128,7 +128,7 @@ def mulens(
 
     # broadcast models
     curdir = os.path.dirname(os.path.abspath(__file__))
-    model_path = curdir + "/data/models/"
+    model_path = curdir + "/data/models/sklearn_1.7.2/"
     rf, pca = load_external_model(model_path)
 
     valid_index = np.arange(len(magpsf), dtype=int)
@@ -305,7 +305,7 @@ if __name__ == "__main__":
     ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path = "{}/data/models".format(path)
+    model_path = "{}/data/models/sklearn_1.7.2".format(path)
     globs["model_path"] = model_path
 
     ztf_alert_with_i_band = (

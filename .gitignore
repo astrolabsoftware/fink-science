@@ -13,3 +13,10 @@ fink_science/cbpf_clssifier/.ipynb_checkpoints
 fink_science/cbpf_clssifier/*.ipynb
 src/*
 fink_science/cbpf_clssifier/data/*
+fink_science/data/migration/*.json
+fink_science/data/migration/input_*
+fink_science/data/migration/*_input_*
+fink_science/data/migration/output_*
+fink_science/data/migration/*_output_*
+fink_science/data/migration/miniconda-*
+fink_science/data/migration/*.pkl

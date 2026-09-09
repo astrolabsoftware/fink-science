@@ -227,9 +227,10 @@ def superluminous_score(
 
         # Compute proba for alerts that were feature extracted
         extracted = np.sum(features.isna(), axis=1) == 0
-        probas[extracted] = clf.predict_proba(
-            features.loc[extracted, clf.feature_names_in_]
-        )[:, 1]
+        if extracted.sum() != 0:
+            probas[extracted] = clf.predict_proba(
+                features.loc[extracted, clf.feature_names_in_]
+            )[:, 1]
 
         # Mask only alerts classified as SLSN
         mask_is_SLSN = probas > clf.optimal_threshold
