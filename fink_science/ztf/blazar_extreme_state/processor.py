@@ -93,7 +93,7 @@ def extreme_state(
         csigmagnr, cisdiffpos, cfid, cjd, cstd_flux, csigma_std_flux
     CTAO_blazar : pd.DataFrame
         Pandas DataFrame of the monitored sources containing:
-        ``Source_name``, ``ZTF_name``, ``medians``,
+        ``Source_name``, ``4FGL_name``, ``ZTF_name``, ``medians``,
         ``low_threshold``, ``high_threshold``.
 
     Returns
@@ -205,8 +205,9 @@ def extreme_state(
     # Load catalog
     path = os.path.dirname(os.path.abspath(__file__))
     CTAO_PATH = os.path.join(path, "data/catalogs")
-    CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(CATALOG_TAG)
-    CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
+    catalogs = glob.glob(os.path.join(CTAO_PATH, "CTAO_blazars_ztf_dr*"))
+    CTAO_filepath = os.path.abspath(max(catalogs, key=os.path.getctime))
+    CTAO_blazar = pd.read_parquet(CTAO_filepath)
 
     # Transform alert packet to pandas DataFrame
     pdf = pd.DataFrame(
@@ -280,16 +281,18 @@ def extreme_state(
 
         flaapluc_dic = {FLAAPLUC_TAG: -1.0}
         flaapluc_flux_dic = {FLAAPLUC_FLUX_TAG: -1.0}
-        if high_state_dic[INST_HIGH_TAG] >= 1 and high_state_dic[ROB_HIGH_TAG] >= 1:
-            CTAO_blazar = catalog_update(
-                CTAO_blazar,
-                FLAAPLUC_SCHEMA_PATH,
-                deltatime_check_history=DELTATIME_CHECK_HISTORY,
-            )
-            # Retrieve FLaapLUC alert data
-            flaapluc_deviation, flaapluc_flux = get_flaapluc_deviation(sub, CTAO_blazar)
-            flaapluc_dic = {FLAAPLUC_TAG: flaapluc_deviation}
-            flaapluc_flux_dic = {FLAAPLUC_FLUX_TAG: flaapluc_flux}
+
+        if os.environ.get("FLAAPLUC_KAFKA_IP", None) is not None:
+            if high_state_dic[INST_HIGH_TAG] >= 1 and high_state_dic[ROB_HIGH_TAG] >= 1:
+                CTAO_blazar = catalog_update(
+                    CTAO_blazar,
+                    FLAAPLUC_SCHEMA_PATH,
+                    deltatime_check_history=DELTATIME_CHECK_HISTORY,
+                )
+                # Retrieve FLaapLUC alert data
+                flaapluc_deviation, flaapluc_flux = get_flaapluc_deviation(sub, CTAO_blazar)
+                flaapluc_dic = {FLAAPLUC_TAG: flaapluc_deviation}
+                flaapluc_flux_dic = {FLAAPLUC_FLUX_TAG: flaapluc_flux}
 
         out.append(
             flaapluc_flux_dic | flaapluc_dic | low_state_dic | high_state_dic | cdf_dic

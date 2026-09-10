@@ -51,7 +51,7 @@ dt_concomitance: float = 1 / 24
 MAX_DT: float = 1
 START_ZTF: float = 58000
 
-CATALOG_FILEPATH: str = "./CTAO_blazars_ztf_dr23.v05_2026.parquet"
+CATALOG_FILEPATH: str = Path(str(__file__)).parent / "CTAO_blazars_ztf_dr23.v09_2026.parquet"
 LOGDIRFILENAME: str = "blazar_watchlist.log"
 
 
@@ -1301,15 +1301,16 @@ def main():
         version = check_dr_version()
         now = dt.datetime.now()
         date = f"{str(now.month).zfill(2)}_{now.year}"
-        catalog_filepath = f"./CTAO_blazars_ztf_dr{version}.v{date}"
-        catalog_filepath += ".parquet"
+        catalog_filepath = Path(str(__file__)).parent
+        catalog_filepath = catalog_filepath / f"CTAO_blazars_ztf_dr{version}_v{date}"
+        catalog_filepath = catalog_filepath.with_suffix(".parquet")
 
     # Retrieve list of sources
     list_names = read_file_names(args.source_list, colname=args.source_key)
     logger.info(f"Number of sources waiting to be added: {len(list_names)}")
 
     # Load catalog, if exists
-    logger.info("Browsing to find former catalog")
+    logger.info(f"Browsing to find former catalog at {catalog_filepath}")
     catalog = read_catalog(catalog_filepath)
 
     # Merge list and catalog
