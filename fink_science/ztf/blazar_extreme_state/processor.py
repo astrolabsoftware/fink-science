@@ -229,7 +229,17 @@ def extreme_state(
 
         # If no standardised flux has been calculated:
         if not len(tmp["cstd_flux"].to_numpy()[0]):
-            out.append({k: -1.0 for k in BLAZAR_LOW_COLS + BLAZAR_HIGH_COLS + CDF_COL})
+            out.append(
+                {
+                    k: -1.0
+                    for k in (
+                        [FLAAPLUC_TAG, FLAAPLUC_FLUX_TAG]
+                        + BLAZAR_LOW_COLS
+                        + BLAZAR_HIGH_COLS
+                        + CDF_COL
+                    )
+                }
+            )
             continue
 
         # Else:
