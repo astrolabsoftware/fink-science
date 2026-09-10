@@ -51,7 +51,9 @@ dt_concomitance: float = 1 / 24
 MAX_DT: float = 1
 START_ZTF: float = 58000
 
-CATALOG_FILEPATH: str = Path(str(__file__)).parent / "CTAO_blazars_ztf_dr23.v09_2026.parquet"
+CATALOG_FILEPATH: str = (
+    Path(str(__file__)).parent / "CTAO_blazars_ztf_dr23.v09_2026.parquet"
+)
 LOGDIRFILENAME: str = "blazar_watchlist.log"
 
 

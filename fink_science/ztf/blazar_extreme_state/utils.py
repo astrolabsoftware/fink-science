@@ -83,7 +83,9 @@ def _flaapluc_download(flaapluc_static_path: str) -> pd.DataFrame:
         schema = json.load(f)
         parsed_schema = parse_schema(schema)
 
-    static["flaapluc_kafka_config"]["bootstrap.servers"] = os.environ.get("FLAAPLUC_KAFKA_IP")
+    static["flaapluc_kafka_config"]["bootstrap.servers"] = os.environ.get(
+        "FLAAPLUC_KAFKA_IP"
+    )
     consumer = Consumer(static["flaapluc_kafka_config"])
     consumer.subscribe(static["flaapluc_kafka_topics"], on_assign=_reset_to_beginning)
 

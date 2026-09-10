@@ -14,6 +14,7 @@
 # limitations under the License.
 from line_profiler import profile
 
+import glob
 import pandas as pd
 
 from pyspark.sql.functions import pandas_udf
@@ -290,7 +291,9 @@ def extreme_state(
                     deltatime_check_history=DELTATIME_CHECK_HISTORY,
                 )
                 # Retrieve FLaapLUC alert data
-                flaapluc_deviation, flaapluc_flux = get_flaapluc_deviation(sub, CTAO_blazar)
+                flaapluc_deviation, flaapluc_flux = get_flaapluc_deviation(
+                    sub, CTAO_blazar
+                )
                 flaapluc_dic = {FLAAPLUC_TAG: flaapluc_deviation}
                 flaapluc_flux_dic = {FLAAPLUC_FLUX_TAG: flaapluc_flux}
 
