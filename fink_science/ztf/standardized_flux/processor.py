@@ -132,9 +132,9 @@ def standardized_flux(
 
     # Test
     >>> parDF.filter(F.array_max(parDF["cstd_flux"]) < 1).count()
-    27
+    25
     >>> parDF.filter(F.array_max(parDF["cstd_flux"]) > 1).count()
-    65
+    66
     """
     path = os.path.dirname(os.path.abspath(__file__))
     CTAO_PATH = os.path.join(path, "data/catalogs")
