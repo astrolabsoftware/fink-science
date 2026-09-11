@@ -39,7 +39,7 @@ import os
 # ====================================
 
 # Latest catalog version name
-CATALOG_TAG = "23.v03_2026"
+CATALOG_TAG
 
 # FLaapLUC required data
 FLAAPLUC_SCHEMA_PATH = "flaapluc_static.json"
@@ -195,13 +195,13 @@ def extreme_state(
     ...     F.col("blazar_stats").getItem("cdf_quantile").alias("cdf_quantile"),
     ... ]).toPandas()
     >>> (pdf.sum(axis=1) == -5).sum()
-    322
+    323
     >>> (
     ...     (np.abs(pdf["instantness_low"]) < 1) & (np.abs(pdf["robustness_low"]) < 1)
     ... ).sum()
-    8
+    9
     >>> ((pdf["instantness_high"] > 1) & (pdf["robustness_high"] > 1)).sum()
-    22
+    19
     """
     # Load catalog
     path = os.path.dirname(os.path.abspath(__file__))
