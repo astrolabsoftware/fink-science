@@ -38,9 +38,6 @@ import os
 # Constants required by the processor
 # ====================================
 
-# Latest catalog version name
-CATALOG_TAG
-
 # FLaapLUC required data
 FLAAPLUC_SCHEMA_PATH = "flaapluc_static.json"
 DELTATIME_CHECK_HISTORY = 7.0
