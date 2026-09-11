@@ -14,6 +14,7 @@
 # limitations under the License.
 from line_profiler import profile
 
+import glob
 import pandas as pd
 
 from pyspark.sql.functions import pandas_udf
@@ -24,8 +25,6 @@ from fink_science.ztf.standardized_flux.utils import standardized_flux_
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 import os
-
-CATALOG_TAG = "23.v03_2026"
 
 
 @pandas_udf(MapType(StringType(), ArrayType(DoubleType())))
@@ -133,14 +132,15 @@ def standardized_flux(
 
     # Test
     >>> parDF.filter(F.array_max(parDF["cstd_flux"]) < 1).count()
-    27
+    25
     >>> parDF.filter(F.array_max(parDF["cstd_flux"]) > 1).count()
-    65
+    66
     """
     path = os.path.dirname(os.path.abspath(__file__))
     CTAO_PATH = os.path.join(path, "data/catalogs")
-    CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(CATALOG_TAG)
-    CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
+    catalogs = glob.glob(os.path.join(CTAO_PATH, "CTAO_blazars_ztf_dr*"))
+    CTAO_filepath = os.path.abspath(max(catalogs, key=os.path.getctime))
+    CTAO_blazar = pd.read_parquet(CTAO_filepath)
 
     pdf = pd.DataFrame(
         {

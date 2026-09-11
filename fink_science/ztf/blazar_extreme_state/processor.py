@@ -14,11 +14,14 @@
 # limitations under the License.
 from line_profiler import profile
 
+import glob
 import pandas as pd
 
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import MapType, StringType, FloatType
 from fink_science.ztf.blazar_extreme_state.utils import (
+    catalog_update,
+    get_flaapluc_deviation,
     extreme_state_,
     get_ztf_dr_data,
     from_mag_to_flux,
@@ -28,6 +31,7 @@ from fink_science.ztf.blazar_extreme_state.utils import (
 
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
+from pathlib import Path
 import os
 
 
@@ -35,8 +39,10 @@ import os
 # Constants required by the processor
 # ====================================
 
-# Latest catalog version name
-CATALOG_TAG = "23.v03_2026"
+# FLaapLUC required data
+FLAAPLUC_SCHEMA_PATH = Path(__file__)
+FLAAPLUC_SCHEMA_PATH /= "ztf/blazar_extreme_state/flaapluc_static.json"
+DELTATIME_CHECK_HISTORY = 7.0
 
 # New columns to be produced and added to the scheme
 BLAZAR_LOW_COLS = ["instantness_low", "robustness_low"]
@@ -45,6 +51,8 @@ BLAZAR_HIGH_COLS = ["instantness_high", "robustness_high"]
 INST_HIGH_TAG, ROB_HIGH_TAG = BLAZAR_HIGH_COLS
 CDF_COL = ["cdf_quantile"]
 CDF_TAG = CDF_COL[0]
+FLAAPLUC_TAG = "flaapluc_deviation"
+FLAAPLUC_FLUX_TAG = "flaapluc_absolute_flux"
 
 # Integration periods for the computation
 # of the fluence in the robustness criterion
@@ -85,7 +93,7 @@ def extreme_state(
         csigmagnr, cisdiffpos, cfid, cjd, cstd_flux, csigma_std_flux
     CTAO_blazar : pd.DataFrame
         Pandas DataFrame of the monitored sources containing:
-        ``Source_name``, ``ZTF_name``, ``medians``,
+        ``Source_name``, ``4FGL_name``, ``ZTF_name``, ``medians``,
         ``low_threshold``, ``high_threshold``.
 
     Returns
@@ -186,19 +194,20 @@ def extreme_state(
     ...     F.col("blazar_stats").getItem("cdf_quantile").alias("cdf_quantile"),
     ... ]).toPandas()
     >>> (pdf.sum(axis=1) == -5).sum()
-    322
+    323
     >>> (
     ...     (np.abs(pdf["instantness_low"]) < 1) & (np.abs(pdf["robustness_low"]) < 1)
     ... ).sum()
-    8
+    7
     >>> ((pdf["instantness_high"] > 1) & (pdf["robustness_high"] > 1)).sum()
-    22
+    19
     """
     # Load catalog
     path = os.path.dirname(os.path.abspath(__file__))
     CTAO_PATH = os.path.join(path, "data/catalogs")
-    CTAO_filename = "CTAO_blazars_ztf_dr{}.parquet".format(CATALOG_TAG)
-    CTAO_blazar = pd.read_parquet(os.path.join(CTAO_PATH, CTAO_filename))
+    catalogs = glob.glob(os.path.join(CTAO_PATH, "CTAO_blazars_ztf_dr*"))
+    CTAO_filepath = os.path.abspath(max(catalogs, key=os.path.getctime))
+    CTAO_blazar = pd.read_parquet(CTAO_filepath)
 
     # Transform alert packet to pandas DataFrame
     pdf = pd.DataFrame(
@@ -219,7 +228,17 @@ def extreme_state(
 
         # If no standardised flux has been calculated:
         if not len(tmp["cstd_flux"].to_numpy()[0]):
-            out.append({k: -1.0 for k in BLAZAR_LOW_COLS + BLAZAR_HIGH_COLS + CDF_COL})
+            out.append(
+                {
+                    k: -1.0
+                    for k in (
+                        [FLAAPLUC_TAG, FLAAPLUC_FLUX_TAG]
+                        + BLAZAR_LOW_COLS
+                        + BLAZAR_HIGH_COLS
+                        + CDF_COL
+                    )
+                }
+            )
             continue
 
         # Else:
@@ -264,15 +283,32 @@ def extreme_state(
         ) or (high_state_dic[INST_HIGH_TAG] >= 1 and high_state_dic[ROB_HIGH_TAG] >= 1):
             measurement = sub["cstd_flux"].iloc[0]
             lc = get_ztf_dr_data(sub["cra"].mean(), sub["cdec"].mean(), RADIUS)
-            if not lc.empty:
-                # if SNAD reachable
-                lc["flux"], lc["flux_error"] = from_mag_to_flux(
-                    lc["mag"].to_numpy(), lc["magerr"].to_numpy()
-                )
-                lc = standardise_dr_lc(sub, lc, CTAO_blazar)
-                cdf_dic = {CDF_TAG: compute_quantile(lc, measurement)}
+            lc["flux"], lc["flux_error"] = from_mag_to_flux(
+                lc["mag"].to_numpy(), lc["magerr"].to_numpy()
+            )
+            lc = standardise_dr_lc(sub, lc, CTAO_blazar)
+            cdf_dic = {CDF_TAG: compute_quantile(lc, measurement)}
 
-        out.append(low_state_dic | high_state_dic | cdf_dic)
+        flaapluc_dic = {FLAAPLUC_TAG: -1.0}
+        flaapluc_flux_dic = {FLAAPLUC_FLUX_TAG: -1.0}
+
+        if os.environ.get("FLAAPLUC_KAFKA_IP", None) is not None:
+            if high_state_dic[INST_HIGH_TAG] >= 1 and high_state_dic[ROB_HIGH_TAG] >= 1:
+                CTAO_blazar = catalog_update(
+                    CTAO_blazar,
+                    FLAAPLUC_SCHEMA_PATH,
+                    deltatime_check_history=DELTATIME_CHECK_HISTORY,
+                )
+                # Retrieve FLaapLUC alert data
+                flaapluc_deviation, flaapluc_flux = get_flaapluc_deviation(
+                    sub, CTAO_blazar
+                )
+                flaapluc_dic = {FLAAPLUC_TAG: flaapluc_deviation}
+                flaapluc_flux_dic = {FLAAPLUC_FLUX_TAG: flaapluc_flux}
+
+        out.append(
+            flaapluc_flux_dic | flaapluc_dic | low_state_dic | high_state_dic | cdf_dic
+        )
 
     return pd.Series(out)
 
