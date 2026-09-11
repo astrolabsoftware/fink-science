@@ -61,7 +61,7 @@ setuptools.setup(
             "ztf/hostless_detection/config*.json",
             "rubin/hostless_detection/config.json",
             "rubin/hostless_detection/config*.json",
-            "ztf/blazar_extreme_state/flaapluc_static.json"
+            "ztf/blazar_extreme_state/flaapluc_static.json",
         ],
     },
     classifiers=[

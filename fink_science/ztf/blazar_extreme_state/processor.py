@@ -31,6 +31,7 @@ from fink_science.ztf.blazar_extreme_state.utils import (
 
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
+from pathlib import Path
 import os
 
 
@@ -39,7 +40,8 @@ import os
 # ====================================
 
 # FLaapLUC required data
-FLAAPLUC_SCHEMA_PATH = "flaapluc_static.json"
+FLAAPLUC_SCHEMA_PATH = Path(__file__)
+FLAAPLUC_SCHEMA_PATH /= "ztf/blazar_extreme_state/flaapluc_static.json"
 DELTATIME_CHECK_HISTORY = 7.0
 
 # New columns to be produced and added to the scheme
