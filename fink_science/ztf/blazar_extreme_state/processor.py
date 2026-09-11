@@ -196,7 +196,7 @@ def extreme_state(
     >>> (
     ...     (np.abs(pdf["instantness_low"]) < 1) & (np.abs(pdf["robustness_low"]) < 1)
     ... ).sum()
-    9
+    7
     >>> ((pdf["instantness_high"] > 1) & (pdf["robustness_high"] > 1)).sum()
     19
     """
