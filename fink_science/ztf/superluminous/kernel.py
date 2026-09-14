@@ -74,3 +74,11 @@ min_duration = 20
 # this value have their probability forced to 0, see
 # `processor.superluminous_score` and `slsn_classifier.abs_peak`.
 not_sl_threshold = -19.75
+
+# Empirical post-hoc contamination cuts (not learned from training, tuned
+# on the real alert stream instead -- see `processor.superluminous_score`).
+# Above this many trend reversals, photometry is considered too variable.
+max_ntrends = 2
+# At or above this many days, a source is considered too long-lived to be
+# a genuine SLSN (likely AGN or bad photometry).
+max_duration = 500

@@ -67,12 +67,11 @@ def superluminous_score(
        SLSN probability.
     5. For alerts above the classifier's optimal threshold, gets a host
        photo-z from the REGALADE crossmatch already attached to the alert
-       (`slsn_classifier.add_all_photoz`), and computes the
-       brightest plausible peak absolute magnitude
-       (`slsn_classifier.abs_peak`). Sources that cannot plausibly be as
-       bright as `kernel.not_sl_threshold` even in the best case have their
-       probability forced to 0, since they would not really be
-       superluminous.
+       (`slsn_classifier.add_all_photoz`), and computes the brightest
+       plausible peak absolute magnitude (`slsn_classifier.abs_peak`).
+       Probability is forced to 0 for sources too faint to plausibly be
+       superluminous (`kernel.not_sl_threshold`), too variable
+       (`kernel.max_ntrends`), or too long-lived (`kernel.max_duration`).
 
     Parameters
     ----------
@@ -309,7 +308,11 @@ def superluminous_score(
 
             # Sources clearly not SL are masked
             mask_not_SL = upper_M > kern.not_sl_threshold
-            zero_proba_idx = SLSN_features[mask_not_SL].index
+            mask_variable = SLSN_features["ntrends"] > kern.max_ntrends
+            mask_too_long = SLSN_features["duration"] >= kern.max_duration
+            zero_proba_idx = SLSN_features[
+                mask_not_SL | mask_variable | mask_too_long
+            ].index
 
             # And have their probabilities put to 0.
             probas[zero_proba_idx] = 0
