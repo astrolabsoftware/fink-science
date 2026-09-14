@@ -65,10 +65,8 @@ def superluminous_score(
        curve for Milky Way extinction (`slsn_classifier.deredden_lightcurve`).
     4. Runs the pre-trained classifier (`kernel.classifier_path`) to get a
        SLSN probability.
-    5. For alerts above the classifier's optimal threshold, refines the
-       REGALADE circular crossmatch already attached to the alert (by
-       Fink's own pipeline, see `fink_broker.ztf.science.apply_all_xmatch`)
-       into a host photo-z via a DLR-ellipse test
+    5. For alerts above the classifier's optimal threshold, gets a host
+       photo-z from the REGALADE crossmatch already attached to the alert
        (`slsn_classifier.add_all_photoz`), and computes the
        brightest plausible peak absolute magnitude
        (`slsn_classifier.abs_peak`). Sources that cannot plausibly be as
@@ -91,10 +89,8 @@ def superluminous_score(
     cmagpsf, csigmapsf: Spark DataFrame Columns
         Magnitude and magnitude error from photometry (vectors of floats)
     regalade_ra, regalade_dec, R1, R2, PA, z, ezin: Spark DataFrame Columns
-        REGALADE columns already attached to the alert by
-        `fink_broker.ztf.science.apply_all_xmatch`'s circular crossmatch
-        (null where no REGALADE object was found within its search
-        radius). See `slsn_classifier.get_regalade_photoz`.
+        REGALADE columns already attached to the alert (null if no match).
+        See `slsn_classifier.get_regalade_photoz`.
 
     Returns
     -------

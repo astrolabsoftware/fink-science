@@ -328,35 +328,15 @@ def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
 
 
 def get_regalade_photoz(ra, dec, gal_ra, gal_dec, R1, R2, PA, z, zerr):
-    """Refine a REGALADE circular crossmatch into a DLR-ellipse host photo-z.
-
-    Notes
-    -----
-    REGALADE is crossmatched against alerts upstream, in Fink's own
-    pipeline (a plain circular/nearest-neighbour match, see
-    `fink_broker.ztf.science.apply_all_xmatch`) -- this function no longer
-    searches the REGALADE catalog itself, it only decides whether to
-    *trust* that single candidate: the normalized separation between
-    `(ra, dec)` and the candidate galaxy's DLR-scaled ellipse (semi-major
-    axis `R1`, semi-minor `R2`, position angle `PA`, scaled by
-    `kernel.regalade_dlr_factor`) is computed via a gnomonic (tangent
-    -plane) projection -- the same formula used by
-    `fink_science.ztf.xmatch.processor.xmatch_regalade` (there expressed
-    in Spark columns; here in plain numpy since this runs inside a
-    pandas_udf). `z`/`zerr` are kept where the point falls inside the
-    ellipse (separation <= 1), and set to NaN otherwise -- this rejects
-    circular-match contamination (e.g. an unrelated foreground/background
-    object within the circular radius) rather than expanding recall: a
-    galaxy the circular match didn't find in the first place can never
-    be recovered here.
+    """Accept or reject a REGALADE crossmatch candidate via a DLR-ellipse test.
 
     Parameters
     ----------
     ra, dec: array
         Right ascension and declination of the source(s), in degrees.
     gal_ra, gal_dec: array
-        Right ascension and declination of the circularly-matched REGALADE
-        candidate, in degrees. NaN where there was no circular match.
+        Right ascension and declination of the matched REGALADE candidate,
+        in degrees. NaN where there was no match.
     R1, R2: array
         Semi-major/semi-minor axis of the candidate's ellipse, in arcsec.
     PA: array
@@ -368,8 +348,8 @@ def get_regalade_photoz(ra, dec, gal_ra, gal_dec, R1, R2, PA, z, zerr):
     -------
     tuple of np.array
         Photometric redshift and its uncertainty, one pair per input
-        coordinate. NaN where there was no circular match, or where the
-        point falls outside the candidate's DLR-scaled ellipse.
+        coordinate. NaN where there was no match, or where the point falls
+        outside the candidate's DLR-scaled ellipse.
 
     Examples
     --------
@@ -403,9 +383,8 @@ def get_regalade_photoz(ra, dec, gal_ra, gal_dec, R1, R2, PA, z, zerr):
     with np.errstate(divide="ignore", invalid="ignore"):
         separation = np.sqrt((x_major / R1_scaled) ** 2 + (y_minor / R2_scaled) ** 2)
 
-    # NaN inputs (no circular match) propagate to NaN separation, which
-    # compares False against 1.0 -- correctly excluded, no special-casing
-    # needed.
+    # NaN inputs propagate to NaN separation, which compares False against
+    # 1.0 -- no special-casing needed for missing candidates.
     keep = separation <= 1.0
     photoz = np.where(keep, np.asarray(z, dtype=float), np.nan)
     photozerr = np.where(keep, np.asarray(zerr, dtype=float), np.nan)
@@ -419,9 +398,8 @@ def add_all_photoz(pdf):
     Parameters
     ----------
     pdf: pd.DataFrame
-        Must at least include objectId, ra, dec, and the REGALADE columns
-        already attached to the alert by Fink's own pipeline: regalade_ra,
-        regalade_dec, R1, R2, PA, z, ezin (see `get_regalade_photoz`).
+        Must at least include objectId, ra, dec, regalade_ra, regalade_dec,
+        R1, R2, PA, z, ezin (see `get_regalade_photoz`).
 
     Returns
     -------

@@ -33,13 +33,7 @@ classifier_path = curdir + "/data/models/NOMAI.joblib"
 
 # Directional light radius (DLR) scale factor applied to the REGALADE
 # ellipse before accepting the host crossmatch (see
-# `slsn_classifier.get_regalade_photoz`): grows the galaxy's ellipse to
-# avoid rejecting transients hosted with large offsets. REGALADE itself is
-# crossmatched against alerts upstream, in Fink's own pipeline (circular
-# match, see `fink_broker.ztf.science.apply_all_xmatch`); this factor only
-# scales the ellipse test refining that single candidate. Same value used
-# to build the training set, see `create_photoz_table.py` in the training
-# pipeline.
+# `slsn_classifier.get_regalade_photoz`)
 regalade_dlr_factor = 1.25
 
 # Effective wavelength (in Angstrom) of the ZTF filters, keyed by their
