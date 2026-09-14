@@ -41,8 +41,37 @@ def superluminous_score(
     cfid: pd.Series,
     cmagpsf: pd.Series,
     csigmapsf: pd.Series,
+    regalade_ra: pd.Series,
+    regalade_dec: pd.Series,
+    R1: pd.Series,
+    R2: pd.Series,
+    PA: pd.Series,
+    z: pd.Series,
+    ezin: pd.Series,
 ) -> pd.Series:
     """High level spark wrapper for the superluminous classifier on ztf data
+
+    Notes
+    -----
+    For each alert that passes the transient and age cuts, the pipeline:
+
+    1. Fetches the full, up to date light curve history from the Fink API
+       (`get_and_format`) and appends the current night alerts to it.
+    2. Converts magnitudes to flux, drops NaN measurements and keeps only
+       the g/r bands used at training time (`slsn_classifier.compute_flux`,
+       `remove_nan`, `remove_bad_bands`).
+    3. Extracts Rainbow, salt and statistical features
+       (`slsn_classifier.extract_features`), after correcting the light
+       curve for Milky Way extinction (`slsn_classifier.deredden_lightcurve`).
+    4. Runs the pre-trained classifier (`kernel.classifier_path`) to get a
+       SLSN probability.
+    5. For alerts above the classifier's optimal threshold, gets a host
+       photo-z from the REGALADE crossmatch already attached to the alert
+       (`slsn_classifier.add_all_photoz`), and computes the brightest
+       plausible peak absolute magnitude (`slsn_classifier.abs_peak`).
+       Probability is forced to 0 for sources too faint to plausibly be
+       superluminous (`kernel.not_sl_threshold`), too variable
+       (`kernel.max_ntrends`), or too long-lived (`kernel.max_duration`).
 
     Parameters
     ----------
@@ -58,14 +87,18 @@ def superluminous_score(
         Filter IDs (vectors of str)
     cmagpsf, csigmapsf: Spark DataFrame Columns
         Magnitude and magnitude error from photometry (vectors of floats)
+    regalade_ra, regalade_dec, R1, R2, PA, z, ezin: Spark DataFrame Columns
+        REGALADE columns already attached to the alert (null if no match).
+        See `slsn_classifier.get_regalade_photoz`.
 
     Returns
     -------
     np.array
-        Superluminous supernovae classification probability vector
-        Return -1 if not enough points were available for feature extraction
-        if the alert is not considered a likely transient
-        or if the source is less than 30 days old
+        Superluminous supernovae classification probability vector.
+        Returns -1 for an alert if any of the following holds:
+        not enough points were available for feature extraction,
+        the alert is not considered a likely transient,
+        or the source is younger than `kernel.min_duration` (20) days.
 
     Examples
     --------
@@ -94,6 +127,7 @@ def superluminous_score(
 
     >>> args = ['is_transient', 'objectId', 'candidate.jdstarthist']
     >>> args += [F.col(i) for i in what_prefix]
+    >>> args += [F.lit(None).cast('double') for _ in range(7)]
 
     # Perform the fit + classification
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
@@ -128,6 +162,7 @@ def superluminous_score(
 
     >>> args = ['is_transient', 'objectId', 'candidate.jdstarthist']
     >>> args += [F.col(i) for i in what_prefix]
+    >>> args += [F.lit(None).cast('double') for _ in range(7)]
 
     # Perform the fit + classification
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
@@ -144,6 +179,13 @@ def superluminous_score(
             "cmagpsf": cmagpsf,
             "csigmapsf": csigmapsf,
             "cfid": cfid,
+            "regalade_ra": regalade_ra,
+            "regalade_dec": regalade_dec,
+            "R1": R1,
+            "R2": R2,
+            "PA": PA,
+            "z": z,
+            "ezin": ezin,
         }
     )
 
@@ -235,14 +277,29 @@ def superluminous_score(
         # Mask only alerts classified as SLSN
         mask_is_SLSN = probas > clf.optimal_threshold
 
-        # Check the SDSS photo-z for these alerts
+        # Check the REGALADE host photo-z for these alerts
         SLSN_features = features[mask_is_SLSN].copy()
 
         if len(SLSN_features) > 0:
             SLSN_features["objectId"] = lcs.loc[mask_is_SLSN, "objectId"]
+            regalade_cols = [
+                "regalade_ra",
+                "regalade_dec",
+                "R1",
+                "R2",
+                "PA",
+                "z",
+                "ezin",
+            ]
+            for col in regalade_cols:
+                SLSN_features[col] = pdf_valid.loc[mask_is_SLSN, col].to_numpy()
             SLSN_features = slsn.add_all_photoz(SLSN_features)
 
-            # Compute upper bound for abs magnitude
+            # Most favorable (brightest, i.e. most negative) plausible peak
+            # absolute magnitude given the photo-z uncertainty: index [2]
+            # of abs_peak's output is M(z+zerr), see its docstring. peak_mag_g/r
+            # are already corrected for Milky Way extinction (see
+            # slsn_classifier.deredden_lightcurve), hence ebv=0 here.
             upper_M = np.array(
                 SLSN_features.apply(
                     lambda x: slsn.abs_peak(
@@ -250,7 +307,7 @@ def superluminous_score(
                         [kern.band_wave_aa[1], kern.band_wave_aa[2]],
                         x["photoz"],
                         x["photozerr"],
-                        x["ebv"],
+                        0,
                     )[2],
                     axis=1,
                 )
@@ -258,7 +315,11 @@ def superluminous_score(
 
             # Sources clearly not SL are masked
             mask_not_SL = upper_M > kern.not_sl_threshold
-            zero_proba_idx = SLSN_features[mask_not_SL].index
+            mask_variable = SLSN_features["ntrends"] > kern.max_ntrends
+            mask_too_long = SLSN_features["duration"] >= kern.max_duration
+            zero_proba_idx = SLSN_features[
+                mask_not_SL | mask_variable | mask_too_long
+            ].index
 
             # And have their probabilities put to 0.
             probas[zero_proba_idx] = 0
@@ -302,7 +363,14 @@ def protected_mean(arr):
 
 
 def get_and_format(ZTF_name):
-    """Use the fink API to collect the full light curve sources using ZTF names.
+    """Use the Fink API to collect the full light curve history of sources given their ZTF names.
+
+    Notes
+    -----
+    Only alerts flagged as "valid" or "badquality" by Fink are kept
+    (upper limits and bad subtractions are dropped). Queries are done one
+    object at a time and objects for which the API returns no data are
+    silently dropped from the result.
 
     Parameters
     ----------
@@ -312,8 +380,15 @@ def get_and_format(ZTF_name):
     Returns
     -------
     pd.DataFrame
-        DataFrame containing all light curve information.
-        1 row = 1 source. Returns None if the list is empty.
+        DataFrame containing all light curve information, one row per
+        source, with columns:
+        objectId, ra, dec (deg, averaged over all detections),
+        cjd, cmagpsf, csigmapsf, cfid (per-alert vectors of floats/ints,
+        sorted by increasing jd), distnr (distance in arcsec to the
+        nearest source in the reference image, averaged over all
+        detections).
+        Returns None if the input list is empty, or if the API request
+        fails.
 
     Example
     -------
