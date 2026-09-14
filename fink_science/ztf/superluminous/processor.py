@@ -41,6 +41,13 @@ def superluminous_score(
     cfid: pd.Series,
     cmagpsf: pd.Series,
     csigmapsf: pd.Series,
+    regalade_ra: pd.Series,
+    regalade_dec: pd.Series,
+    R1: pd.Series,
+    R2: pd.Series,
+    PA: pd.Series,
+    z: pd.Series,
+    ezin: pd.Series,
 ) -> pd.Series:
     """High level spark wrapper for the superluminous classifier on ztf data
 
@@ -58,9 +65,11 @@ def superluminous_score(
        curve for Milky Way extinction (`slsn_classifier.deredden_lightcurve`).
     4. Runs the pre-trained classifier (`kernel.classifier_path`) to get a
        SLSN probability.
-    5. For alerts above the classifier's optimal threshold, crossmatches
-       against the REGALADE galaxy catalog for a host photo-z
-       (`slsn_classifier.add_all_photoz`) and computes the
+    5. For alerts above the classifier's optimal threshold, refines the
+       REGALADE circular crossmatch already attached to the alert (by
+       Fink's own pipeline, see `fink_broker.ztf.science.apply_all_xmatch`)
+       into a host photo-z via a DLR-ellipse test
+       (`slsn_classifier.add_all_photoz`), and computes the
        brightest plausible peak absolute magnitude
        (`slsn_classifier.abs_peak`). Sources that cannot plausibly be as
        bright as `kernel.not_sl_threshold` even in the best case have their
@@ -81,6 +90,11 @@ def superluminous_score(
         Filter IDs (vectors of str)
     cmagpsf, csigmapsf: Spark DataFrame Columns
         Magnitude and magnitude error from photometry (vectors of floats)
+    regalade_ra, regalade_dec, R1, R2, PA, z, ezin: Spark DataFrame Columns
+        REGALADE columns already attached to the alert by
+        `fink_broker.ztf.science.apply_all_xmatch`'s circular crossmatch
+        (null where no REGALADE object was found within its search
+        radius). See `slsn_classifier.get_regalade_photoz`.
 
     Returns
     -------
@@ -118,6 +132,7 @@ def superluminous_score(
 
     >>> args = ['is_transient', 'objectId', 'candidate.jdstarthist']
     >>> args += [F.col(i) for i in what_prefix]
+    >>> args += [F.lit(None).cast('double') for _ in range(7)]
 
     # Perform the fit + classification
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
@@ -152,6 +167,7 @@ def superluminous_score(
 
     >>> args = ['is_transient', 'objectId', 'candidate.jdstarthist']
     >>> args += [F.col(i) for i in what_prefix]
+    >>> args += [F.lit(None).cast('double') for _ in range(7)]
 
     # Perform the fit + classification
     >>> sdf = sdf.withColumn('proba', superluminous_score(*args))
@@ -168,6 +184,13 @@ def superluminous_score(
             "cmagpsf": cmagpsf,
             "csigmapsf": csigmapsf,
             "cfid": cfid,
+            "regalade_ra": regalade_ra,
+            "regalade_dec": regalade_dec,
+            "R1": R1,
+            "R2": R2,
+            "PA": PA,
+            "z": z,
+            "ezin": ezin,
         }
     )
 
@@ -263,6 +286,11 @@ def superluminous_score(
 
         if len(SLSN_features) > 0:
             SLSN_features["objectId"] = lcs.loc[mask_is_SLSN, "objectId"]
+            regalade_cols = [
+                "regalade_ra", "regalade_dec", "R1", "R2", "PA", "z", "ezin",
+            ]
+            for col in regalade_cols:
+                SLSN_features[col] = pdf_valid.loc[mask_is_SLSN, col].to_numpy()
             SLSN_features = slsn.add_all_photoz(SLSN_features)
 
             # Most favorable (brightest, i.e. most negative) plausible peak

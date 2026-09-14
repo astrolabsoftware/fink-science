@@ -27,7 +27,6 @@ from dust_extinction.parameter_averages import F99
 from astropy.cosmology import LambdaCDM
 from astropy.coordinates import SkyCoord
 from dustmaps.sfd import SFDQuery
-from ellipse_xmatch import crossmatch_ellipses
 import os
 import contextlib
 import functools
@@ -328,112 +327,88 @@ def abs_peak(app_peak, lambda_angstrom, z, zerr, ebv):
     return np.array([np.nan, np.nan, np.nan])
 
 
-_regalade_table = None
-
-
-def _get_regalade_table():
-    """Lazily load and cache the REGALADE galaxy catalog.
+def get_regalade_photoz(ra, dec, gal_ra, gal_dec, R1, R2, PA, z, zerr):
+    """Refine a REGALADE circular crossmatch into a DLR-ellipse host photo-z.
 
     Notes
     -----
-    The catalog (~1.5GB) is not distributed with the package, see
-    `kernel.regalade_path` and `fink_science/data/catalogs/README.md`.
-    Cached at module level so a Spark worker only pays the FITS read once,
-    not once per micro-batch.
-    """
-    global _regalade_table
-    if _regalade_table is None:
-        _regalade_table = Table.read(kern.regalade_path)
-    return _regalade_table
-
-
-def get_regalade_photoz(ra, dec):
-    """Crossmatch coordinates against the REGALADE galaxy catalog for a host photo-z.
-
-    Notes
-    -----
-    Uses `ellipse_xmatch.crossmatch_ellipses`
-    (https://github.com/htranin/ellipse_xmatch) to find, for each point,
-    every galaxy whose DLR-scaled ellipse (semi-major axis R1, semi-minor
-    R2, position angle PA, scaled by `kernel.regalade_dlr_factor`) contains
-    it; the closest one (smallest normalized ellipse separation) is kept.
-    Exactly the crossmatch used to build the training set, see
-    `create_photoz_table.py` in the training pipeline.
+    REGALADE is crossmatched against alerts upstream, in Fink's own
+    pipeline (a plain circular/nearest-neighbour match, see
+    `fink_broker.ztf.science.apply_all_xmatch`) -- this function no longer
+    searches the REGALADE catalog itself, it only decides whether to
+    *trust* that single candidate: the normalized separation between
+    `(ra, dec)` and the candidate galaxy's DLR-scaled ellipse (semi-major
+    axis `R1`, semi-minor `R2`, position angle `PA`, scaled by
+    `kernel.regalade_dlr_factor`) is computed via a gnomonic (tangent
+    -plane) projection -- the same formula used by
+    `fink_science.ztf.xmatch.processor.xmatch_regalade` (there expressed
+    in Spark columns; here in plain numpy since this runs inside a
+    pandas_udf). `z`/`zerr` are kept where the point falls inside the
+    ellipse (separation <= 1), and set to NaN otherwise -- this rejects
+    circular-match contamination (e.g. an unrelated foreground/background
+    object within the circular radius) rather than expanding recall: a
+    galaxy the circular match didn't find in the first place can never
+    be recovered here.
 
     Parameters
     ----------
     ra, dec: array
         Right ascension and declination of the source(s), in degrees.
+    gal_ra, gal_dec: array
+        Right ascension and declination of the circularly-matched REGALADE
+        candidate, in degrees. NaN where there was no circular match.
+    R1, R2: array
+        Semi-major/semi-minor axis of the candidate's ellipse, in arcsec.
+    PA: array
+        Position angle of the ellipse, East-of-North, in degrees.
+    z, zerr: array
+        Photo-z and its uncertainty for the candidate.
 
     Returns
     -------
     tuple of np.array
         Photometric redshift and its uncertainty, one pair per input
-        coordinate. NaN where no host galaxy is found.
+        coordinate. NaN where there was no circular match, or where the
+        point falls outside the candidate's DLR-scaled ellipse.
 
     Examples
     --------
-    # A location with no galaxy nearby: no match.
-    >>> photoz, photozerr = get_regalade_photoz(np.array([0.]), np.array([89.]))
+    # No circular match at all (gal_ra/gal_dec are NaN): no photo-z.
+    >>> photoz, photozerr = get_regalade_photoz(
+    ...     np.array([0.]), np.array([89.]),
+    ...     np.array([np.nan]), np.array([np.nan]),
+    ...     np.array([np.nan]), np.array([np.nan]), np.array([np.nan]),
+    ...     np.array([np.nan]), np.array([np.nan]),
+    ... )
     >>> np.testing.assert_allclose(photoz, [np.nan], equal_nan=True)
     """
-    ra = np.asarray(ra, dtype=float)
-    dec = np.asarray(dec, dtype=float)
+    ra = np.radians(np.asarray(ra, dtype=float))
+    dec = np.radians(np.asarray(dec, dtype=float))
+    ra0 = np.radians(np.asarray(gal_ra, dtype=float))
+    dec0 = np.radians(np.asarray(gal_dec, dtype=float))
 
-    photoz = np.full(len(ra), np.nan)
-    photozerr = np.full(len(ra), np.nan)
+    dra = ra - ra0
+    cos_c = np.sin(dec0) * np.sin(dec) + np.cos(dec0) * np.cos(dec) * np.cos(dra)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        x = np.cos(dec) * np.sin(dra) / cos_c
+        y = (np.cos(dec0) * np.sin(dec) - np.sin(dec0) * np.cos(dec) * np.cos(dra)) / cos_c
+    dE = np.degrees(x) * 3600
+    dN = np.degrees(y) * 3600
 
-    gal = _get_regalade_table()
+    pa = np.radians(np.asarray(PA, dtype=float))
+    R1_scaled = np.asarray(R1, dtype=float) * kern.regalade_dlr_factor
+    R2_scaled = np.asarray(R2, dtype=float) * kern.regalade_dlr_factor
+    x_major = dE * np.sin(pa) + dN * np.cos(pa)
+    y_minor = dE * np.cos(pa) - dN * np.sin(pa)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        separation = np.sqrt((x_major / R1_scaled) ** 2 + (y_minor / R2_scaled) ** 2)
 
-    # restrict to the sky patch actually covered by the points, to skip
-    # most of the ~56M galaxies
-    gal_ra = np.asarray(gal["gal_ra"])
-    gal_dec = np.asarray(gal["gal_dec"])
-    sel = np.ones(len(gal), dtype=bool)
-    if ra.min() > 10:
-        sel &= gal_ra > ra.min() - 10
-    if ra.max() < 350:
-        sel &= gal_ra < ra.max() + 10
-    if dec.min() > -80:
-        sel &= gal_dec > dec.min() - 10
-    if dec.max() < 80:
-        sel &= gal_dec < dec.max() + 10
-    gal = gal[sel]
-
-    if len(gal) == 0:
-        return photoz, photozerr
-
-    gal_coord = SkyCoord(
-        ra=np.asarray(gal["gal_ra"]) * u.deg, dec=np.asarray(gal["gal_dec"]) * u.deg
-    )
-    pt_coord = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
-
-    gal_idx, pt_idx, separation = crossmatch_ellipses(
-        gal_coord,
-        pt_coord,
-        np.asarray(gal["R1"], dtype=float),
-        np.asarray(gal["R2"], dtype=float),
-        np.asarray(gal["PA"], dtype=float),
-        dlr_factor=kern.regalade_dlr_factor,
-        nbins=kern.regalade_nbins,
-    )
-
-    if len(pt_idx) == 0:
-        return photoz, photozerr
-
-    z = np.asarray(gal["z"], dtype=float)[gal_idx]
-    zerr = np.asarray(gal["z_err"], dtype=float)[gal_idx]
-
-    # a point can fall inside more than one galaxy's ellipse -> keep the closest one
-    order = np.argsort(separation)
-    assigned = np.zeros(len(ra), dtype=bool)
-    for idx in order:
-        p = pt_idx[idx]
-        if assigned[p]:
-            continue
-        assigned[p] = True
-        photoz[p] = z[idx]
-        photozerr[p] = zerr[idx]
+    # NaN inputs (no circular match) propagate to NaN separation, which
+    # compares False against 1.0 -- correctly excluded, no special-casing
+    # needed.
+    keep = separation <= 1.0
+    photoz = np.where(keep, np.asarray(z, dtype=float), np.nan)
+    photozerr = np.where(keep, np.asarray(zerr, dtype=float), np.nan)
 
     return photoz, photozerr
 
@@ -444,7 +419,9 @@ def add_all_photoz(pdf):
     Parameters
     ----------
     pdf: pd.DataFrame
-        Must at leat include objectId, ra, dec columns
+        Must at least include objectId, ra, dec, and the REGALADE columns
+        already attached to the alert by Fink's own pipeline: regalade_ra,
+        regalade_dec, R1, R2, PA, z, ezin (see `get_regalade_photoz`).
 
     Returns
     -------
@@ -455,23 +432,37 @@ def add_all_photoz(pdf):
     Examples
     --------
     >>> pdf = pd.DataFrame(data={"objectId":["a", "b"],
-    ... "ra": [0., 0.], "dec": [89., 89.]})
+    ... "ra": [0., 0.], "dec": [89., 89.],
+    ... "regalade_ra": [np.nan, np.nan], "regalade_dec": [np.nan, np.nan],
+    ... "R1": [np.nan, np.nan], "R2": [np.nan, np.nan], "PA": [np.nan, np.nan],
+    ... "z": [np.nan, np.nan], "ezin": [np.nan, np.nan]})
     >>> pdf = add_all_photoz(pdf)
     >>> np.testing.assert_allclose(pdf["photoz"].values, [np.nan, np.nan], equal_nan=True)
     >>> np.testing.assert_allclose(pdf["photozerr"].values, [np.nan, np.nan], equal_nan=True)
 
     # Empty input: no crossmatch is attempted, columns are added empty.
-    >>> empty = pd.DataFrame(data={"objectId": [], "ra": [], "dec": []})
+    >>> empty = pd.DataFrame(data={"objectId": [], "ra": [], "dec": [],
+    ... "regalade_ra": [], "regalade_dec": [], "R1": [], "R2": [], "PA": [],
+    ... "z": [], "ezin": []})
     >>> empty = add_all_photoz(empty)
-    >>> list(empty.columns)
-    ['objectId', 'ra', 'dec', 'photoz', 'photozerr']
+    >>> "photoz" in empty.columns and "photozerr" in empty.columns
+    True
     """
+    regalade_cols = ["regalade_ra", "regalade_dec", "R1", "R2", "PA", "z", "ezin"]
     if len(pdf) > 0:
         unique_objs = pdf.drop_duplicates(subset="objectId")[
-            ["objectId", "ra", "dec"]
+            ["objectId", "ra", "dec"] + regalade_cols
         ].reset_index(drop=True)
         photoz, photozerr = get_regalade_photoz(
-            unique_objs["ra"].to_numpy(), unique_objs["dec"].to_numpy()
+            unique_objs["ra"].to_numpy(),
+            unique_objs["dec"].to_numpy(),
+            unique_objs["regalade_ra"].to_numpy(),
+            unique_objs["regalade_dec"].to_numpy(),
+            unique_objs["R1"].to_numpy(),
+            unique_objs["R2"].to_numpy(),
+            unique_objs["PA"].to_numpy(),
+            unique_objs["z"].to_numpy(),
+            unique_objs["ezin"].to_numpy(),
         )
         unique_objs["photoz"] = photoz
         unique_objs["photozerr"] = photozerr
