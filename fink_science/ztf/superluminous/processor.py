@@ -283,7 +283,13 @@ def superluminous_score(
         if len(SLSN_features) > 0:
             SLSN_features["objectId"] = lcs.loc[mask_is_SLSN, "objectId"]
             regalade_cols = [
-                "regalade_ra", "regalade_dec", "R1", "R2", "PA", "z", "ezin",
+                "regalade_ra",
+                "regalade_dec",
+                "R1",
+                "R2",
+                "PA",
+                "z",
+                "ezin",
             ]
             for col in regalade_cols:
                 SLSN_features[col] = pdf_valid.loc[mask_is_SLSN, col].to_numpy()

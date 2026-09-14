@@ -387,7 +387,9 @@ def get_regalade_photoz(ra, dec, gal_ra, gal_dec, R1, R2, PA, z, zerr):
     cos_c = np.sin(dec0) * np.sin(dec) + np.cos(dec0) * np.cos(dec) * np.cos(dra)
     with np.errstate(divide="ignore", invalid="ignore"):
         x = np.cos(dec) * np.sin(dra) / cos_c
-        y = (np.cos(dec0) * np.sin(dec) - np.sin(dec0) * np.cos(dec) * np.cos(dra)) / cos_c
+        y = (
+            np.cos(dec0) * np.sin(dec) - np.sin(dec0) * np.cos(dec) * np.cos(dra)
+        ) / cos_c
     dE = np.degrees(x) * 3600
     dN = np.degrees(y) * 3600
 
