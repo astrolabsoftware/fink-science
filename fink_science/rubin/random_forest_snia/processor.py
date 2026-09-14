@@ -20,7 +20,7 @@ import numpy as np
 from line_profiler import profile
 
 import os
-import pickle
+import joblib
 
 from fink_science import __file__
 
@@ -165,7 +165,7 @@ def rfscore_rainbow_elasticc_nometa(
 ) -> pd.Series:
     """Return the probability of an alert to be a SNe Ia using a Random Forest Classifier (rainbow fit) on ELaSTICC alert data.
 
-    Uses bundled model `data/models/elasticc_rainbow_earlyIa_nometa.pkl` and
+    Uses bundled model `data/models/sklearn_1.7.2/elasticc_rainbow_earlyIa_nometa-1.7.2.obj` and
     default parameters (LSST band wavelengths, min_data_points=7, low_bound=-10).
 
     Parameters
@@ -228,10 +228,13 @@ def rfscore_rainbow_elasticc_nometa(
 
     curdir = os.path.dirname(os.path.abspath(__file__))
     model_path = os.path.join(
-        curdir, "data", "models", "elasticc_rainbow_earlyIa_nometa.pkl"
+        curdir,
+        "data",
+        "models",
+        "sklearn_1.7.2",
+        "elasticc_rainbow_earlyIa_nometa-1.7.2.obj",
     )
-    with open(model_path, "rb") as f:
-        clf = pickle.load(f)
+    clf = joblib.load(model_path)
 
     candid = pd.Series(range(len(midpointMjdTai)))
     ids = candid[mask]

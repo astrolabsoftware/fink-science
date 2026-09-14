@@ -28,7 +28,7 @@ These models are based on the v0 description above, and `snn_snia_vs_nonia` is l
 You would use the classifier the following way:
 
 ```python
-from fink_science.utilities import concat_col
+from fink_utils.spark.utils import concat_col
 from pyspark.sql import functions as F
 
 df = ...

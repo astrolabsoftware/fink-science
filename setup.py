@@ -51,6 +51,8 @@ setuptools.setup(
             "data/models/anomaly_detection/*.csv",
             "data/models/anomaly_detection/*.zip",
             "data/models/for_al_loop/*.pkl",
+            "data/models/sklearn_1.7.2/*.obj",
+            "data/models/xgboost_3.4.1/*.joblib",
             "data/catalogs/*.parquet",
             "data/catalogs/*.fits",
             "data/catalogs/*.csv",
@@ -59,6 +61,7 @@ setuptools.setup(
             "ztf/hostless_detection/config*.json",
             "rubin/hostless_detection/config.json",
             "rubin/hostless_detection/config*.json",
+            "ztf/blazar_extreme_state/flaapluc_static.json",
         ],
     },
     classifiers=[

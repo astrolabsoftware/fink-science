@@ -1,4 +1,4 @@
-# Copyright 2025 AstroLab Software
+# Copyright 2025-2026 AstroLab Software
 # Author: Etienne Russeil
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@ curdir = os.path.dirname(os.path.abspath(__file__))
 # Path to the pre-trained classifier (scikit-learn compatible pipeline,
 # pickled with joblib). It is expected to expose `predict_proba`,
 # `feature_names_in_` and `optimal_threshold` attributes.
-classifier_path = curdir + "/data/models/NOMAI.joblib"
+classifier_path = curdir + "/data/models/xgboost_3.4.1/NOMAI.joblib"
 
 # Directional light radius (DLR) scale factor applied to the REGALADE
 # ellipse before accepting the host crossmatch (see

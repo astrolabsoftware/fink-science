@@ -1,0 +1,9 @@
+{
+    "flaapluc_kafka_config": {
+        "group.id": "fink-blazar-monitoring",
+        "auto.offset.reset": "earliest",
+        "enable.auto.commit": false
+    },
+    "flaapluc_kafka_topics": ["flaapluc-hess"],
+    "flaapluc_avro_schema_path": "distribution_schema_flaapluc.avsc"
+}

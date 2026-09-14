@@ -1,4 +1,4 @@
-# Copyright 2019-2025 AstroLab Software
+# Copyright 2019-2026 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +18,13 @@ from pyspark.sql.types import DoubleType, StringType
 import pandas as pd
 import numpy as np
 from line_profiler import profile
+import joblib
 
 import os
 
 from fink_science import __file__
 
 from fink_utils.data.utils import format_data_as_snana
-from fink_utils.data.utils import load_scikit_model
 from fink_utils.xmatch.simbad import return_list_of_eg_host
 
 from actsnfink.classifier_sigmoid import get_sigmoid_features_dev_fast
@@ -180,7 +180,9 @@ def rfscore_sigmoid_full(
     pdf = format_data_as_snana(jd, magpsf, sigmapsf, fid, candid, mask)
 
     curdir = os.path.dirname(os.path.abspath(__file__))
-    clf = load_scikit_model(curdir + "/data/models/default-model_sigmoid.obj")
+    clf = joblib.load(
+        curdir + "/data/models/sklearn_1.7.2/default-model_sigmoid-1.7.2.obj"
+    )
 
     test_features = []
     flag = []
@@ -323,11 +325,13 @@ if __name__ == "__main__":
     ztf_alert_sample = "file://{}/data/alerts/datatest".format(path)
     globs["ztf_alert_sample"] = ztf_alert_sample
 
-    model_path_sigmoid = "{}/data/models/default-model_sigmoid.obj".format(path)
+    model_path_sigmoid = (
+        "{}/data/models/sklearn_1.7.2/default-model_sigmoid-1.7.2.obj".format(path)
+    )
     globs["model_path_sigmoid"] = model_path_sigmoid
 
-    model_path_al_loop = "{}/data/models/for_al_loop/model_20241122_wlimits.pkl".format(
-        path
+    model_path_al_loop = (
+        "{}/data/models/sklearn_1.7.2/model_20241122_wlimits-1.7.2.obj".format(path)
     )
     globs["model_path_al_loop"] = model_path_al_loop
 
