@@ -768,7 +768,7 @@ def fit_salt(lc, salt_model):
 
         return list(result.parameters) + [result.chisq]
 
-    except RuntimeError:
+    except (RuntimeError, sncosmo.fitting.DataQualityError):
         return [np.nan] * 6
 
 
