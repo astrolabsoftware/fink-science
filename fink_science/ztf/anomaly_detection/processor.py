@@ -67,11 +67,21 @@ ANOMALY_MODELS = [
     "_emille_30days",
     "_varvara",
     "_alexanta",
+    "_Polina",
+    "_emille_ztf26_27",
 ]  # noqa
-NOTIFICATIONS_COUNT = {"_emille": 30, "_emille_30days": 30, "_varvara": 200}
+NOTIFICATIONS_COUNT = {
+    "_emille": 30,
+    "_emille_30days": 30,
+    "_emille_ztf26_27": 30,
+    "_varvara": 200,
+}
 CURVE_LAST_DAYS = {"_emille_30days": 30}
 CUSTOM_FILTERS = {
     "_beta": "objectId LIKE '%ZTF21%'",
+    "_emille_ztf26_27": (
+        "(objectId LIKE 'ZTF26%' OR objectId LIKE 'ZTF27%')"
+    ),
     "_varvara": (
         "ABS("
         "SIN(RADIANS(dec)) * SIN(RADIANS(27.12825)) + "
