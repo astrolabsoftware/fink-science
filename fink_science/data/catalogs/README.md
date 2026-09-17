@@ -39,3 +39,4 @@ pdf = pd.DataFrame(table)
 pdf[["RAdeg", "DEdeg", "SPICY", "class"]].to_parquet("spicy.parquet")
 ```
 
+
