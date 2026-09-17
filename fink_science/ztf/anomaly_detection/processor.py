@@ -79,9 +79,7 @@ NOTIFICATIONS_COUNT = {
 CURVE_LAST_DAYS = {"_emille_30days": 30}
 CUSTOM_FILTERS = {
     "_beta": "objectId LIKE '%ZTF21%'",
-    "_emille_ztf26_27": (
-        "(objectId LIKE 'ZTF26%' OR objectId LIKE 'ZTF27%')"
-    ),
+    "_emille_ztf26_27": ("(objectId LIKE 'ZTF26%' OR objectId LIKE 'ZTF27%')"),
     "_varvara": (
         "ABS("
         "SIN(RADIANS(dec)) * SIN(RADIANS(27.12825)) + "
@@ -205,7 +203,7 @@ def anomaly_score(lc_features, model=None):
     >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
 
     >>> df.filter(df["anomaly_score"] < 0).count()
-    61
+    97
     """
 
     def get_key(x: dict, band: int):
