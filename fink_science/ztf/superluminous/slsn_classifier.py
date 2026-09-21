@@ -358,7 +358,11 @@ def get_regalade_photoz(ra, dec, gal_ra, gal_dec, R1, R2, PA, z, zerr):
     PA: array
         Position angle of the ellipse, East-of-North, in degrees.
     z, zerr: array
-        Photo-z and its uncertainty for the candidate.
+        Photo-z and its uncertainty for the candidate. `zerr` (REGALADE's
+        `ezin`, "error on zinput") is NaN for spectroscopic redshifts --
+        no input-catalog error is reported because the uncertainty is
+        genuinely zero, not unknown. Treated as 0 wherever `z` itself is
+        present.
 
     Returns
     -------
@@ -377,6 +381,17 @@ def get_regalade_photoz(ra, dec, gal_ra, gal_dec, R1, R2, PA, z, zerr):
     ...     np.array([np.nan]), np.array([np.nan]),
     ... )
     >>> np.testing.assert_allclose(photoz, [np.nan], equal_nan=True)
+
+    # Spectroscopic redshift (zerr/ezin is NaN, z is not): uncertainty is
+    # treated as 0, not propagated as NaN.
+    >>> photoz, photozerr = get_regalade_photoz(
+    ...     np.array([0.]), np.array([0.]),
+    ...     np.array([0.]), np.array([0.]),
+    ...     np.array([2.]), np.array([2.]), np.array([0.]),
+    ...     np.array([0.05]), np.array([np.nan]),
+    ... )
+    >>> np.testing.assert_allclose(photoz, [0.05])
+    >>> np.testing.assert_allclose(photozerr, [0.])
     """
     ra = np.radians(np.asarray(ra, dtype=float))
     dec = np.radians(np.asarray(dec, dtype=float))
@@ -404,8 +419,16 @@ def get_regalade_photoz(ra, dec, gal_ra, gal_dec, R1, R2, PA, z, zerr):
     # NaN inputs propagate to NaN separation, which compares False against
     # 1.0 -- no special-casing needed for missing candidates.
     keep = separation <= 1.0
-    photoz = np.where(keep, np.asarray(z, dtype=float), np.nan)
-    photozerr = np.where(keep, np.asarray(zerr, dtype=float), np.nan)
+
+    z = np.asarray(z, dtype=float)
+    zerr = np.asarray(zerr, dtype=float)
+    # zerr (ezin) is NaN for spectroscopic redshifts -- no input-catalog
+    # error is reported because the uncertainty is genuinely zero, not
+    # unknown.
+    zerr = np.where(np.isnan(zerr) & ~np.isnan(z), 0.0, zerr)
+
+    photoz = np.where(keep, z, np.nan)
+    photozerr = np.where(keep, zerr, np.nan)
 
     return photoz, photozerr
 
