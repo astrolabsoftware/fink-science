@@ -293,6 +293,12 @@ def superluminous_score(
             ]
             for col in regalade_cols:
                 SLSN_features[col] = pdf_valid.loc[mask_is_SLSN, col].to_numpy()
+
+            # add_all_photoz merges on objectId internally, which silently
+            # resets the index -- capture it now so zero_proba_idx below
+            # still refers to positions in `probas`, not the post-merge
+            # 0..N-1 index.
+            orig_index = SLSN_features.index.to_numpy()
             SLSN_features = slsn.add_all_photoz(SLSN_features)
 
             # Most favorable (brightest, i.e. most negative) plausible peak
@@ -317,9 +323,7 @@ def superluminous_score(
             mask_not_SL = upper_M > kern.not_sl_threshold
             mask_variable = SLSN_features["ntrends"] > kern.max_ntrends
             mask_too_long = SLSN_features["duration"] >= kern.max_duration
-            zero_proba_idx = SLSN_features[
-                mask_not_SL | mask_variable | mask_too_long
-            ].index
+            zero_proba_idx = orig_index[mask_not_SL | mask_variable | mask_too_long]
 
             # And have their probabilities put to 0.
             probas[zero_proba_idx] = 0
