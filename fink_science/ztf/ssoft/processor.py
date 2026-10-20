@@ -185,6 +185,8 @@ def extract_ssoft_parameters(
             )
             pdf = pdf.sort_values("cjd")
 
+            tref = np.mean(pdf["cjd"].to_numpy())
+
             # Clean data in-place
             pdf["dxy"] = np.sqrt(pdf["cdx"] ** 2 + pdf["cdy"] ** 2)
             pdf, _ = dxy_cleaning(
@@ -233,6 +235,7 @@ def extract_ssoft_parameters(
                 npeak=7,
                 pmin=2e-2,
                 pmax=1e4,
+                t0=tref,
             )
 
             outdic = sanitize_dict(outdic)
@@ -274,11 +277,10 @@ def extract_ssoft_parameters(
                 np.deg2rad(pdf["i:ra"].to_numpy()),
                 np.deg2rad(pdf["i:dec"].to_numpy()),
                 jd=pdf["i:jd"].to_numpy(),
-                p0=MODELS[model_name]["p0"],
-                bounds=MODELS[model_name]["bounds"],
                 model=model_name,
-                normalise_to_V=False,
-                remap=False,
+                p0=None,
+                bounds=None,
+                remap=True,
             )
 
         # Add astrometry
