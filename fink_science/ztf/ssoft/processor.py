@@ -202,6 +202,7 @@ def extract_ssoft_parameters(
                 pdf["cfid"],
                 pdf["ra"],
                 pdf["dec"],
+                level=3,
             )
 
             # Wrap columns inplace
