@@ -237,6 +237,8 @@ def extract_ssoft_parameters(
                 remap=True,
                 remap_kwargs=current_kwargs,
                 npeak=7,
+                pmin=2e-2,
+                pmax=1e4,
             )
 
             outdic = sanitize_dict(outdic)
