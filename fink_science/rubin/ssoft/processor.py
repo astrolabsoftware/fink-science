@@ -232,7 +232,6 @@ def extract_ssoft_parameters(
                 period_blind=True,
                 pole_blind=False,
                 period_in=None,
-                period_quality_flag=True,
                 terminator=True,
                 time_me=True,
                 remap=True,
