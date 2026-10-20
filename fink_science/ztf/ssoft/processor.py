@@ -133,23 +133,12 @@ def extract_ssoft_parameters(
         Series with dictionaries. Keys are parameter names (H, G, etc.)
         depending on the model chosen.
     """
-    MODELS = {
-        "HG": {"p0": [15.0, 0.15], "bounds": ([-3, 0], [30, 1])},
-        "HG1G2": {"p0": [15.0, 0.15, 0.15], "bounds": ([-3, 0, 0], [30, 1, 1])},
-        "SHG1G2": {
-            "p0": [15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
-            "bounds": None,  # initialised inside fit_spin
-        },
-        "SOCCA": {
-            "p0": None,  # Not used initially in SOCCA
-            "bounds": None,  # initialised inside fit_spin
-        },
-    }
+    MODELS = ["HG", "HG1G2", "SHG1G2", "SOCCA"]
 
     model_name = model.to_numpy()[0]
 
-    assert model_name in MODELS.keys(), "{} is not supported. Choose among: {}".format(
-        model_name, str(MODELS.keys())
+    assert model_name in MODELS, "{} is not supported. Choose among: {}".format(
+        model_name, str(MODELS)
     )
 
     # loop over SSO
