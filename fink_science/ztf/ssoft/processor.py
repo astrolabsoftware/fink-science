@@ -48,6 +48,17 @@ import logging
 _LOG = logging.getLogger(__name__)
 
 
+def overclean(df, dxy_max=1):
+    """Keep only points with small photometric error and small astrometric offset
+
+    Notes
+    -----
+    dxy_max is in pixels (1 ATLAS px = 1.86 arcsec)
+    """
+    cond = (df["csigmapsf"].astype(float) < 0.2) & (df["dxy"].astype(float) < dxy_max)
+    return df[cond]
+
+
 def sanitize_dict(outdic):
     """Replace arrays with lists"""
     outdic2 = {}
@@ -133,23 +144,12 @@ def extract_ssoft_parameters(
         Series with dictionaries. Keys are parameter names (H, G, etc.)
         depending on the model chosen.
     """
-    MODELS = {
-        "HG": {"p0": [15.0, 0.15], "bounds": ([-3, 0], [30, 1])},
-        "HG1G2": {"p0": [15.0, 0.15, 0.15], "bounds": ([-3, 0, 0], [30, 1, 1])},
-        "SHG1G2": {
-            "p0": [15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
-            "bounds": None,  # initialised inside fit_spin
-        },
-        "SOCCA": {
-            "p0": None,  # Not used initially in SOCCA
-            "bounds": None,  # initialised inside fit_spin
-        },
-    }
+    MODELS = ["HG", "HG1G2", "SHG1G2", "SOCCA"]
 
     model_name = model.to_numpy()[0]
 
-    assert model_name in MODELS.keys(), "{} is not supported. Choose among: {}".format(
-        model_name, str(MODELS.keys())
+    assert model_name in MODELS, "{} is not supported. Choose among: {}".format(
+        model_name, str(MODELS)
     )
 
     # loop over SSO
@@ -185,14 +185,19 @@ def extract_ssoft_parameters(
             )
             pdf = pdf.sort_values("cjd")
 
-            # Clean data in-place
+            # Keep a copy in case the cleaning is too aggressive
             pdf["dxy"] = np.sqrt(pdf["cdx"] ** 2 + pdf["cdy"] ** 2)
+            pdf_unclean = pdf.copy()
+
+            # Clean data in-place
             pdf, _ = dxy_cleaning(
                 pdf,
                 pdf["dxy"],
                 pdf["cmred"],
                 threshold=0.95,
             )
+
+            pdf = overclean(pdf)
 
             pdf, _ = iterative_cleaning(
                 pdf,
@@ -202,7 +207,15 @@ def extract_ssoft_parameters(
                 pdf["cfid"],
                 pdf["ra"],
                 pdf["dec"],
+                level=3,
             )
+
+            # Too few points survived cleaning: apply only the overcleaning
+            if len(pdf) < 100:
+                pdf = overclean(pdf_unclean, dxy_max=2)
+
+            # Compute mid-time
+            tref = np.mean(pdf["cjd"].to_numpy())
 
             # Wrap columns inplace
             pdf_transposed = pd.DataFrame(
@@ -225,11 +238,14 @@ def extract_ssoft_parameters(
                 period_blind=True,
                 pole_blind=False,
                 period_in=None,
-                period_quality_flag=True,
                 terminator=True,
                 time_me=True,
                 remap=True,
                 remap_kwargs=current_kwargs,
+                npeak=7,
+                pmin=2e-2,
+                pmax=1e4,
+                t0=tref,
             )
 
             outdic = sanitize_dict(outdic)
@@ -271,11 +287,10 @@ def extract_ssoft_parameters(
                 np.deg2rad(pdf["i:ra"].to_numpy()),
                 np.deg2rad(pdf["i:dec"].to_numpy()),
                 jd=pdf["i:jd"].to_numpy(),
-                p0=MODELS[model_name]["p0"],
-                bounds=MODELS[model_name]["bounds"],
                 model=model_name,
-                normalise_to_V=False,
-                remap=False,
+                p0=None,
+                bounds=None,
+                remap=True,
             )
 
         # Add astrometry
