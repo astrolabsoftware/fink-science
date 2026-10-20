@@ -48,6 +48,17 @@ import logging
 _LOG = logging.getLogger(__name__)
 
 
+def overclean(df, dxy_max=1):
+    """Keep only points with small photometric error and small astrometric offset
+
+    Notes
+    -----
+    dxy_max is in pixels (1 ATLAS px = 1.86 arcsec)
+    """
+    cond = (df["csigmapsf"].astype(float) < 0.2) & (df["dxy"].astype(float) < dxy_max)
+    return df[cond]
+
+
 def sanitize_dict(outdic):
     """Replace arrays with lists"""
     outdic2 = {}
@@ -174,7 +185,8 @@ def extract_ssoft_parameters(
             )
             pdf = pdf.sort_values("cjd")
 
-            tref = np.mean(pdf["cjd"].to_numpy())
+            # Keep a copy in case the cleaning is too aggressive
+            pdf_unclean = pdf.copy()
 
             # Clean data in-place
             pdf["dxy"] = np.sqrt(pdf["cdx"] ** 2 + pdf["cdy"] ** 2)
@@ -184,6 +196,8 @@ def extract_ssoft_parameters(
                 pdf["cmred"],
                 threshold=0.95,
             )
+
+            pdf = overclean(pdf)
 
             pdf, _ = iterative_cleaning(
                 pdf,
@@ -195,6 +209,13 @@ def extract_ssoft_parameters(
                 pdf["dec"],
                 level=3,
             )
+
+            # Too few points survived cleaning: apply only the overcleaning
+            if len(pdf) < 100:
+                pdf = overclean(pdf_unclean, dxy_max=2)
+
+            # Compute mid-time
+            tref = np.mean(pdf["cjd"].to_numpy())
 
             # Wrap columns inplace
             pdf_transposed = pd.DataFrame(
