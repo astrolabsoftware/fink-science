@@ -192,10 +192,10 @@ def extract_ssoft_parameters(
             pdf = pdf.sort_values("cjd")
 
             # Keep a copy in case the cleaning is too aggressive
+            pdf["dxy"] = np.sqrt(pdf["cdx"] ** 2 + pdf["cdy"] ** 2)
             pdf_unclean = pdf.copy()
 
             # Clean data in-place
-            pdf["dxy"] = np.sqrt(pdf["cdx"] ** 2 + pdf["cdy"] ** 2)
             pdf, _ = dxy_cleaning(
                 pdf,
                 pdf["dxy"],
