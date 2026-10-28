@@ -148,6 +148,7 @@ def cdsxmatch(
                 "colDec1": "dec_in",
             },
             files={"cat1": table},
+            timeout=(6, 120),
         )
 
         if r.status_code != 200:
@@ -189,7 +190,12 @@ def cdsxmatch(
                 # single column to return
                 return pdf_out[cols[0]].astype(str)
 
-    except (ConnectionError, TimeoutError, ValueError) as ce:
+    except (
+        requests.exceptions.RequestException,
+        ConnectionError,
+        TimeoutError,
+        ValueError,
+    ) as ce:
         logging.warning("XMATCH failed " + repr(ce))
         ncols = len(cols.to_numpy()[0].split(","))
         name = ",".join(["Fail"] * ncols)

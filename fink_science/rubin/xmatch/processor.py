@@ -147,6 +147,8 @@ def cdsxmatch(
     if len(ra) == 0:
         return pd.Series([])
 
+    col_list = cols.to_numpy()[0].split(",")
+
     # Catch TimeoutError and ConnectionError
     try:
         # Build a catalog of alert in a CSV-like string
@@ -172,9 +174,8 @@ def cdsxmatch(
                 "decMax": dec.max() + pad_deg,
             },
             files={"cat1": table},
+            timeout=(6, 120),
         )
-
-        col_list = cols.to_numpy()[0].split(",")
 
         if r.status_code != 200:
             msg = "Fail"
@@ -228,7 +229,12 @@ def cdsxmatch(
                     lambda x: None if x is None else str(x)
                 )
 
-    except (ConnectionError, TimeoutError, ValueError) as ce:
+    except (
+        requests.exceptions.RequestException,
+        ConnectionError,
+        TimeoutError,
+        ValueError,
+    ) as ce:
         logging.warning("XMATCH failed " + repr(ce))
         name = ",".join(["Fail"] * len(col_list))
         names = [name] * len(diaSourceId)
