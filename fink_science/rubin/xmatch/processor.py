@@ -53,6 +53,9 @@ from fink_tns.lsst.utils import download_catalog
 
 _LOG = logging.getLogger(__name__)
 
+# (connect, read) timeouts in seconds of the requests to the CDS xmatch service
+CDSXMATCH_TIMEOUT = (10, 60)
+
 
 @pandas_udf(StringType())
 @profile
@@ -139,6 +142,33 @@ def cdsxmatch(
     |  d|       0.0|      -90.0|        NULL|
     +---+----------+-----------+------------+
     <BLANKLINE>
+
+    A failure of the service marks every column of every row as Fail,
+    without failing the task
+    >>> from unittest import mock
+    >>> args = [
+    ...     pd.Series(id), pd.Series(ra), pd.Series(dec), pd.Series([1.0] * 4),
+    ...     pd.Series(["simbad"] * 4), pd.Series(["otype,main_id"] * 4)]
+    >>> errors = [
+    ...     requests.exceptions.ConnectTimeout("connect timeout"),
+    ...     requests.exceptions.ReadTimeout("read timeout"),
+    ...     requests.exceptions.ConnectionError("connection refused")]
+    >>> for error in errors:
+    ...     with mock.patch("requests.post", side_effect=error):
+    ...         print(cdsxmatch.func(*args).tolist())
+    ['Fail,Fail', 'Fail,Fail', 'Fail,Fail', 'Fail,Fail']
+    ['Fail,Fail', 'Fail,Fail', 'Fail,Fail', 'Fail,Fail']
+    ['Fail,Fail', 'Fail,Fail', 'Fail,Fail', 'Fail,Fail']
+
+    So does an answer that cannot be read
+    >>> answer = mock.Mock(status_code=200, content=b"")
+    >>> with mock.patch("requests.post", return_value=answer) as post:
+    ...     print(cdsxmatch.func(*args).tolist())
+    ['Fail,Fail', 'Fail,Fail', 'Fail,Fail', 'Fail,Fail']
+
+    The request is bounded in time
+    >>> "timeout" in post.call_args.kwargs
+    True
     """
     distmaxarcsec_f = distmaxarcsec.to_numpy()[0]
     pad_deg = 2 * distmaxarcsec_f / 3600
@@ -147,7 +177,9 @@ def cdsxmatch(
     if len(ra) == 0:
         return pd.Series([])
 
-    # Catch TimeoutError and ConnectionError
+    col_list = cols.to_numpy()[0].split(",")
+
+    # A failing service must not fail the task: every row is then marked Fail
     try:
         # Build a catalog of alert in a CSV-like string
         table_header = """ra_in,dec_in,diaSourceId\n"""
@@ -172,9 +204,8 @@ def cdsxmatch(
                 "decMax": dec.max() + pad_deg,
             },
             files={"cat1": table},
+            timeout=CDSXMATCH_TIMEOUT,
         )
-
-        col_list = cols.to_numpy()[0].split(",")
 
         if r.status_code != 200:
             msg = "Fail"
@@ -228,7 +259,7 @@ def cdsxmatch(
                     lambda x: None if x is None else str(x)
                 )
 
-    except (ConnectionError, TimeoutError, ValueError) as ce:
+    except (requests.exceptions.RequestException, ValueError) as ce:
         logging.warning("XMATCH failed " + repr(ce))
         name = ",".join(["Fail"] * len(col_list))
         names = [name] * len(diaSourceId)
