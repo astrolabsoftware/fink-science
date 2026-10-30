@@ -30,6 +30,9 @@ import logging
 
 _LOG = logging.getLogger(__name__)
 
+# (connect, read) timeouts in seconds of the requests to the Fink API
+FINK_API_TIMEOUT = (10, 60)
+
 
 @pandas_udf(DoubleType())
 @profile
@@ -411,6 +414,27 @@ def get_and_format(ZTF_name):
     True
     >>> len(data['cjd'].iloc[0]) >= 14
     True
+
+    A failure of the Fink API returns None, without failing the task
+    >>> from unittest import mock
+    >>> errors = [
+    ...     requests.exceptions.ConnectTimeout("connect timeout"),
+    ...     requests.exceptions.ReadTimeout("read timeout"),
+    ...     requests.exceptions.ConnectionError("connection refused")]
+    >>> for error in errors:
+    ...     with mock.patch("requests.post", side_effect=error):
+    ...         print(get_and_format(["ZTF21abfmbix"]))
+    None
+    None
+    None
+
+    The request is bounded in time
+    >>> answer = mock.Mock(status_code=500)
+    >>> with mock.patch("requests.post", return_value=answer) as post:
+    ...     print(get_and_format(["ZTF21abfmbix"]))
+    None
+    >>> "timeout" in post.call_args.kwargs
+    True
     """
     if type(ZTF_name) is not list:
         raise TypeError("ZTF_name should be a list of str")
@@ -422,15 +446,21 @@ def get_and_format(ZTF_name):
     dataframes = []
 
     for _id, name in enumerate(ZTF_name):
-        r = requests.post(
-            "https://api.ztf.fink-portal.org/api/v1/objects",
-            json={
-                "objectId": name,
-                "columns": "i:objectId,i:jd,i:magpsf,i:sigmapsf,i:fid,i:jd,i:distnr,d:tag,i:ra,i:dec",
-                "output-format": "json",
-                "withupperlim": "True",
-            },
-        )
+        # A failing API must not fail the task: the caller then gives -1 scores
+        try:
+            r = requests.post(
+                "https://api.ztf.fink-portal.org/api/v1/objects",
+                json={
+                    "objectId": name,
+                    "columns": "i:objectId,i:jd,i:magpsf,i:sigmapsf,i:fid,i:jd,i:distnr,d:tag,i:ra,i:dec",
+                    "output-format": "json",
+                    "withupperlim": "True",
+                },
+                timeout=FINK_API_TIMEOUT,
+            )
+        except requests.exceptions.RequestException as e:
+            _LOG.warning("Fink API request failed " + repr(e))
+            return None
 
         if r.status_code != 200:
             # FIXME: log the message

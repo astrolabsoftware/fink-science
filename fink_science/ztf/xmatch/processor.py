@@ -27,6 +27,8 @@ import io
 import os
 import logging
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import pandas as pd
 import numpy as np
 import healpy as hp
@@ -43,6 +45,40 @@ from fink_tns.ztf.utils import download_catalog
 
 
 _LOG = logging.getLogger(__name__)
+
+# (connect, read) timeouts in seconds of the requests to the CDS xmatch service
+CDSXMATCH_TIMEOUT = (10, 60)
+
+
+def cdsxmatch_session():
+    """Session to the CDS xmatch service, resilient to short network outages
+
+    Connection errors and gateway errors (502, 503, 504) are retried twice,
+    at once then after 2 s. A read timeout is not retried: the request may already
+    have taken CDSXMATCH_TIMEOUT[1] seconds.
+
+    Returns
+    -------
+    requests.Session
+        Session retrying the requests to the service
+
+    Examples
+    --------
+    >>> retry = cdsxmatch_session().get_adapter("http://cdsxmatch").max_retries
+    >>> retry.total, retry.read, retry.status_forcelist
+    (2, 0, [502, 503, 504])
+    """
+    retry = Retry(
+        total=2,
+        read=0,
+        backoff_factor=1,
+        status_forcelist=[502, 503, 504],
+        allowed_methods=["POST"],
+        raise_on_status=False,
+    )
+    session = requests.Session()
+    session.mount("http://", HTTPAdapter(max_retries=retry))
+    return session
 
 
 @pandas_udf(StringType())
@@ -123,42 +159,72 @@ def cdsxmatch(
     |  b|  26.24497|-26.7569436|        Star|
     +---+----------+-----------+------------+
     <BLANKLINE>
+
+    A failure of the service marks every column of every row as Fail,
+    without failing the task
+    >>> from unittest import mock
+    >>> args = [
+    ...     pd.Series(id), pd.Series(ra), pd.Series(dec), pd.Series([1.0] * 2),
+    ...     pd.Series(["simbad"] * 2), pd.Series(["main_type,main_id"] * 2)]
+    >>> errors = [
+    ...     requests.exceptions.ConnectTimeout("connect timeout"),
+    ...     requests.exceptions.ReadTimeout("read timeout"),
+    ...     requests.exceptions.ConnectionError("connection refused")]
+    >>> for error in errors:
+    ...     with mock.patch("requests.Session.post", side_effect=error):
+    ...         print(cdsxmatch.func(*args).tolist())
+    ['Fail,Fail', 'Fail,Fail']
+    ['Fail,Fail', 'Fail,Fail']
+    ['Fail,Fail', 'Fail,Fail']
+
+    So does an answer that cannot be read
+    >>> answer = mock.Mock(status_code=200, content=b"")
+    >>> with mock.patch("requests.Session.post", return_value=answer) as post:
+    ...     print(cdsxmatch.func(*args).tolist())
+    ['Fail,Fail', 'Fail,Fail']
+
+    The request is bounded in time
+    >>> "timeout" in post.call_args.kwargs
+    True
     """
     # If nothing
     if len(ra) == 0:
         return pd.Series([])
 
-    # Catch TimeoutError and ConnectionError
+    col_list = cols.to_numpy()[0].split(",")
+
+    # A failing service must not fail the task: every row is then marked Fail
     try:
         # Build a catalog of alert in a CSV-like string
         table_header = """ra_in,dec_in,objectId\n"""
         table = generate_csv(table_header, [ra, dec, objectId])
 
         # Send the request!
-        r = requests.post(
-            "http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync",
-            data={
-                "request": "xmatch",
-                "distMaxArcsec": distmaxarcsec.to_numpy()[0],
-                "selection": "all",
-                "RESPONSEFORMAT": "csv",
-                "cat2": extcatalog.to_numpy()[0],
-                "cols2": cols.to_numpy()[0],
-                "colRA1": "ra_in",
-                "colDec1": "dec_in",
-            },
-            files={"cat1": table},
-        )
+        with cdsxmatch_session() as session:
+            r = session.post(
+                "http://cdsxmatch.u-strasbg.fr/xmatch/api/v1/sync",
+                data={
+                    "request": "xmatch",
+                    "distMaxArcsec": distmaxarcsec.to_numpy()[0],
+                    "selection": "all",
+                    "RESPONSEFORMAT": "csv",
+                    "cat2": extcatalog.to_numpy()[0],
+                    "cols2": cols.to_numpy()[0],
+                    "colRA1": "ra_in",
+                    "colDec1": "dec_in",
+                },
+                files={"cat1": table},
+                timeout=CDSXMATCH_TIMEOUT,
+            )
 
         if r.status_code != 200:
             names = ["Fail {}".format(r.status_code)] * len(objectId)
             return pd.Series(names)
         else:
-            cols = cols.to_numpy()[0].split(",")
             pdf = pd.read_csv(io.BytesIO(r.content))
 
             if pdf.empty:
-                name = ",".join(["Unknown"] * len(cols))
+                name = ",".join(["Unknown"] * len(col_list))
                 names = [name] * len(objectId)
                 return pd.Series(names)
 
@@ -176,23 +242,22 @@ def cdsxmatch(
             if "main_type" in pdf_out.columns:
                 pdf_out["main_type"] = pdf_out["main_type"].replace(np.nan, "Unknown")
 
-            if len(cols) > 1:
+            if len(col_list) > 1:
                 # Concatenate all columns in one
                 # use comma-separated values
-                cols = [i.strip() for i in cols]
-                pdf_out = pdf_out[cols]
+                col_list = [i.strip() for i in col_list]
+                pdf_out = pdf_out[col_list]
                 pdf_out["concat_cols"] = pdf_out.apply(
                     lambda x: ",".join(x.astype(str).to_numpy().tolist()), axis=1
                 )
                 return pdf_out["concat_cols"]
-            elif len(cols) == 1:
+            elif len(col_list) == 1:
                 # single column to return
-                return pdf_out[cols[0]].astype(str)
+                return pdf_out[col_list[0]].astype(str)
 
-    except (ConnectionError, TimeoutError, ValueError) as ce:
+    except (requests.exceptions.RequestException, ValueError) as ce:
         logging.warning("XMATCH failed " + repr(ce))
-        ncols = len(cols.to_numpy()[0].split(","))
-        name = ",".join(["Fail"] * ncols)
+        name = ",".join(["Fail"] * len(col_list))
         names = [name] * len(objectId)
         return pd.Series(names)
 
