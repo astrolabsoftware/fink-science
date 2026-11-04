@@ -47,7 +47,7 @@ from fink_tns.ztf.utils import download_catalog
 _LOG = logging.getLogger(__name__)
 
 # (connect, read) timeouts in seconds of the requests to the CDS xmatch service
-CDSXMATCH_TIMEOUT = (10, 60)
+CDSXMATCH_TIMEOUT = (10, 120)
 
 
 def cdsxmatch_session():
