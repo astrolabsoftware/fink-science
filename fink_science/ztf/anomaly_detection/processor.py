@@ -12,8 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import fcntl
 import logging
 import os
+import tempfile
 import zipfile
 
 from pyspark.sql.types import DoubleType
@@ -141,6 +143,49 @@ class TwoBandModel:
         return final_scores
 
 
+def extract_models(zip_path, dest, names):
+    """Extract models from a zip archive, safely across concurrent workers.
+
+    The first worker takes an exclusive lock and extracts the models, the
+    others wait for it and then find them in place. Each model is first
+    extracted in a private temporary directory, then moved to its final
+    name with an atomic rename, so that a reader never sees a truncated file.
+
+    Parameters
+    ----------
+    zip_path: str
+        Path to the zip archive containing the models.
+    dest: str
+        Directory where to put the models.
+    names: list of str
+        Names of the models in the archive (and in `dest`).
+
+    Examples
+    --------
+    >>> with tempfile.TemporaryDirectory() as tmp:
+    ...     zip_path = os.path.join(tmp, "models.zip")
+    ...     with zipfile.ZipFile(zip_path, "w") as zip_ref:
+    ...         zip_ref.writestr("a.onnx", "content")
+    ...     extract_models(zip_path, tmp, ["a.onnx"])
+    ...     extract_models(zip_path, tmp, ["a.onnx"])
+    ...     sorted(f for f in os.listdir(tmp) if not f.endswith(".lock"))
+    ['a.onnx', 'models.zip']
+    """
+    targets = [os.path.join(dest, n) for n in names]
+    if all(os.path.exists(t) for t in targets):
+        return
+    lock_name = os.path.splitext(os.path.basename(zip_path))[0] + ".lock"
+    with open(os.path.join(dest, lock_name), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if all(os.path.exists(t) for t in targets):
+            return
+        with tempfile.TemporaryDirectory(dir=dest) as tmpdir:
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(tmpdir, members=names)
+            for n, t in zip(names, targets):
+                os.replace(os.path.join(tmpdir, n), t)
+
+
 @pandas_udf(DoubleType())
 def anomaly_score(lc_features, model=None):
     """Returns anomaly score for an observation
@@ -235,12 +280,11 @@ def anomaly_score(lc_features, model=None):
         tmp_path = "/tmp"
         g_model_path_AAD = f"{tmp_path}/forest_g_AAD{model}.onnx"
         r_model_path_AAD = f"{tmp_path}/forest_r_AAD{model}.onnx"
-        # check it does not exist to avoid concurrent write
-        if not (os.path.exists(g_model_path_AAD) and os.path.exists(r_model_path_AAD)):
-            with zipfile.ZipFile(
-                f"{model_path}/anomaly_detection_forest_AAD{model}.zip", "r"
-            ) as zip_ref:
-                zip_ref.extractall(tmp_path)
+        extract_models(
+            f"{model_path}/anomaly_detection_forest_AAD{model}.zip",
+            tmp_path,
+            [f"forest_g_AAD{model}.onnx", f"forest_r_AAD{model}.onnx"],
+        )
 
     forest_r_AAD = rt.InferenceSession(r_model_path_AAD)
     forest_g_AAD = rt.InferenceSession(g_model_path_AAD)
