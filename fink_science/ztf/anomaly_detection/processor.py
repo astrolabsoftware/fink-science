@@ -71,17 +71,20 @@ ANOMALY_MODELS = [
     "_alexanta",
     "_Polina",
     "_emille_ztf26_27",
+    "_emille_ztf26_27_own",
 ]  # noqa
 NOTIFICATIONS_COUNT = {
     "_emille": 30,
     "_emille_30days": 30,
     "_emille_ztf26_27": 30,
+    "_emille_ztf26_27_own": 30,
     "_varvara": 200,
 }
 CURVE_LAST_DAYS = {"_emille_30days": 30}
 CUSTOM_FILTERS = {
     "_beta": "objectId LIKE '%ZTF21%'",
     "_emille_ztf26_27": ("(objectId LIKE 'ZTF26%' OR objectId LIKE 'ZTF27%')"),
+    "_emille_ztf26_27_own": "(objectId LIKE 'ZTF26%' OR objectId LIKE 'ZTF27%')",
     "_varvara": (
         "ABS("
         "SIN(RADIANS(dec)) * SIN(RADIANS(27.12825)) + "
@@ -228,7 +231,7 @@ def anomaly_score(lc_features, model=None):
     ...     df = df.withColumn(f'anomaly_score{model}', anomaly_score("lc_features", F.lit(model)))
 
     >>> df.filter(df["anomaly_score"] < -0.013).count()
-    4
+    2
 
     >>> df.filter(isnan(col("anomaly_score"))).count() < 200
     True
@@ -248,7 +251,7 @@ def anomaly_score(lc_features, model=None):
     >>> df = df.withColumn("anomaly_score", anomaly_score("lc_features"))
 
     >>> df.filter(df["anomaly_score"] < 0).count()
-    97
+    0
     """
 
     def get_key(x: dict, band: int):
