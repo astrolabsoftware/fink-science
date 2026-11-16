@@ -25,11 +25,8 @@ from astropy import units as u
 
 import io
 import os
-import time
 import logging
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 import pandas as pd
 import numpy as np
 import healpy as hp
@@ -39,6 +36,7 @@ from fink_science.ztf.xmatch.utils import generate_csv
 from fink_science.ztf.xmatch.utils import extract_vsx, extract_gcvs
 from fink_science.ztf.xmatch.utils import extract_3hsp, extract_4lac
 from fink_science.ztf.xmatch.utils import extract_mangrove, MANGROVE_COLS
+from fink_science.http_session import resilient_session
 from fink_science.tester import spark_unit_tests
 from fink_science import __file__
 
@@ -51,74 +49,12 @@ _LOG = logging.getLogger(__name__)
 CDSXMATCH_TIMEOUT = (10, 120)
 
 
-# Longest wait, in seconds, granted to a Retry-After header of the CDS xmatch service
-CDSXMATCH_RETRY_AFTER_MAX = 120
-
-
-class CappedRetry(Retry):
-    """Retry honouring the Retry-After header of the server, up to a ceiling
-
-    A server under maintenance may ask for a wait of an hour, during which the
-    Spark task would hold its batch. The wait is logged as a warning, and
-    capped to CDSXMATCH_RETRY_AFTER_MAX seconds.
-
-    Examples
-    --------
-    >>> from unittest import mock
-    >>> from urllib3 import HTTPResponse
-    >>> retry = CappedRetry(total=2)
-
-    A long wait asked by the server is capped, and reported
-
-    >>> busy = HTTPResponse(status=503, headers={"Retry-After": "3600"})
-    >>> with mock.patch("time.sleep") as sleep, mock.patch.object(_LOG, "warning") as warn:
-    ...     retry.sleep_for_retry(busy)
-    True
-    >>> sleep.call_args.args, warn.called
-    ((120,), True)
-
-    A short wait is honoured as is, and reported
-
-    >>> soon = HTTPResponse(status=503, headers={"Retry-After": "5"})
-    >>> with mock.patch("time.sleep") as sleep, mock.patch.object(_LOG, "warning") as warn:
-    ...     retry.sleep_for_retry(soon)
-    True
-    >>> sleep.call_args.args, warn.called
-    ((5,), True)
-
-    Without the header, nothing is reported: the usual backoff applies
-
-    >>> plain = HTTPResponse(status=503)
-    >>> with mock.patch("time.sleep") as sleep, mock.patch.object(_LOG, "warning") as warn:
-    ...     retry.sleep_for_retry(plain)
-    False
-    >>> sleep.called, warn.called
-    (False, False)
-    """
-
-    def sleep_for_retry(self, response):
-        """Wait as the server asked, at most CDSXMATCH_RETRY_AFTER_MAX seconds"""
-        retry_after = self.get_retry_after(response)
-        if not retry_after:
-            return False
-        wait = min(retry_after, CDSXMATCH_RETRY_AFTER_MAX)
-        _LOG.warning(
-            "CDS xmatch asked to retry after %s s (HTTP %s), waiting %s s",
-            retry_after,
-            response.status,
-            wait,
-        )
-        time.sleep(wait)
-        return True
-
-
 def cdsxmatch_session():
     """Session to the CDS xmatch service, resilient to short network outages
 
-    Connection errors and gateway errors (502, 503, 504) are retried twice,
-    at once then after 2 s. A read timeout is not retried: the request may already
-    have taken CDSXMATCH_TIMEOUT[1] seconds.
-    A Retry-After header is honoured up to CDSXMATCH_RETRY_AFTER_MAX seconds.
+    Connection errors and gateway errors (502, 503, 504) are retried as
+    described in `fink_science.http_session`. A read timeout is not retried:
+    the request may already have taken CDSXMATCH_TIMEOUT[1] seconds.
 
     Returns
     -------
@@ -130,23 +66,8 @@ def cdsxmatch_session():
     >>> retry = cdsxmatch_session().get_adapter("http://cdsxmatch").max_retries
     >>> retry.total, retry.read, retry.status_forcelist
     (2, 0, [502, 503, 504])
-
-    The cap on Retry-After survives the copies made at each attempt
-
-    >>> type(retry.new()).__name__
-    'CappedRetry'
     """
-    retry = CappedRetry(
-        total=2,
-        read=0,
-        backoff_factor=1,
-        status_forcelist=[502, 503, 504],
-        allowed_methods=["POST"],
-        raise_on_status=False,
-    )
-    session = requests.Session()
-    session.mount("http://", HTTPAdapter(max_retries=retry))
-    return session
+    return resilient_session([502, 503, 504])
 
 
 @pandas_udf(StringType())
