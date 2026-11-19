@@ -17,6 +17,7 @@ from line_profiler import profile
 from fink_science import __file__
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
+from fink_science.http_session import resilient_session
 from fink_science.tester import spark_unit_tests
 import numpy as np
 import pandas as pd
@@ -30,8 +31,17 @@ import logging
 
 _LOG = logging.getLogger(__name__)
 
+FINK_API_URL = "https://api.ztf.fink-portal.org/api/v1/objects"
+
 # (connect, read) timeouts in seconds of the requests to the Fink API
 FINK_API_TIMEOUT = (10, 60)
+
+
+# Number of objects queried in a single request to the Fink API.
+# Measured on 2026-11-12 on 100 objects, 3 runs: 43-46 s in chunks of 20 (slowest
+# request 11 s), against 89-111 s one by one; chunks of 50 save only ~10% more but
+# double the slowest request. Keep the slowest request well below the read timeout.
+FINK_API_CHUNK_SIZE = 20
 
 
 @pandas_udf(DoubleType())
@@ -369,20 +379,46 @@ def protected_mean(arr):
     return 0.0
 
 
-def get_and_format(ZTF_name):
+def fink_api_session():
+    """Session to the Fink API, resilient to short network outages
+
+    Connection errors and server errors (500, 502, 503, 504) are retried as
+    described in `fink_science.http_session`, as for the CDS xmatch service.
+    The Fink API returns transient 500/502 errors, which would otherwise set
+    the scores of a whole partition to -1. A read timeout is not retried: the
+    request may already have taken FINK_API_TIMEOUT[1] seconds.
+
+    Returns
+    -------
+    requests.Session
+        Session retrying the requests to the Fink API
+
+    Examples
+    --------
+    >>> retry = fink_api_session().get_adapter(FINK_API_URL).max_retries
+    >>> retry.total, retry.read, retry.status_forcelist
+    (2, 0, [500, 502, 503, 504])
+    """
+    return resilient_session([500, 502, 503, 504])
+
+
+def get_and_format(ZTF_name, chunk_size=FINK_API_CHUNK_SIZE):
     """Use the Fink API to collect the full light curve history of sources given their ZTF names.
 
     Notes
     -----
     Only alerts flagged as "valid" or "badquality" by Fink are kept
-    (upper limits and bad subtractions are dropped). Queries are done one
-    object at a time and objects for which the API returns no data are
-    silently dropped from the result.
+    (upper limits and bad subtractions are dropped). Objects are queried
+    by chunks of `chunk_size`, each name only once. The result
+    has one row per input name, in input order (duplicates included), and
+    objects for which the API returns no data are silently dropped from it.
 
     Parameters
     ----------
     ZTF_name: list
         List of objectId (ZTF names)
+    chunk_size: int
+        Maximum number of objects queried in a single request
 
     Returns
     -------
@@ -415,25 +451,44 @@ def get_and_format(ZTF_name):
     >>> len(data['cjd'].iloc[0]) >= 14
     True
 
-    A failure of the Fink API returns None, without failing the task
+    A failure of the Fink API, after the retries, returns None without failing the task
     >>> from unittest import mock
     >>> errors = [
     ...     requests.exceptions.ConnectTimeout("connect timeout"),
     ...     requests.exceptions.ReadTimeout("read timeout"),
     ...     requests.exceptions.ConnectionError("connection refused")]
     >>> for error in errors:
-    ...     with mock.patch("requests.post", side_effect=error):
+    ...     with mock.patch("requests.Session.post", side_effect=error):
     ...         print(get_and_format(["ZTF21abfmbix"]))
     None
     None
     None
 
+    An unreadable answer returns None too
+    >>> answer = mock.Mock(status_code=200, content=b"not json")
+    >>> with mock.patch("requests.Session.post", return_value=answer):
+    ...     print(get_and_format(["ZTF21abfmbix"]))
+    None
+
     The request is bounded in time
     >>> answer = mock.Mock(status_code=500)
-    >>> with mock.patch("requests.post", return_value=answer) as post:
+    >>> with mock.patch("requests.Session.post", return_value=answer) as post:
     ...     print(get_and_format(["ZTF21abfmbix"]))
     None
     >>> "timeout" in post.call_args.kwargs
+    True
+
+    Objects are queried by chunks, each name once, and the rows keep the input order
+    >>> names = ["ZTF21aaxtctv", "toto", "ZTF21abfmbix", "ZTF21aaxtctv"]
+    >>> real_post = requests.Session.post
+    >>> with mock.patch.object(requests.Session, "post", autospec=True, side_effect=real_post) as post:
+    ...     data = get_and_format(names, chunk_size=2)
+    >>> [call.kwargs["json"]["objectId"] for call in post.call_args_list]
+    ['ZTF21aaxtctv,toto', 'ZTF21abfmbix']
+    >>> list(data["objectId"])
+    ['ZTF21aaxtctv', 'ZTF21abfmbix', 'ZTF21aaxtctv']
+    >>> single = get_and_format(["ZTF21abfmbix"])
+    >>> np.array_equal(data["cjd"].iloc[1], single["cjd"].iloc[0])
     True
     """
     if type(ZTF_name) is not list:
@@ -442,42 +497,53 @@ def get_and_format(ZTF_name):
     if len(ZTF_name) == 0:
         return None
 
-    # Initialize an empty list to hold each DataFrame
+    # Query each object once, by chunks of names: one request per object
+    # made the micro-batches very long (#753)
+    unique_names = list(dict.fromkeys(ZTF_name))
+    lc_per_name = {}
+    with fink_api_session() as session:
+        for start in range(0, len(unique_names), chunk_size):
+            chunk = unique_names[start : start + chunk_size]
+            # A failing API must not fail the task: the caller then gives -1 scores
+            try:
+                r = session.post(
+                    FINK_API_URL,
+                    json={
+                        "objectId": ",".join(chunk),
+                        "columns": "i:objectId,i:jd,i:magpsf,i:sigmapsf,i:fid,i:jd,i:distnr,d:tag,i:ra,i:dec",
+                        "output-format": "json",
+                        "withupperlim": "True",
+                    },
+                    timeout=FINK_API_TIMEOUT,
+                )
+            except requests.exceptions.RequestException as e:
+                _LOG.warning("Fink API request failed " + repr(e))
+                return None
+
+            if r.status_code != 200:
+                _LOG.warning(
+                    "Fink API request failed with status {}".format(r.status_code)
+                )
+                return None
+
+            # Format output in a DataFrame
+            try:
+                pdf = pd.read_json(io.BytesIO(r.content))
+            except ValueError as e:
+                _LOG.warning("Fink API answer could not be read " + repr(e))
+                return None
+
+            if len(pdf) != 0:
+                valid = (pdf["d:tag"] == "valid") | (pdf["d:tag"] == "badquality")
+                pdf = pdf[valid]
+                for name, lc in pdf.groupby("i:objectId"):
+                    lc_per_name[name] = lc.sort_values("i:jd")
+
+    # One light curve per input name, in input order
     dataframes = []
-
     for _id, name in enumerate(ZTF_name):
-        # A failing API must not fail the task: the caller then gives -1 scores
-        try:
-            r = requests.post(
-                "https://api.ztf.fink-portal.org/api/v1/objects",
-                json={
-                    "objectId": name,
-                    "columns": "i:objectId,i:jd,i:magpsf,i:sigmapsf,i:fid,i:jd,i:distnr,d:tag,i:ra,i:dec",
-                    "output-format": "json",
-                    "withupperlim": "True",
-                },
-                timeout=FINK_API_TIMEOUT,
-            )
-        except requests.exceptions.RequestException as e:
-            _LOG.warning("Fink API request failed " + repr(e))
-            return None
-
-        if r.status_code != 200:
-            # FIXME: log the message
-            return None
-
-        # Format output in a DataFrame
-        pdf = pd.read_json(io.BytesIO(r.content))
-
-        if len(pdf) != 0:
-            pdf["id"] = _id
-            pdf = pdf.sort_values("i:jd")
-            valid = (pdf["d:tag"] == "valid") | (pdf["d:tag"] == "badquality")
-            pdf = pdf[valid]
-
-            if not pdf.empty:
-                # Append valid DataFrame to the list
-                dataframes.append(pdf)
+        if name in lc_per_name:
+            dataframes.append(lc_per_name[name].assign(id=_id))
 
     if dataframes:
         combined_pdf = pd.concat(dataframes)
